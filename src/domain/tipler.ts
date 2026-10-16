@@ -61,6 +61,8 @@ export interface DamgaAyarlari {
 
 export interface Ayarlar {
   konum: Konum;
+  // Denetim izinde işlemi yapan olarak görünür
+  kullanici?: string;
   // Mali yıla göre %10 sınırına esas ödenek
   odenekler: Record<number, number>;
   bolme: BolmeKurallari;

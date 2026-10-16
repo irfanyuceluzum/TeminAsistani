@@ -1,3 +1,4 @@
+import type { EvrakKaydi, Olay } from "../domain/dosya";
 import type { PiyasaArastirmasi } from "../domain/piyasa";
 import type { Alim, Asama, Ayarlar, Bent, LimitDonemi, Tedarikci } from "../domain/tipler";
 
@@ -70,6 +71,7 @@ export const ornekAlimlar: Alim[] = satirlar.map(
 
 export const ornekAyarlar: Ayarlar = {
   konum: "buyuksehir",
+  kullanici: "Satın alma birimi",
   odenekler: { 2026: 20_000_000 * TL },
   bolme: { pencereGun: 60, ayniEkonomikKod: false, ayniKalem: true, ayniTedarikci: false },
   damga: { makbuzOrani: 948, sozlesmeOrani: 948, kararOrani: 569, kararPulu: "uygulanmaz" },
@@ -93,4 +95,44 @@ export const ornekPiyasa: PiyasaArastirmasi[] = [
     gorevliler: "A. Yılmaz (Şef), M. Kaya (Memur)",
     tamamlandi: false,
   },
+  {
+    alimId: "DT-2026-040",
+    kalemler: [
+      { id: "k1", ad: "Split klima periyodik bakımı", miktar: 24, birim: "adet" },
+      { id: "k2", ad: "Salon tipi klima bakımı", miktar: 4, birim: "adet" },
+      { id: "k3", ad: "Filtre değişimi", miktar: 24, birim: "adet" },
+      { id: "k4", ad: "Gaz takviyesi, R410A", miktar: 3, birim: "adet" },
+    ],
+    teklifler: [
+      { tedarikciId: "serin", teklifTarihi: "2026-10-02", yasaklilikSorgusu: "2026-10-03", fiyatlar: { k1: 1_250 * TL, k2: 2_800 * TL, k3: 150 * TL, k4: 700 * TL } },
+    ],
+    degerlendirme: "toplam",
+    gorevliler: "A. Yılmaz (Şef), M. Kaya (Memur)",
+    tamamlandi: true,
+  },
 ];
+
+// Her örnek dosya için açılış kaydı; DT-2026-040 için ayrıntılı geçmiş.
+export const ornekOlaylar: Olay[] = [
+  ...ornekAlimlar.map((a) => ({
+    alimId: a.id,
+    zaman: `${a.onayTarihi}T09:00:00`,
+    kim: "Örnek veri",
+    tur: "olusturuldu",
+    aciklama: `Dosya açıldı, dayanak ${a.bent}`,
+  })),
+  { alimId: "DT-2026-040", zaman: "2026-09-30T14:48:00", kim: "M. Kaya", tur: "evrak", aciklama: "Doğrudan temin onay belgesi, imzalı: tamamlandı" },
+  { alimId: "DT-2026-040", zaman: "2026-10-03T11:20:00", kim: "A. Yılmaz", tur: "piyasa-tamamlandi", aciklama: "Piyasa araştırması tamamlandı: Serin Teknik Ltd., ₺46.900" },
+  { alimId: "DT-2026-040", zaman: "2026-10-06T11:02:00", kim: "A. Yılmaz", tur: "evrak", aciklama: "Sipariş yazısı veya sözleşme: tamamlandı" },
+  { alimId: "DT-2026-040", zaman: "2026-10-14T17:30:00", kim: "S. Demir", tur: "asama:muayene", aciklama: "Aşama: Muayene kabul" },
+  { alimId: "DT-2026-040", zaman: "2026-10-15T16:05:00", kim: "M. Kaya", tur: "evrak", aciklama: "Fatura: tamamlandı" },
+];
+
+export const ornekEvraklar: Record<string, Record<string, EvrakKaydi>> = {
+  "DT-2026-040": {
+    "ihtiyac-yazisi": { tamam: true, tarih: "2026-09-29", not: "" },
+    "onay-belgesi": { tamam: true, tarih: "2026-09-30", not: "" },
+    "siparis-yazisi": { tamam: true, tarih: "2026-10-06", not: "Sözleşme düzenlenmedi" },
+    fatura: { tamam: true, tarih: "2026-10-15", not: "e-Fatura" },
+  },
+};

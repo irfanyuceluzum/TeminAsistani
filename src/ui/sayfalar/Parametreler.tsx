@@ -188,6 +188,15 @@ export function Parametreler() {
         </div>
       </section>
 
+      <section className="panel" aria-labelledby="kullanici-baslik">
+        <h2 id="kullanici-baslik">Kullanıcı</h2>
+        <div className="alan">
+          <label htmlFor="kullanici">Denetim izinde görünecek ad</label>
+          <input id="kullanici" value={taslak.kullanici ?? ""} onChange={(e) => taslakDegistir({ kullanici: e.target.value })} placeholder="A. Yılmaz" />
+          <span className="ipucu">Boş bırakılırsa "Satın alma birimi" yazılır.</span>
+        </div>
+      </section>
+
       <section className="panel bosluksuz" aria-labelledby="limit-baslik">
         <div className="panel-ust">
           <div>

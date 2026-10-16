@@ -1,8 +1,9 @@
 import Database from "@tauri-apps/plugin-sql";
+import type { EvrakKaydi, Olay } from "../domain/dosya";
 import type { PiyasaArastirmasi } from "../domain/piyasa";
 import type { Alim, Asama, Ayarlar, Bent, LimitDonemi, Tedarikci } from "../domain/tipler";
 import type { AlimDegisikligi, Depo } from "./depo";
-import { ornekAlimlar, ornekAyarlar, ornekLimitDonemleri, ornekPiyasa, ornekTedarikciler } from "./ornekVeri";
+import { ornekAlimlar, ornekAyarlar, ornekEvraklar, ornekLimitDonemleri, ornekOlaylar, ornekPiyasa, ornekTedarikciler } from "./ornekVeri";
 
 // Şema src-tauri/migrations altındaki SQL dosyalarıyla Rust tarafında kurulur.
 const ADRES = "sqlite:temin.db";
@@ -68,14 +69,34 @@ async function ornekleriYaz(db: Database): Promise<void> {
     }
     await db.execute("INSERT OR REPLACE INTO ayarlar (anahtar, deger) VALUES ('genel', $1)", [JSON.stringify(ornekAyarlar)]);
   }
-  // Piyasa tablosu sonradan eklendi; daha önce doldurulmuş veritabanında da örneği bir kez yaz.
-  const [{ piyasaAdet }] = await db.select<{ piyasaAdet: number }[]>("SELECT COUNT(*) AS piyasaAdet FROM piyasa_arastirmalari");
-  if (piyasaAdet === 0) {
-    for (const p of ornekPiyasa) {
-      const [{ var: alimVar }] = await db.select<{ var: number }[]>("SELECT COUNT(*) AS var FROM alimlar WHERE id = $1", [p.alimId]);
-      if (alimVar) await piyasaYaz(db, p);
+  // Sonradan eklenen tablolar daha önce doldurulmuş veritabanında da örneklerle bir kez doldurulur.
+  const alimVar = async (id: string) =>
+    (await db.select<{ adet: number }[]>("SELECT COUNT(*) AS adet FROM alimlar WHERE id = $1", [id]))[0].adet > 0;
+  for (const p of ornekPiyasa) {
+    if (await alimVar(p.alimId)) {
+      await db.execute("INSERT OR IGNORE INTO piyasa_arastirmalari (alim_id, belge, guncelleme) VALUES ($1, $2, datetime('now'))", [p.alimId, JSON.stringify(p)]);
     }
   }
+  const [{ olayAdet }] = await db.select<{ olayAdet: number }[]>("SELECT COUNT(*) AS olayAdet FROM olaylar");
+  if (olayAdet === 0) {
+    for (const o of ornekOlaylar) if (await alimVar(o.alimId)) await olayYaz(db, o);
+    for (const [alimId, kayitlar] of Object.entries(ornekEvraklar)) {
+      if (!(await alimVar(alimId))) continue;
+      for (const [kod, k] of Object.entries(kayitlar)) await evrakYaz(db, alimId, kod, k);
+    }
+  }
+}
+
+async function olayYaz(db: Database, o: Olay): Promise<void> {
+  await db.execute("INSERT INTO olaylar (alim_id, zaman, kim, tur, aciklama) VALUES ($1, $2, $3, $4, $5)", [o.alimId, o.zaman, o.kim, o.tur, o.aciklama]);
+}
+
+async function evrakYaz(db: Database, alimId: string, kod: string, k: EvrakKaydi): Promise<void> {
+  await db.execute(
+    `INSERT INTO evraklar (alim_id, kod, tamam, tarih, aciklama) VALUES ($1, $2, $3, $4, $5)
+     ON CONFLICT(alim_id, kod) DO UPDATE SET tamam = excluded.tamam, tarih = excluded.tarih, aciklama = excluded.aciklama`,
+    [alimId, kod, k.tamam ? 1 : 0, k.tarih, k.not],
+  );
 }
 
 export async function sqliteDepo(): Promise<Depo> {
@@ -149,6 +170,26 @@ export async function sqliteDepo(): Promise<Depo> {
     },
     async limitDonemiSil(baslangic) {
       await db.execute("DELETE FROM limit_donemleri WHERE baslangic = $1", [baslangic]);
+    },
+    async olaylar(alimId) {
+      const satirlar = await db.select<{ id: number; alim_id: string; zaman: string; kim: string; tur: string; aciklama: string }[]>(
+        "SELECT * FROM olaylar WHERE alim_id = $1 ORDER BY zaman DESC, id DESC",
+        [alimId],
+      );
+      return satirlar.map((s) => ({ id: s.id, alimId: s.alim_id, zaman: s.zaman, kim: s.kim, tur: s.tur, aciklama: s.aciklama }));
+    },
+    async olayEkle(o) {
+      await olayYaz(db, o);
+    },
+    async evraklar(alimId) {
+      const satirlar = await db.select<{ kod: string; tamam: number; tarih: string; aciklama: string }[]>(
+        "SELECT kod, tamam, tarih, aciklama FROM evraklar WHERE alim_id = $1",
+        [alimId],
+      );
+      return Object.fromEntries(satirlar.map((s) => [s.kod, { tamam: s.tamam === 1, tarih: s.tarih, not: s.aciklama }]));
+    },
+    async evrakKaydet(alimId, kod, kayit) {
+      await evrakYaz(db, alimId, kod, kayit);
     },
   };
 }

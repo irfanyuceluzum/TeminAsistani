@@ -2,7 +2,8 @@ import { useMemo, useState } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import { BENTLER, bentBilgisi, dayanakKontrolleri, engelVarMi, tutarCoz, yeniDosyaNo } from "../../domain/sihirbaz";
 import type { Bent } from "../../domain/tipler";
-import { bugun, tlKurus, uzunTarih } from "../bicim";
+import { olayKaydet } from "../../data/olay";
+import { bugun, tl, tlKurus, uzunTarih } from "../bicim";
 import { KontrolSatiri } from "../KontrolSatiri";
 import type { Veri } from "../useVeri";
 
@@ -115,6 +116,7 @@ export function YeniAlim() {
         asama: "onay",
         sonIslem: tarih,
       });
+      await olayKaydet(depo, ayarlar, dosyaNo, "olusturuldu", `Dosya açıldı, dayanak ${bent}, tahmini tutar ${tl(tutar)}`);
       await yenile();
       navigate(bent === "22/d" ? `/piyasa/${dosyaNo}` : "/");
     } catch (e) {

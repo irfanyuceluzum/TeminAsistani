@@ -134,7 +134,7 @@ export function AnaPanel() {
               <tbody>
                 {satirlar.map((a) => (
                   <tr key={a.id}>
-                    <td className="mono">{a.asama === "onay" || a.asama === "piyasa" ? <Link to={`/piyasa/${a.id}`}>{a.id}</Link> : a.id}</td>
+                    <td className="mono"><Link to={`/dosyalar/${a.id}`}>{a.id}</Link></td>
                     <td>{a.konu}</td>
                     <td className="mono">{a.bent}</td>
                     <td className="mono sag">{tl(a.tutar)}</td>

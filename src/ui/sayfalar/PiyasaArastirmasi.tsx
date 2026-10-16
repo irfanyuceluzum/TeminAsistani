@@ -11,6 +11,7 @@ import {
   type PiyasaKalemi,
 } from "../../domain/piyasa";
 import { engelVarMi, tutarCoz } from "../../domain/sihirbaz";
+import { olayKaydet } from "../../data/olay";
 import { bugun, tl, tlKurus, uzunTarih } from "../bicim";
 import { KontrolSatiri } from "../KontrolSatiri";
 import type { Veri } from "../useVeri";
@@ -59,6 +60,8 @@ export function PiyasaArastirmasiSayfasi() {
   const yuklendi = useRef(false);
   const alimRef = useRef(alim);
   alimRef.current = alim;
+  const ayarlarRef = useRef(ayarlar);
+  ayarlarRef.current = ayarlar;
 
   useEffect(() => {
     let iptal = false;
@@ -91,6 +94,7 @@ export function PiyasaArastirmasiSayfasi() {
         const a = alimRef.current;
         if (a && a.asama === "onay") {
           await depo.alimGuncelle(a.id, { asama: "piyasa", sonIslem: bugun() });
+          await olayKaydet(depo, ayarlarRef.current, a.id, "piyasa-basladi", "Piyasa fiyat araştırması başladı");
           await yenile();
         }
         setKayit("kayitli");
@@ -183,8 +187,10 @@ export function PiyasaArastirmasiSayfasi() {
         tedarikciId: sonuc.kazananlar.length === 1 ? sonuc.kazananlar[0] : null,
         sonIslem: bugun(),
       });
+      const kazanan = sonuc.kazananlar.map(firmaAdi).join(", ");
+      await olayKaydet(depo, ayarlar, alimId, "piyasa-tamamlandi", `Piyasa araştırması tamamlandı: ${kazanan}, ${tl(sonuc.toplam)}`);
       await yenile();
-      navigate("/");
+      navigate(`/dosyalar/${alimId}`);
     } catch (e) {
       setMesaj(`Araştırma kaydedilemedi. ${String(e)}`);
     }

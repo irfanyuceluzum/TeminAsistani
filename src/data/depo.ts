@@ -1,7 +1,8 @@
 import { isTauri } from "@tauri-apps/api/core";
+import type { EvrakKaydi, Olay } from "../domain/dosya";
 import type { PiyasaArastirmasi } from "../domain/piyasa";
 import type { Alim, Ayarlar, LimitDonemi, Tedarikci } from "../domain/tipler";
-import { ornekAlimlar, ornekAyarlar, ornekLimitDonemleri, ornekPiyasa, ornekTedarikciler } from "./ornekVeri";
+import { ornekAlimlar, ornekAyarlar, ornekEvraklar, ornekLimitDonemleri, ornekOlaylar, ornekPiyasa, ornekTedarikciler } from "./ornekVeri";
 
 export type AlimDegisikligi = Partial<Pick<Alim, "asama" | "tutar" | "tedarikciId" | "sonIslem">>;
 
@@ -19,6 +20,10 @@ export interface Depo {
   ayarlarKaydet(a: Ayarlar): Promise<void>;
   limitDonemiEkle(d: LimitDonemi): Promise<void>;
   limitDonemiSil(baslangic: string): Promise<void>;
+  olaylar(alimId: string): Promise<Olay[]>;
+  olayEkle(o: Olay): Promise<void>;
+  evraklar(alimId: string): Promise<Record<string, EvrakKaydi>>;
+  evrakKaydet(alimId: string, kod: string, kayit: EvrakKaydi): Promise<void>;
 }
 
 // Tarayıcıda (vite dev, testler) veritabanı yoktur; örnek verilerle bellekte çalışır, kayıtlar sayfa yenilenince kaybolur.
@@ -28,6 +33,8 @@ export function bellekDepo(): Depo {
   const piyasa = new Map(ornekPiyasa.map((p) => [p.alimId, structuredClone(p)]));
   let donemler = ornekLimitDonemleri.map((d) => ({ ...d }));
   let ayarlar = structuredClone(ornekAyarlar);
+  const olaylar: Olay[] = ornekOlaylar.map((o, i) => ({ ...o, id: i + 1 }));
+  const evraklar: Record<string, Record<string, EvrakKaydi>> = structuredClone(ornekEvraklar);
   return {
     tur: "bellek",
     alimlar: async () => alimlar.map((a) => ({ ...a })),
@@ -62,6 +69,15 @@ export function bellekDepo(): Depo {
     },
     limitDonemiSil: async (baslangic) => {
       donemler = donemler.filter((d) => d.baslangic !== baslangic);
+    },
+    olaylar: async (alimId) =>
+      olaylar.filter((o) => o.alimId === alimId).sort((x, y) => y.zaman.localeCompare(x.zaman) || (y.id ?? 0) - (x.id ?? 0)),
+    olayEkle: async (o) => {
+      olaylar.push({ ...o, id: olaylar.length + 1 });
+    },
+    evraklar: async (alimId) => structuredClone(evraklar[alimId] ?? {}),
+    evrakKaydet: async (alimId, kod, kayit) => {
+      evraklar[alimId] = { ...(evraklar[alimId] ?? {}), [kod]: { ...kayit } };
     },
   };
 }

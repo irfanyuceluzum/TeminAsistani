@@ -249,3 +249,31 @@ th:last-child, td:last-child { padding-right: 20px; }
 .sutun-dar { flex: 1 1 280px; min-width: 0; }
 .kaydet-cubugu { position: sticky; bottom: 0; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 20px; background: var(--yuzey); border: 1px solid var(--cizgi); border-radius: 12px; box-shadow: 0 -4px 16px rgba(20, 33, 43, 0.06); }
 .alan input[type="number"] { font-family: var(--mono); }
+
+.surec { flex: 1 1 240px; min-width: 0; }
+.evrak-paneli { flex: 999 1 480px; min-width: 0; }
+.cizelge { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.cizelge li { display: flex; gap: 12px; position: relative; padding-bottom: 16px; }
+.cizelge li:not(:last-child)::before { content: ""; position: absolute; left: 6px; top: 16px; bottom: 0; width: 2px; background: var(--cizgi); }
+.cizelge li.cizelge-bitti:not(:last-child)::before { background: #1d6b3a; }
+.cizelge-nokta { flex: none; width: 14px; height: 14px; margin-top: 3px; border-radius: 50%; border: 2px solid var(--alan-cizgi); background: var(--yuzey); position: relative; z-index: 1; }
+.cizelge-bitti .cizelge-nokta { background: #1d6b3a; border-color: #1d6b3a; }
+.cizelge-simdi .cizelge-nokta { border: 3px solid var(--vurgu); }
+.cizelge-metin { display: flex; flex-direction: column; gap: 2px; }
+.cizelge-simdi .cizelge-metin > span:first-child { color: var(--vurgu); font-weight: 600; }
+.cizelge-sonra .cizelge-metin > span:first-child { color: var(--soluk); }
+.duz-liste { margin: 6px 0 0; padding-left: 18px; }
+.evrak-cubugu { margin: 0 20px 4px; }
+.cubuk-basari { background: #1d6b3a; }
+.evrak-listesi { list-style: none; margin: 0; padding: 0; }
+.evrak { display: flex; align-items: center; gap: 12px; padding: 12px 20px; border-top: 1px solid var(--cizgi-acik); }
+.evrak input { width: 20px; height: 20px; margin: 0; accent-color: #1d6b3a; flex: none; }
+.evrak-isaret { flex: none; width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; background: #e7ebef; color: var(--ikincil); }
+.evrak-tamam .evrak-isaret { background: #1d6b3a; color: #fff; }
+.evrak-metin { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.evrak-metin label { cursor: pointer; }
+.iz-listesi { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.iz-listesi li { display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
+.arama { flex: 1 1 260px; }
+.arama input { height: 40px; }
+.surec .dugme { align-self: flex-start; }
