@@ -1,6 +1,7 @@
 import { isTauri } from "@tauri-apps/api/core";
 import type { EvrakKaydi, Olay } from "../domain/dosya";
 import type { Muayene } from "../domain/muayene";
+import type { Odeme } from "../domain/odeme";
 import type { PiyasaArastirmasi } from "../domain/piyasa";
 import type { Alim, Ayarlar, LimitDonemi, Tedarikci } from "../domain/tipler";
 import { ornekAlimlar, ornekAyarlar, ornekEvraklar, ornekLimitDonemleri, ornekOlaylar, ornekPiyasa, ornekTedarikciler } from "./ornekVeri";
@@ -27,6 +28,8 @@ export interface Depo {
   evrakKaydet(alimId: string, kod: string, kayit: EvrakKaydi): Promise<void>;
   muayeneGetir(alimId: string): Promise<Muayene | null>;
   muayeneKaydet(m: Muayene): Promise<void>;
+  odemeGetir(alimId: string): Promise<Odeme | null>;
+  odemeKaydet(o: Odeme): Promise<void>;
 }
 
 // Tarayıcıda (vite dev, testler) veritabanı yoktur; örnek verilerle bellekte çalışır, kayıtlar sayfa yenilenince kaybolur.
@@ -39,6 +42,7 @@ export function bellekDepo(): Depo {
   const olaylar: Olay[] = ornekOlaylar.map((o, i) => ({ ...o, id: i + 1 }));
   const evraklar: Record<string, Record<string, EvrakKaydi>> = structuredClone(ornekEvraklar);
   const muayeneler = new Map<string, Muayene>();
+  const odemeler = new Map<string, Odeme>();
   return {
     tur: "bellek",
     alimlar: async () => alimlar.map((a) => ({ ...a })),
@@ -89,6 +93,13 @@ export function bellekDepo(): Depo {
     },
     muayeneKaydet: async (m) => {
       muayeneler.set(m.alimId, structuredClone(m));
+    },
+    odemeGetir: async (alimId) => {
+      const o = odemeler.get(alimId);
+      return o ? structuredClone(o) : null;
+    },
+    odemeKaydet: async (o) => {
+      odemeler.set(o.alimId, structuredClone(o));
     },
   };
 }

@@ -67,4 +67,6 @@ export interface Ayarlar {
   odenekler: Record<number, number>;
   bolme: BolmeKurallari;
   damga: DamgaAyarlari;
+  // KDV dahil bedel bu tutarı aşarsa tevkifat uygulanır; kuruş. Tanımsızsa her tutara uygulanır.
+  tevkifatSiniri?: number;
 }

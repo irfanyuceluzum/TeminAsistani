@@ -24,6 +24,7 @@ function tlYazisi(kurus: number): string {
 
 interface Metinler {
   odenekler: Record<string, string>;
+  tevkifatSiniri: string;
   pencere: string;
   makbuz: string;
   sozlesme: string;
@@ -33,6 +34,7 @@ interface Metinler {
 function metinleriKur(a: Ayarlar): Metinler {
   return {
     odenekler: Object.fromEntries(Object.entries(a.odenekler).map(([y, k]) => [y, tlYazisi(k)])),
+    tevkifatSiniri: a.tevkifatSiniri ? tlYazisi(a.tevkifatSiniri) : "",
     pencere: String(a.bolme.pencereGun),
     makbuz: bindeYazisi(a.damga.makbuzOrani),
     sozlesme: bindeYazisi(a.damga.sozlesmeOrani),
@@ -54,9 +56,16 @@ function taslaktanAyar(taslak: Ayarlar, m: Metinler): { ayar: Ayarlar; hatalar: 
     if (v === null) hatalar.push(`${ad} oranını 9,48 biçiminde yazın.`);
     return v ?? 0;
   };
+  let tevkifatSiniri: number | undefined;
+  if (m.tevkifatSiniri.trim()) {
+    const v = tutarCoz(m.tevkifatSiniri);
+    if (v === null) hatalar.push("Tevkifat sınırını 12.000,00 biçiminde yazın.");
+    else tevkifatSiniri = v;
+  }
   const ayar: Ayarlar = {
     ...taslak,
     odenekler,
+    tevkifatSiniri,
     bolme: { ...taslak.bolme, pencereGun: Number(m.pencere) },
     damga: {
       ...taslak.damga,
@@ -367,6 +376,23 @@ export function Parametreler() {
           </fieldset>
         </section>
       </div>
+
+      <section className="panel" aria-labelledby="tevkifat-baslik">
+        <h2 id="tevkifat-baslik">KDV tevkifatı</h2>
+        <div className="alan">
+          <label htmlFor="tevkifat-siniri">Tevkifat sınırı, KDV dahil, TL</label>
+          <input
+            id="tevkifat-siniri"
+            className="mono"
+            inputMode="decimal"
+            value={metin.tevkifatSiniri}
+            aria-invalid={metin.tevkifatSiniri.trim() !== "" && tutarCoz(metin.tevkifatSiniri) === null}
+            onChange={(e) => metinDegistir({ tevkifatSiniri: e.target.value })}
+            placeholder="Güncel tebliğdeki tutar"
+          />
+          <span className="ipucu">KDV dahil bedel bu tutarı aşarsa tevkifat uygulanır. Boş bırakılırsa her tutara uygulanır.</span>
+        </div>
+      </section>
 
       <section className="panel" aria-labelledby="damga-baslik">
         <h2 id="damga-baslik">Damga vergisi kuralları</h2>
