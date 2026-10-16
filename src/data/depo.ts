@@ -16,6 +16,9 @@ export interface Depo {
   tedarikciEkle(t: Tedarikci): Promise<void>;
   piyasaGetir(alimId: string): Promise<PiyasaArastirmasi | null>;
   piyasaKaydet(p: PiyasaArastirmasi): Promise<void>;
+  ayarlarKaydet(a: Ayarlar): Promise<void>;
+  limitDonemiEkle(d: LimitDonemi): Promise<void>;
+  limitDonemiSil(baslangic: string): Promise<void>;
 }
 
 // Tarayıcıda (vite dev, testler) veritabanı yoktur; örnek verilerle bellekte çalışır, kayıtlar sayfa yenilenince kaybolur.
@@ -23,12 +26,14 @@ export function bellekDepo(): Depo {
   const alimlar = ornekAlimlar.map((a) => ({ ...a }));
   const tedarikciler = [...ornekTedarikciler];
   const piyasa = new Map(ornekPiyasa.map((p) => [p.alimId, structuredClone(p)]));
+  let donemler = ornekLimitDonemleri.map((d) => ({ ...d }));
+  let ayarlar = structuredClone(ornekAyarlar);
   return {
     tur: "bellek",
     alimlar: async () => alimlar.map((a) => ({ ...a })),
     tedarikciler: async () => [...tedarikciler].sort((x, y) => x.ad.localeCompare(y.ad, "tr")),
-    limitDonemleri: async () => ornekLimitDonemleri,
-    ayarlar: async () => ornekAyarlar,
+    limitDonemleri: async () => [...donemler].sort((x, y) => x.baslangic.localeCompare(y.baslangic)),
+    ayarlar: async () => structuredClone(ayarlar),
     alimEkle: async (alim) => {
       if (alimlar.some((a) => a.id === alim.id)) throw new Error(`${alim.id} numaralı dosya zaten var`);
       alimlar.push(alim);
@@ -48,6 +53,15 @@ export function bellekDepo(): Depo {
     },
     piyasaKaydet: async (p) => {
       piyasa.set(p.alimId, structuredClone(p));
+    },
+    ayarlarKaydet: async (a) => {
+      ayarlar = structuredClone(a);
+    },
+    limitDonemiEkle: async (d) => {
+      donemler = [...donemler, { ...d }];
+    },
+    limitDonemiSil: async (baslangic) => {
+      donemler = donemler.filter((d) => d.baslangic !== baslangic);
     },
   };
 }

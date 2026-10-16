@@ -138,5 +138,17 @@ export async function sqliteDepo(): Promise<Depo> {
     async piyasaKaydet(p) {
       await piyasaYaz(db, p);
     },
+    async ayarlarKaydet(a) {
+      await db.execute("INSERT OR REPLACE INTO ayarlar (anahtar, deger) VALUES ('genel', $1)", [JSON.stringify(a)]);
+    },
+    async limitDonemiEkle(d) {
+      await db.execute(
+        "INSERT INTO limit_donemleri (baslangic, bitis, buyuksehir_kurus, diger_kurus, dayanak) VALUES ($1, $2, $3, $4, $5)",
+        [d.baslangic, d.bitis, d.buyuksehir, d.diger, d.dayanak],
+      );
+    },
+    async limitDonemiSil(baslangic) {
+      await db.execute("DELETE FROM limit_donemleri WHERE baslangic = $1", [baslangic]);
+    },
   };
 }

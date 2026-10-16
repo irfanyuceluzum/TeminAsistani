@@ -233,3 +233,19 @@ th:last-child, td:last-child { padding-right: 20px; }
 .sarmali { flex-wrap: wrap; }
 .genis-belge { max-width: 760px; }
 .tutanak-tablo th, .tutanak-tablo td { width: auto; }
+
+.sag-hizali { justify-content: flex-end; }
+.dugme-tehlike { background: #b42318; border-color: #b42318; color: #fff; }
+.kenarsiz { border-radius: 0; border-width: 1px 0 0; }
+.donem-formu { padding: 16px 20px; border-top: 1px solid #e7ebef; display: flex; flex-direction: column; gap: 12px; background: #fbfcfd; }
+.hata-listesi { margin: 0; padding-left: 18px; color: #b42318; font-size: 13px; display: flex; flex-direction: column; gap: 2px; }
+.basari-yazi { color: var(--basari); font-weight: 500; }
+.secim-grubu { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.secim-grubu legend { font-size: 13px; color: var(--ikincil); padding: 0; margin-bottom: 8px; }
+.onay-kutusu { display: flex; gap: 10px; align-items: center; cursor: pointer; }
+.onay-kutusu input { width: 20px; height: 20px; margin: 0; accent-color: var(--vurgu); }
+.secenek-karti { text-align: left; display: flex; flex-direction: column; gap: 2px; padding: 12px; border-radius: 10px; border: 2px solid var(--cizgi); background: var(--yuzey); color: var(--murekkep); cursor: pointer; }
+.secenek-karti[aria-checked="true"] { border-color: var(--vurgu); background: var(--vurgu-zemin); }
+.sutun-dar { flex: 1 1 280px; min-width: 0; }
+.kaydet-cubugu { position: sticky; bottom: 0; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 20px; background: var(--yuzey); border: 1px solid var(--cizgi); border-radius: 12px; box-shadow: 0 -4px 16px rgba(20, 33, 43, 0.06); }
+.alan input[type="number"] { font-family: var(--mono); }
