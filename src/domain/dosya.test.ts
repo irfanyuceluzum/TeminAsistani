@@ -48,12 +48,17 @@ describe("aşama ilerlemesi", () => {
   it("evraklar tamamsa sonraki aşamayı verir", () => {
     const a = alim("DT-2026-035");
     const kayit = Object.fromEntries(evrakListesi(a).map((e) => [e.kod, tamam()]));
-    expect(asamaIlerlemesi(a, evrakDurumlari(a, kayit, null))).toEqual({ sonraki: "tamamlandi", eksikler: [], piyasaEkrani: false });
+    expect(asamaIlerlemesi(a, evrakDurumlari(a, kayit, null))).toEqual({ sonraki: "tamamlandi", eksikler: [], piyasaEkrani: false, muayeneEkrani: false });
   });
 
   it("22/d onay aşamasında piyasa ekranına yönlendirir", () => {
     const a = alim("DT-2026-042", { asama: "onay" });
     expect(asamaIlerlemesi(a, evrakDurumlari(a, {}, null)).piyasaEkrani).toBe(true);
+  });
+
+  it("muayene aşamasında tutanak ekranına yönlendirir", () => {
+    const a = alim("DT-2026-040");
+    expect(asamaIlerlemesi(a, evrakDurumlari(a, {}, null))).toMatchObject({ sonraki: "odeme", muayeneEkrani: true });
   });
 
   it("tamamlanan dosyada ilerleme yoktur", () => {

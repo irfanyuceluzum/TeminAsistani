@@ -1,5 +1,6 @@
 import Database from "@tauri-apps/plugin-sql";
 import type { EvrakKaydi, Olay } from "../domain/dosya";
+import type { Muayene } from "../domain/muayene";
 import type { PiyasaArastirmasi } from "../domain/piyasa";
 import type { Alim, Asama, Ayarlar, Bent, LimitDonemi, Tedarikci } from "../domain/tipler";
 import type { AlimDegisikligi, Depo } from "./depo";
@@ -190,6 +191,17 @@ export async function sqliteDepo(): Promise<Depo> {
     },
     async evrakKaydet(alimId, kod, kayit) {
       await evrakYaz(db, alimId, kod, kayit);
+    },
+    async muayeneGetir(alimId) {
+      const [satir] = await db.select<{ belge: string }[]>("SELECT belge FROM muayeneler WHERE alim_id = $1", [alimId]);
+      return satir ? (JSON.parse(satir.belge) as Muayene) : null;
+    },
+    async muayeneKaydet(m) {
+      await db.execute(
+        `INSERT INTO muayeneler (alim_id, belge, guncelleme) VALUES ($1, $2, datetime('now'))
+         ON CONFLICT(alim_id) DO UPDATE SET belge = excluded.belge, guncelleme = excluded.guncelleme`,
+        [m.alimId, JSON.stringify(m)],
+      );
     },
   };
 }

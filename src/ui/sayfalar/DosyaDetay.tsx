@@ -135,7 +135,12 @@ export function DosyaDetay() {
               Piyasa araştırmasına git
             </Link>
           )}
-          {!kapali && ilerleme.sonraki && !ilerleme.piyasaEkrani && (
+          {!kapali && ilerleme.muayeneEkrani && (
+            <Link to={`/muayene/${alim.id}`} className="dugme dugme-ana">
+              Muayene ve kabul tutanağını hazırla
+            </Link>
+          )}
+          {!kapali && ilerleme.sonraki && !ilerleme.piyasaEkrani && !ilerleme.muayeneEkrani && (
             <button type="button" className="dugme dugme-ana" onClick={ilerlet}>
               {ilerleme.sonraki === "tamamlandi" ? "Dosyayı kapat" : `${ASAMA_ADI[ilerleme.sonraki]} aşamasına geç`}
             </button>
@@ -191,6 +196,11 @@ export function DosyaDetay() {
                 </span>
                 {e.sistemden && alim.bent === "22/d" && (
                   <Link to={`/piyasa/${alim.id}`} className="kucuk">
+                    Aç
+                  </Link>
+                )}
+                {e.kod === "muayene-tutanagi" && (alim.asama === "muayene" || e.tamam) && (
+                  <Link to={`/muayene/${alim.id}`} className="kucuk">
                     Aç
                   </Link>
                 )}

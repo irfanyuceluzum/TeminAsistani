@@ -20,6 +20,12 @@ fn gocler() -> Vec<Migration> {
             sql: include_str!("../migrations/0003_denetim_izi_ve_evrak.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 4,
+            description: "muayene",
+            sql: include_str!("../migrations/0004_muayene.sql"),
+            kind: MigrationKind::Up,
+        },
     ]
 }
 

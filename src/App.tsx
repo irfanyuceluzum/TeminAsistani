@@ -3,6 +3,7 @@ import { Kabuk } from "./ui/Kabuk";
 import { AlimDosyalari } from "./ui/sayfalar/AlimDosyalari";
 import { AnaPanel } from "./ui/sayfalar/AnaPanel";
 import { DosyaDetay } from "./ui/sayfalar/DosyaDetay";
+import { MuayeneKabul } from "./ui/sayfalar/MuayeneKabul";
 import { Parametreler } from "./ui/sayfalar/Parametreler";
 import { PiyasaArastirmasiSayfasi } from "./ui/sayfalar/PiyasaArastirmasi";
 import { Yakinda } from "./ui/sayfalar/Yakinda";
@@ -18,6 +19,7 @@ export default function App() {
           <Route index element={<AnaPanel />} />
           <Route path="yeni" element={<YeniAlim />} />
           <Route path="piyasa/:alimId" element={<PiyasaArastirmasiSayfasi />} />
+          <Route path="muayene/:alimId" element={<MuayeneKabul />} />
           <Route path="dosyalar" element={<AlimDosyalari />} />
           <Route path="dosyalar/:alimId" element={<DosyaDetay />} />
           <Route path="tedarikciler" element={<Yakinda baslik="Tedarikçiler" aciklama="Firma kartları, geçmiş teklifler ve yasaklılık sorguları." />} />

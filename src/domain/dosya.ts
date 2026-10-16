@@ -79,15 +79,18 @@ export interface IlerlemeDurumu {
   eksikler: string[];
   // 22/d'de piyasa aşaması elle geçilmez, araştırma ekranında tamamlanır.
   piyasaEkrani: boolean;
+  // Muayene aşaması tutanak ekranında tamamlanır.
+  muayeneEkrani: boolean;
 }
 
 export function asamaIlerlemesi(alim: Alim, evraklar: EvrakDurumu[]): IlerlemeDurumu {
   const sira = asamaSirasi(alim.bent);
   const i = sira.indexOf(alim.asama);
-  if (alim.asama === "iptal" || i === -1 || i === sira.length - 1) return { sonraki: null, eksikler: [], piyasaEkrani: false };
+  if (alim.asama === "iptal" || i === -1 || i === sira.length - 1) return { sonraki: null, eksikler: [], piyasaEkrani: false, muayeneEkrani: false };
   const sonraki = sira[i + 1];
-  if (sonraki === "piyasa" || alim.asama === "piyasa") return { sonraki, eksikler: [], piyasaEkrani: true };
+  if (sonraki === "piyasa" || alim.asama === "piyasa") return { sonraki, eksikler: [], piyasaEkrani: true, muayeneEkrani: false };
+  if (alim.asama === "muayene") return { sonraki, eksikler: [], piyasaEkrani: false, muayeneEkrani: true };
   // Bu aşamaya ve öncesine ait evraklar tamamlanmadan ileri gidilmez.
   const eksikler = evraklar.filter((e) => !e.tamam && sira.indexOf(e.asama) <= i).map((e) => e.ad);
-  return { sonraki, eksikler, piyasaEkrani: false };
+  return { sonraki, eksikler, piyasaEkrani: false, muayeneEkrani: false };
 }

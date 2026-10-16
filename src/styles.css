@@ -277,3 +277,16 @@ th:last-child, td:last-child { padding-right: 20px; }
 .arama { flex: 1 1 260px; }
 .arama input { height: 40px; }
 .surec .dugme { align-self: flex-start; }
+
+.orta { text-align: center; }
+.satir-uyari td { background: #fffaf0; }
+.miktar-kucuk { width: 84px; }
+.sayac { display: flex; align-items: center; justify-content: center; gap: 4px; }
+.sayac-dugme { width: 36px; height: 36px; padding: 0; justify-content: center; font-size: 18px; }
+.normal-yazi { font-weight: 400; }
+.baskan-secimi { font-size: 13px; color: var(--ikincil); min-width: 80px; }
+.baskan-secimi input { width: 18px; height: 18px; }
+.unvan-girdi { flex: 0 1 200px; }
+.sonuc-uyari { background: var(--uyari-zemin); color: var(--uyari); }
+.uc-imza { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+.belge-onay { display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 12px; margin-top: 8px; }
