@@ -8,13 +8,19 @@ export interface Depo {
   tedarikciler(): Promise<Tedarikci[]>;
   limitDonemleri(): Promise<LimitDonemi[]>;
   ayarlar(): Promise<Ayarlar>;
+  alimEkle(alim: Alim): Promise<void>;
 }
 
-// Tarayıcıda (vite dev, testler) veritabanı yoktur; örnek verilerle bellekte çalışır.
+// Tarayıcıda (vite dev, testler) veritabanı yoktur; örnek verilerle bellekte çalışır, kayıtlar sayfa yenilenince kaybolur.
 export function bellekDepo(): Depo {
+  const alimlar = [...ornekAlimlar];
   return {
     tur: "bellek",
-    alimlar: async () => ornekAlimlar,
+    alimlar: async () => [...alimlar],
+    alimEkle: async (alim) => {
+      if (alimlar.some((a) => a.id === alim.id)) throw new Error(`${alim.id} numaralı dosya zaten var`);
+      alimlar.push(alim);
+    },
     tedarikciler: async () => ornekTedarikciler,
     limitDonemleri: async () => ornekLimitDonemleri,
     ayarlar: async () => ornekAyarlar,

@@ -27,6 +27,14 @@ interface DonemSatiri {
   dayanak: string;
 }
 
+async function alimYaz(db: Database, a: Alim): Promise<void> {
+  await db.execute(
+    `INSERT INTO alimlar (id, onay_tarihi, konu, bent, tutar_kurus, ekonomik_kod, kalem_kodu, tedarikci_id, asama, son_islem)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+    [a.id, a.onayTarihi, a.konu, a.bent, a.tutar, a.ekonomikKod, a.kalemKodu, a.tedarikciId, a.asama, a.sonIslem],
+  );
+}
+
 async function ornekleriYaz(db: Database): Promise<void> {
   const [{ adet }] = await db.select<{ adet: number }[]>("SELECT COUNT(*) AS adet FROM alimlar");
   if (adet > 0) return;
@@ -40,11 +48,7 @@ async function ornekleriYaz(db: Database): Promise<void> {
     await db.execute("INSERT INTO tedarikciler (id, ad, kategori) VALUES ($1, $2, $3)", [t.id, t.ad, t.kategori]);
   }
   for (const a of ornekAlimlar) {
-    await db.execute(
-      `INSERT INTO alimlar (id, onay_tarihi, konu, bent, tutar_kurus, ekonomik_kod, kalem_kodu, tedarikci_id, asama, son_islem)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-      [a.id, a.onayTarihi, a.konu, a.bent, a.tutar, a.ekonomikKod, a.kalemKodu, a.tedarikciId, a.asama, a.sonIslem],
-    );
+    await alimYaz(db, a);
   }
   await db.execute("INSERT OR REPLACE INTO ayarlar (anahtar, deger) VALUES ('genel', $1)", [JSON.stringify(ornekAyarlar)]);
 }
@@ -89,6 +93,9 @@ export async function sqliteDepo(): Promise<Depo> {
     async ayarlar() {
       const [satir] = await db.select<{ deger: string }[]>("SELECT deger FROM ayarlar WHERE anahtar = 'genel'");
       return satir ? (JSON.parse(satir.deger) as Ayarlar) : ornekAyarlar;
+    },
+    async alimEkle(alim) {
+      await alimYaz(db, alim);
     },
   };
 }

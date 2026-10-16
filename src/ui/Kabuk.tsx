@@ -47,7 +47,7 @@ export function Kabuk({ veri }: { veri: VeriDurumu }) {
         <div className="menu-alt">
           <span className="menu-alt-vurgu">[İdare adı]</span>
           <span>{hazir?.ayarlar.konum === "diger" ? "Büyükşehir dışında" : "Büyükşehir sınırları içinde"}</span>
-          {hazir?.depoTuru === "bellek" && <span className="menu-uyari">Örnek veri, tarayıcı önizlemesi</span>}
+          {hazir?.depo.tur === "bellek" && <span className="menu-uyari">Örnek veri, tarayıcı önizlemesi</span>}
         </div>
       </nav>
       <main className="icerik">

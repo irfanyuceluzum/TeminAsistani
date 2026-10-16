@@ -22,7 +22,7 @@ export function AnaPanel() {
     const odenek = ayarlar.odenekler[yil] ?? 0;
     const yuzdeOn = yuzdeOnDurumu(alimlar, yil, odenek);
     const ddAlimlari = alimlar.filter((a) => a.bent === "22/d" && a.onayTarihi.startsWith(String(yil)) && a.asama !== "iptal");
-    const acik = alimlar.filter((a) => asamaGrubu(a.asama) !== "Kapalı").sort((x, y) => y.onayTarihi.localeCompare(x.onayTarihi));
+    const acik = alimlar.filter((a) => asamaGrubu(a.asama) !== "Kapalı").sort((x, y) => y.onayTarihi.localeCompare(x.onayTarihi) || y.id.localeCompare(x.id));
     const bekleyenler = acik.filter((a) => gunFarki(gun, a.sonIslem) > 10);
     const odeme = acik.filter((a) => a.asama === "odeme");
     const kodlar = new Map<string, number>();
