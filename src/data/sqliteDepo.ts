@@ -1,7 +1,8 @@
 import Database from "@tauri-apps/plugin-sql";
+import type { PiyasaArastirmasi } from "../domain/piyasa";
 import type { Alim, Asama, Ayarlar, Bent, LimitDonemi, Tedarikci } from "../domain/tipler";
-import type { Depo } from "./depo";
-import { ornekAlimlar, ornekAyarlar, ornekLimitDonemleri, ornekTedarikciler } from "./ornekVeri";
+import type { AlimDegisikligi, Depo } from "./depo";
+import { ornekAlimlar, ornekAyarlar, ornekLimitDonemleri, ornekPiyasa, ornekTedarikciler } from "./ornekVeri";
 
 // Şema src-tauri/migrations altındaki SQL dosyalarıyla Rust tarafında kurulur.
 const ADRES = "sqlite:temin.db";
@@ -27,6 +28,13 @@ interface DonemSatiri {
   dayanak: string;
 }
 
+const ALIM_SUTUNLARI: Record<keyof AlimDegisikligi, string> = {
+  asama: "asama",
+  tutar: "tutar_kurus",
+  tedarikciId: "tedarikci_id",
+  sonIslem: "son_islem",
+};
+
 async function alimYaz(db: Database, a: Alim): Promise<void> {
   await db.execute(
     `INSERT INTO alimlar (id, onay_tarihi, konu, bent, tutar_kurus, ekonomik_kod, kalem_kodu, tedarikci_id, asama, son_islem)
@@ -35,22 +43,39 @@ async function alimYaz(db: Database, a: Alim): Promise<void> {
   );
 }
 
+async function piyasaYaz(db: Database, p: PiyasaArastirmasi): Promise<void> {
+  await db.execute(
+    `INSERT INTO piyasa_arastirmalari (alim_id, belge, guncelleme) VALUES ($1, $2, datetime('now'))
+     ON CONFLICT(alim_id) DO UPDATE SET belge = excluded.belge, guncelleme = excluded.guncelleme`,
+    [p.alimId, JSON.stringify(p)],
+  );
+}
+
 async function ornekleriYaz(db: Database): Promise<void> {
   const [{ adet }] = await db.select<{ adet: number }[]>("SELECT COUNT(*) AS adet FROM alimlar");
-  if (adet > 0) return;
-  for (const d of ornekLimitDonemleri) {
-    await db.execute(
-      "INSERT INTO limit_donemleri (baslangic, bitis, buyuksehir_kurus, diger_kurus, dayanak) VALUES ($1, $2, $3, $4, $5)",
-      [d.baslangic, d.bitis, d.buyuksehir, d.diger, d.dayanak],
-    );
+  if (adet === 0) {
+    for (const d of ornekLimitDonemleri) {
+      await db.execute(
+        "INSERT INTO limit_donemleri (baslangic, bitis, buyuksehir_kurus, diger_kurus, dayanak) VALUES ($1, $2, $3, $4, $5)",
+        [d.baslangic, d.bitis, d.buyuksehir, d.diger, d.dayanak],
+      );
+    }
+    for (const t of ornekTedarikciler) {
+      await db.execute("INSERT INTO tedarikciler (id, ad, kategori) VALUES ($1, $2, $3)", [t.id, t.ad, t.kategori]);
+    }
+    for (const a of ornekAlimlar) {
+      await alimYaz(db, a);
+    }
+    await db.execute("INSERT OR REPLACE INTO ayarlar (anahtar, deger) VALUES ('genel', $1)", [JSON.stringify(ornekAyarlar)]);
   }
-  for (const t of ornekTedarikciler) {
-    await db.execute("INSERT INTO tedarikciler (id, ad, kategori) VALUES ($1, $2, $3)", [t.id, t.ad, t.kategori]);
+  // Piyasa tablosu sonradan eklendi; daha önce doldurulmuş veritabanında da örneği bir kez yaz.
+  const [{ piyasaAdet }] = await db.select<{ piyasaAdet: number }[]>("SELECT COUNT(*) AS piyasaAdet FROM piyasa_arastirmalari");
+  if (piyasaAdet === 0) {
+    for (const p of ornekPiyasa) {
+      const [{ var: alimVar }] = await db.select<{ var: number }[]>("SELECT COUNT(*) AS var FROM alimlar WHERE id = $1", [p.alimId]);
+      if (alimVar) await piyasaYaz(db, p);
+    }
   }
-  for (const a of ornekAlimlar) {
-    await alimYaz(db, a);
-  }
-  await db.execute("INSERT OR REPLACE INTO ayarlar (anahtar, deger) VALUES ('genel', $1)", [JSON.stringify(ornekAyarlar)]);
 }
 
 export async function sqliteDepo(): Promise<Depo> {
@@ -96,6 +121,22 @@ export async function sqliteDepo(): Promise<Depo> {
     },
     async alimEkle(alim) {
       await alimYaz(db, alim);
+    },
+    async alimGuncelle(id, d) {
+      const anahtarlar = (Object.keys(d) as (keyof AlimDegisikligi)[]).filter((k) => d[k] !== undefined);
+      if (anahtarlar.length === 0) return;
+      const set = anahtarlar.map((k, i) => `${ALIM_SUTUNLARI[k]} = $${i + 1}`).join(", ");
+      await db.execute(`UPDATE alimlar SET ${set} WHERE id = $${anahtarlar.length + 1}`, [...anahtarlar.map((k) => d[k]), id]);
+    },
+    async tedarikciEkle(t) {
+      await db.execute("INSERT INTO tedarikciler (id, ad, kategori) VALUES ($1, $2, $3)", [t.id, t.ad, t.kategori]);
+    },
+    async piyasaGetir(alimId) {
+      const [satir] = await db.select<{ belge: string }[]>("SELECT belge FROM piyasa_arastirmalari WHERE alim_id = $1", [alimId]);
+      return satir ? (JSON.parse(satir.belge) as PiyasaArastirmasi) : null;
+    },
+    async piyasaKaydet(p) {
+      await piyasaYaz(db, p);
     },
   };
 }

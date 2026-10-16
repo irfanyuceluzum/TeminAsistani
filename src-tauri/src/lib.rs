@@ -1,12 +1,20 @@
 use tauri_plugin_sql::{Migration, MigrationKind};
 
 fn gocler() -> Vec<Migration> {
-    vec![Migration {
-        version: 1,
-        description: "ilk_sema",
-        sql: include_str!("../migrations/0001_ilk_sema.sql"),
-        kind: MigrationKind::Up,
-    }]
+    vec![
+        Migration {
+            version: 1,
+            description: "ilk_sema",
+            sql: include_str!("../migrations/0001_ilk_sema.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 2,
+            description: "piyasa_arastirmasi",
+            sql: include_str!("../migrations/0002_piyasa_arastirmasi.sql"),
+            kind: MigrationKind::Up,
+        },
+    ]
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]

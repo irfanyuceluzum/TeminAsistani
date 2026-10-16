@@ -1,3 +1,4 @@
+import type { PiyasaArastirmasi } from "../domain/piyasa";
 import type { Alim, Asama, Ayarlar, Bent, LimitDonemi, Tedarikci } from "../domain/tipler";
 
 // İlk açılışta boş veritabanına yazılan örnek kayıtlar. Gerçek kullanıma geçmeden kaldırılmalı.
@@ -73,3 +74,23 @@ export const ornekAyarlar: Ayarlar = {
   bolme: { pencereGun: 60, ayniEkonomikKod: false, ayniKalem: true, ayniTedarikci: false },
   damga: { makbuzOrani: 948, sozlesmeOrani: 948, kararOrani: 569, kararPulu: "uygulanmaz" },
 };
+
+// DT-2026-041 için iki teklifi gelmiş, Kaya Ticaret'in sorgusu henüz işaretlenmemiş bir araştırma.
+export const ornekPiyasa: PiyasaArastirmasi[] = [
+  {
+    alimId: "DT-2026-041",
+    kalemler: [
+      { id: "k1", ad: "Çamaşır suyu, 4 L", miktar: 120, birim: "adet" },
+      { id: "k2", ad: "Sıvı el sabunu, 5 L", miktar: 60, birim: "adet" },
+      { id: "k3", ad: "Çöp poşeti, büyük boy", miktar: 300, birim: "rulo" },
+    ],
+    teklifler: [
+      { tedarikciId: "ece", teklifTarihi: "2026-10-14", yasaklilikSorgusu: "2026-10-16", fiyatlar: { k1: 86 * TL, k2: 142 * TL, k3: 24 * TL } },
+      { tedarikciId: "toros", teklifTarihi: "2026-10-15", yasaklilikSorgusu: "2026-10-16", fiyatlar: { k1: 79 * TL, k2: 150 * TL, k3: 23 * TL } },
+      { tedarikciId: "kaya", teklifTarihi: null, yasaklilikSorgusu: null, fiyatlar: {} },
+    ],
+    degerlendirme: "toplam",
+    gorevliler: "A. Yılmaz (Şef), M. Kaya (Memur)",
+    tamamlandi: false,
+  },
+];

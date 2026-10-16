@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
-import { BENTLER, bentBilgisi, dayanakKontrolleri, engelVarMi, tutarCoz, yeniDosyaNo, type Kontrol } from "../../domain/sihirbaz";
+import { BENTLER, bentBilgisi, dayanakKontrolleri, engelVarMi, tutarCoz, yeniDosyaNo } from "../../domain/sihirbaz";
 import type { Bent } from "../../domain/tipler";
 import { bugun, tlKurus, uzunTarih } from "../bicim";
+import { KontrolSatiri } from "../KontrolSatiri";
 import type { Veri } from "../useVeri";
 
 // Örnek kod listesi; ileride Parametreler'den yönetilecek.
@@ -44,21 +45,6 @@ function formuDenetle(f: Form): Hatalar {
   if (!f.ekonomikKod) h.ekonomikKod = "Bütçe tertibini seçin.";
   if (!f.kalemKodu.trim()) h.kalemKodu = "Kalem kodunu yazın ya da listeden seçin.";
   return h;
-}
-
-function KontrolSatiri({ k }: { k: Kontrol }) {
-  const isaret = { tamam: "✓", uyari: "!", engel: "×", yapilacak: "·" }[k.durum];
-  return (
-    <div className={`kontrol kontrol-${k.durum}`}>
-      <span className="kontrol-isaret" aria-hidden="true">
-        {isaret}
-      </span>
-      <div>
-        <div className="kontrol-baslik">{k.baslik}</div>
-        <div className="kontrol-detay">{k.detay}</div>
-      </div>
-    </div>
-  );
 }
 
 export function YeniAlim() {
@@ -130,7 +116,7 @@ export function YeniAlim() {
         sonIslem: tarih,
       });
       await yenile();
-      navigate("/");
+      navigate(bent === "22/d" ? `/piyasa/${dosyaNo}` : "/");
     } catch (e) {
       setKayitHatasi(`Dosya kaydedilemedi. ${String(e)}`);
       setKaydediliyor(false);
