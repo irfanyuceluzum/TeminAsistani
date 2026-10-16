@@ -1,0 +1,64 @@
+import type { ReactNode } from "react";
+import { NavLink, Outlet } from "react-router-dom";
+import type { VeriDurumu } from "./useVeri";
+
+function Ikon({ d }: { d: ReactNode }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {d}
+    </svg>
+  );
+}
+
+const MENU: { yol: string; ad: string; ikon: ReactNode }[] = [
+  { yol: "/", ad: "Ana panel", ikon: <path d="M3 10.5 12 3l9 7.5V21h-6v-6H9v6H3z" /> },
+  { yol: "/yeni", ad: "Yeni alım", ikon: <><circle cx="12" cy="12" r="9" /><path d="M12 8v8M8 12h8" /></> },
+  { yol: "/dosyalar", ad: "Alım dosyaları", ikon: <path d="M3 6h6l2 2h10v11H3z" /> },
+  { yol: "/tedarikciler", ad: "Tedarikçiler", ikon: <path d="M4 9h16l-1-5H5zM5 9v11h14V9M9 20v-6h6v6" /> },
+  { yol: "/raporlar", ad: "Raporlar", ikon: <path d="M4 20V10M10 20V4M16 20v-8M21 20H3" /> },
+  {
+    yol: "/parametreler",
+    ad: "Parametreler",
+    ikon: <><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1" /><circle cx="15" cy="6" r="2" /><circle cx="9" cy="12" r="2" /><circle cx="17" cy="18" r="2" /></>,
+  },
+];
+
+export function Kabuk({ veri }: { veri: VeriDurumu }) {
+  const hazir = veri.durum === "hazir" ? veri.veri : null;
+  return (
+    <div className="kabuk">
+      <nav className="menu" aria-label="Ana menü">
+        <div className="marka">
+          <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true">
+            <rect x="1" y="1" width="26" height="26" rx="7" fill="var(--vurgu)" />
+            <path d="M8 14.5l4 4 8-9" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <div>
+            <div className="marka-ad">Temin Asistanı</div>
+            <div className="marka-alt">4734 · Madde 22</div>
+          </div>
+        </div>
+        {MENU.map((m) => (
+          <NavLink key={m.yol} to={m.yol} end={m.yol === "/"} className="menu-ogesi">
+            <Ikon d={m.ikon} />
+            {m.ad}
+          </NavLink>
+        ))}
+        <div className="menu-alt">
+          <span className="menu-alt-vurgu">[İdare adı]</span>
+          <span>{hazir?.ayarlar.konum === "diger" ? "Büyükşehir dışında" : "Büyükşehir sınırları içinde"}</span>
+          {hazir?.depoTuru === "bellek" && <span className="menu-uyari">Örnek veri, tarayıcı önizlemesi</span>}
+        </div>
+      </nav>
+      <main className="icerik">
+        {veri.durum === "yukleniyor" && <p className="soluk">Veriler yükleniyor…</p>}
+        {veri.durum === "hata" && (
+          <div className="bant bant-hata" role="alert">
+            Veritabanı açılamadı. Uygulamayı yeniden başlatın. Ayrıntı: {veri.mesaj}
+          </div>
+        )}
+        {hazir && <Outlet context={hazir} />}
+      </main>
+    </div>
+  );
+}

@@ -1,0 +1,130 @@
+import { describe, expect, it } from "vitest";
+import {
+  benzerAlimlar,
+  bolmeRiskleri,
+  damgaVergisi,
+  ddLimitKontrolu,
+  limitDonemiBul,
+  yuzdeOnDurumu,
+} from "./kurallar";
+import type { Alim, BolmeKurallari, DamgaAyarlari, LimitDonemi } from "./tipler";
+
+const TL = 100;
+
+const donemler: LimitDonemi[] = [
+  { baslangic: "2025-02-01", bitis: "2026-01-31", buyuksehir: 800_366 * TL, diger: 266_618 * TL, dayanak: "2025" },
+  { baslangic: "2026-02-01", bitis: "2027-01-31", buyuksehir: 1_021_827 * TL, diger: 340_391 * TL, dayanak: "2026/1" },
+];
+
+function alim(p: Partial<Alim>): Alim {
+  return {
+    id: "DT-1",
+    onayTarihi: "2026-10-01",
+    konu: "Kırtasiye",
+    bent: "22/d",
+    tutar: 10_000 * TL,
+    ekonomikKod: "03.2.1.01",
+    kalemKodu: "KRT",
+    tedarikciId: null,
+    asama: "tamamlandi",
+    sonIslem: "2026-10-01",
+    ...p,
+  };
+}
+
+const kurallar: BolmeKurallari = { pencereGun: 60, ayniEkonomikKod: false, ayniKalem: true, ayniTedarikci: false };
+
+describe("limit dönemi", () => {
+  it("ocak ayındaki alımda önceki dönemin limitini seçer", () => {
+    expect(limitDonemiBul("2026-01-20", donemler)?.dayanak).toBe("2025");
+    expect(limitDonemiBul("2026-02-01", donemler)?.dayanak).toBe("2026/1");
+  });
+
+  it("konuma göre limiti uygular", () => {
+    const tutar = 500_000 * TL;
+    expect(ddLimitKontrolu(tutar, "2026-10-16", "buyuksehir", donemler).durum).toBe("icinde");
+    expect(ddLimitKontrolu(tutar, "2026-10-16", "diger", donemler).durum).toBe("asiyor");
+  });
+
+  it("limitin tam kendisi aşım sayılmaz", () => {
+    expect(ddLimitKontrolu(340_391 * TL, "2026-10-16", "diger", donemler).durum).toBe("icinde");
+  });
+
+  it("tanımsız dönemde sonuç vermez", () => {
+    expect(ddLimitKontrolu(TL, "2027-03-01", "diger", donemler).durum).toBe("donem-yok");
+  });
+});
+
+describe("%10 ödenek sınırı", () => {
+  const odenek = 20_000_000 * TL;
+  const alimlar = [
+    alim({ id: "a", tutar: 1_000_000 * TL }),
+    alim({ id: "b", tutar: 284_500 * TL }),
+    alim({ id: "c", tutar: 50_000 * TL, bent: "22/b" }),
+    alim({ id: "d", tutar: 70_000 * TL, asama: "iptal" }),
+    alim({ id: "e", tutar: 90_000 * TL, onayTarihi: "2025-12-30" }),
+  ];
+
+  it("yalnızca o mali yılın iptal edilmemiş 22/d alımlarını sayar", () => {
+    const d = yuzdeOnDurumu(alimlar, 2026, odenek);
+    expect(d.kullanilan).toBe(1_284_500 * TL);
+    expect(d.sinir).toBe(2_000_000 * TL);
+    expect(d.oran).toBeCloseTo(0.064225);
+    expect(d.asiyor).toBe(false);
+  });
+
+  it("yeni alımın etkisini ve aşımı hesaplar", () => {
+    expect(yuzdeOnDurumu(alimlar, 2026, odenek, 38_500 * TL).sonrakiOran).toBeCloseTo(0.0661);
+    expect(yuzdeOnDurumu(alimlar, 2026, odenek, 800_000 * TL).asiyor).toBe(true);
+  });
+});
+
+describe("kısımlara bölme", () => {
+  const alimlar = [
+    alim({ id: "1", onayTarihi: "2026-08-20", kalemKodu: "A4" }),
+    alim({ id: "2", onayTarihi: "2026-09-15", kalemKodu: "A4" }),
+    alim({ id: "3", onayTarihi: "2026-10-10", kalemKodu: "A4" }),
+    alim({ id: "4", onayTarihi: "2026-06-01", kalemKodu: "A4" }),
+    alim({ id: "5", onayTarihi: "2026-10-01", kalemKodu: "TONER" }),
+    alim({ id: "6", onayTarihi: "2026-10-02", kalemKodu: "A4", asama: "iptal" }),
+  ];
+
+  it("pencere içinde en az üç alım varsa risk bildirir", () => {
+    const r = bolmeRiskleri(alimlar, "2026-10-16", kurallar);
+    expect(r).toHaveLength(1);
+    expect(r[0].alimlar.map((a) => a.id)).toEqual(["1", "2", "3"]);
+    expect(r[0].toplam).toBe(30_000 * TL);
+  });
+
+  it("aday alıma benzeyenleri seçilen ölçütlere göre bulur", () => {
+    const aday = alim({ id: "yeni", onayTarihi: "2026-10-16", kalemKodu: "A4" });
+    expect(benzerAlimlar(aday, alimlar, kurallar).map((a) => a.id)).toEqual(["1", "2", "3"]);
+    const kodla = { ...kurallar, ayniKalem: false, ayniEkonomikKod: true };
+    expect(benzerAlimlar(aday, alimlar, kodla).map((a) => a.id)).toEqual(["1", "2", "3", "5"]);
+  });
+});
+
+describe("damga vergisi", () => {
+  const ayar: DamgaAyarlari = { makbuzOrani: 948, sozlesmeOrani: 948, kararOrani: 569, kararPulu: "uygulanmaz" };
+  const matrah = 46_900 * TL;
+
+  it("sözleşmesiz alımda yalnızca makbuz vergisi keser", () => {
+    expect(damgaVergisi(matrah, ayar, { sozlesmeVar: false, komisyonKarariVar: false })).toEqual({
+      makbuz: 44_461,
+      sozlesme: 0,
+      karar: 0,
+      toplam: 44_461,
+    });
+  });
+
+  it("karar pulunu idare ayarına göre uygular", () => {
+    const onay = damgaVergisi(matrah, { ...ayar, kararPulu: "onay-karar-sayilir" }, { sozlesmeVar: false, komisyonKarariVar: false });
+    expect(onay.karar).toBe(26_686);
+    const komisyonsuz = damgaVergisi(matrah, { ...ayar, kararPulu: "yalnizca-komisyon" }, { sozlesmeVar: false, komisyonKarariVar: false });
+    expect(komisyonsuz.karar).toBe(0);
+  });
+
+  it("sözleşme varsa sözleşme vergisini ekler", () => {
+    expect(damgaVergisi(matrah, ayar, { sozlesmeVar: true, komisyonKarariVar: false }).toplam).toBe(88_922);
+  });
+});
