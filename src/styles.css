@@ -309,3 +309,20 @@ th:last-child, td:last-child { padding-right: 20px; }
 .kbs-alanlari { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
 .kbs-alani { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--cizgi); border-radius: 10px; min-width: 0; }
 .kbs-metin { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; overflow-wrap: anywhere; }
+
+.firma-listesi { flex: 1 1 320px; min-width: 0; }
+.liste-ust { display: flex; flex-direction: column; gap: 10px; padding: 16px; border-bottom: 1px solid #e7ebef; }
+.firma-satirlari { list-style: none; margin: 0; padding: 0; }
+.firma-satiri { display: flex; align-items: center; gap: 12px; padding: 12px 16px; min-height: 60px; border-top: 1px solid var(--cizgi-acik); color: var(--murekkep); text-decoration: none; }
+.firma-satiri:hover { background: #f8f9fa; }
+.firma-satiri.secili { background: var(--vurgu-zemin); }
+.firma-bas { flex: none; width: 36px; height: 36px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; background: #eef1f4; color: #33424e; }
+.secili .firma-bas { background: var(--vurgu); color: #fff; }
+.firma-bas.buyuk { width: 52px; height: 52px; border-radius: 12px; font-size: 18px; background: var(--vurgu-zemin); color: var(--vurgu-koyu); }
+.firma-satir-metin { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.firma-ust-bilgi { display: flex; align-items: center; gap: 14px; }
+.firma-adi { font-size: 20px; }
+.bilgi-izgarasi { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; padding-top: 12px; border-top: 1px solid var(--cizgi-acik); }
+.bilgi { display: flex; flex-direction: column; gap: 2px; min-width: 0; overflow-wrap: anywhere; }
+.sorgu-satiri { flex-direction: row !important; align-items: flex-start; gap: 12px !important; }
+.sorgu-isaret { background: #1d6b3a; color: #fff; }

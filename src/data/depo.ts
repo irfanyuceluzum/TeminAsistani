@@ -17,6 +17,8 @@ export interface Depo {
   alimEkle(alim: Alim): Promise<void>;
   alimGuncelle(id: string, degisiklik: AlimDegisikligi): Promise<void>;
   tedarikciEkle(t: Tedarikci): Promise<void>;
+  tedarikciGuncelle(t: Tedarikci): Promise<void>;
+  tumPiyasa(): Promise<PiyasaArastirmasi[]>;
   piyasaGetir(alimId: string): Promise<PiyasaArastirmasi | null>;
   piyasaKaydet(p: PiyasaArastirmasi): Promise<void>;
   ayarlarKaydet(a: Ayarlar): Promise<void>;
@@ -35,7 +37,7 @@ export interface Depo {
 // Tarayıcıda (vite dev, testler) veritabanı yoktur; örnek verilerle bellekte çalışır, kayıtlar sayfa yenilenince kaybolur.
 export function bellekDepo(): Depo {
   const alimlar = ornekAlimlar.map((a) => ({ ...a }));
-  const tedarikciler = [...ornekTedarikciler];
+  const tedarikciler = ornekTedarikciler.map((t) => ({ ...t }));
   const piyasa = new Map(ornekPiyasa.map((p) => [p.alimId, structuredClone(p)]));
   let donemler = ornekLimitDonemleri.map((d) => ({ ...d }));
   let ayarlar = structuredClone(ornekAyarlar);
@@ -60,8 +62,14 @@ export function bellekDepo(): Depo {
     },
     tedarikciEkle: async (t) => {
       if (tedarikciler.some((x) => x.id === t.id)) throw new Error(`${t.ad} zaten kayıtlı`);
-      tedarikciler.push(t);
+      tedarikciler.push({ ...t });
     },
+    tedarikciGuncelle: async (t) => {
+      const i = tedarikciler.findIndex((x) => x.id === t.id);
+      if (i === -1) throw new Error(`${t.ad} bulunamadı`);
+      tedarikciler[i] = { ...t };
+    },
+    tumPiyasa: async () => [...piyasa.values()].map((p) => structuredClone(p)),
     piyasaGetir: async (alimId) => {
       const p = piyasa.get(alimId);
       return p ? structuredClone(p) : null;

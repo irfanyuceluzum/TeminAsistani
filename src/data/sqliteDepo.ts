@@ -23,6 +23,18 @@ interface AlimSatiri {
   son_islem: string;
 }
 
+interface TedarikciSatiri {
+  id: string;
+  ad: string;
+  kategori: string;
+  vkn: string;
+  vergi_dairesi: string;
+  telefon: string;
+  eposta: string;
+  iban: string;
+  adres: string;
+}
+
 interface DonemSatiri {
   baslangic: string;
   bitis: string;
@@ -124,7 +136,20 @@ export async function sqliteDepo(): Promise<Depo> {
       );
     },
     async tedarikciler() {
-      return db.select<Tedarikci[]>("SELECT id, ad, kategori FROM tedarikciler ORDER BY ad");
+      const satirlar = await db.select<TedarikciSatiri[]>("SELECT * FROM tedarikciler ORDER BY ad");
+      return satirlar.map(
+        (s): Tedarikci => ({
+          id: s.id,
+          ad: s.ad,
+          kategori: s.kategori,
+          vkn: s.vkn,
+          vergiDairesi: s.vergi_dairesi,
+          telefon: s.telefon,
+          eposta: s.eposta,
+          iban: s.iban,
+          adres: s.adres,
+        }),
+      );
     },
     async limitDonemleri() {
       const satirlar = await db.select<DonemSatiri[]>("SELECT * FROM limit_donemleri ORDER BY baslangic");
@@ -152,7 +177,20 @@ export async function sqliteDepo(): Promise<Depo> {
       await db.execute(`UPDATE alimlar SET ${set} WHERE id = $${anahtarlar.length + 1}`, [...anahtarlar.map((k) => d[k]), id]);
     },
     async tedarikciEkle(t) {
-      await db.execute("INSERT INTO tedarikciler (id, ad, kategori) VALUES ($1, $2, $3)", [t.id, t.ad, t.kategori]);
+      await db.execute(
+        "INSERT INTO tedarikciler (id, ad, kategori, vkn, vergi_dairesi, telefon, eposta, iban, adres) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+        [t.id, t.ad, t.kategori, t.vkn ?? "", t.vergiDairesi ?? "", t.telefon ?? "", t.eposta ?? "", t.iban ?? "", t.adres ?? ""],
+      );
+    },
+    async tedarikciGuncelle(t) {
+      await db.execute(
+        "UPDATE tedarikciler SET ad = $2, kategori = $3, vkn = $4, vergi_dairesi = $5, telefon = $6, eposta = $7, iban = $8, adres = $9 WHERE id = $1",
+        [t.id, t.ad, t.kategori, t.vkn ?? "", t.vergiDairesi ?? "", t.telefon ?? "", t.eposta ?? "", t.iban ?? "", t.adres ?? ""],
+      );
+    },
+    async tumPiyasa() {
+      const satirlar = await db.select<{ belge: string }[]>("SELECT belge FROM piyasa_arastirmalari");
+      return satirlar.map((s) => JSON.parse(s.belge) as PiyasaArastirmasi);
     },
     async piyasaGetir(alimId) {
       const [satir] = await db.select<{ belge: string }[]>("SELECT belge FROM piyasa_arastirmalari WHERE alim_id = $1", [alimId]);

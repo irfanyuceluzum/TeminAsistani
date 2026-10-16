@@ -11,6 +11,7 @@ import {
   type PiyasaKalemi,
 } from "../../domain/piyasa";
 import { engelVarMi, tutarCoz } from "../../domain/sihirbaz";
+import { firmaKimligi } from "../../domain/tedarikci";
 import { olayKaydet } from "../../data/olay";
 import { bugun, tl, tlKurus, uzunTarih } from "../bicim";
 import { KontrolSatiri } from "../KontrolSatiri";
@@ -31,17 +32,6 @@ function kisaKimlik(): string {
   return "k" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
 }
 
-function firmaKimligi(ad: string, mevcut: string[]): string {
-  const kok =
-    ad
-      .toLocaleLowerCase("tr-TR")
-      .replace(/ç/g, "c").replace(/ğ/g, "g").replace(/ı/g, "i").replace(/ö/g, "o").replace(/ş/g, "s").replace(/ü/g, "u")
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-|-$/g, "") || "firma";
-  let id = kok;
-  for (let i = 2; mevcut.includes(id); i++) id = `${kok}-${i}`;
-  return id;
-}
 
 export function PiyasaArastirmasiSayfasi() {
   const { alimId = "" } = useParams();

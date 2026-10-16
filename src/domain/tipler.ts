@@ -32,6 +32,12 @@ export interface Tedarikci {
   id: string;
   ad: string;
   kategori: string;
+  vkn?: string;
+  vergiDairesi?: string;
+  telefon?: string;
+  eposta?: string;
+  iban?: string;
+  adres?: string;
 }
 
 export interface LimitDonemi {
