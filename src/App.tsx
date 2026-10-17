@@ -2,6 +2,7 @@ import { HashRouter, Route, Routes } from "react-router-dom";
 import { Kabuk } from "./ui/Kabuk";
 import { AlimDosyalari } from "./ui/sayfalar/AlimDosyalari";
 import { AnaPanel } from "./ui/sayfalar/AnaPanel";
+import { DosyaCalismaAlani } from "./ui/sayfalar/DosyaCalismaAlani";
 import { DosyaDetay } from "./ui/sayfalar/DosyaDetay";
 import { MuayeneKabul } from "./ui/sayfalar/MuayeneKabul";
 import { OdemeSayfasi } from "./ui/sayfalar/Odeme";
@@ -25,7 +26,9 @@ export default function App() {
           <Route path="muayene/:alimId" element={<MuayeneKabul />} />
           <Route path="odeme/:alimId" element={<OdemeSayfasi />} />
           <Route path="dosyalar" element={<AlimDosyalari />} />
-          <Route path="dosyalar/:alimId" element={<DosyaDetay />} />
+          <Route path="dosyalar/:alimId" element={<DosyaCalismaAlani />} />
+          <Route path="dosyalar/:alimId/basamak/:no" element={<DosyaCalismaAlani />} />
+          <Route path="dosyalar/:alimId/ozet" element={<DosyaDetay />} />
           <Route path="tedarikciler" element={<Tedarikciler />} />
           <Route path="tedarikciler/:tedarikciId" element={<Tedarikciler />} />
           <Route path="raporlar" element={<Raporlar />} />

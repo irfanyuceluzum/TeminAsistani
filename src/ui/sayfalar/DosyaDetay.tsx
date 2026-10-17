@@ -135,7 +135,12 @@ export function DosyaDetay() {
             {tedarikci ? ` · ${tedarikci}` : ""} · <span className="mono">{tl(alim.tutar)} + KDV</span>
           </p>
         </div>
-        <span className={`etiket etiket-${asamaGrubu(alim.asama)}`}>{ASAMA_ADI[alim.asama]}</span>
+        <div className="ust-araclar">
+          <span className={`etiket etiket-${asamaGrubu(alim.asama)}`}>{ASAMA_ADI[alim.asama]}</span>
+          <Link to={`/dosyalar/${alim.id}`} className="dugme kucuk-dugme">
+            Basamaklı çalışma alanı
+          </Link>
+        </div>
       </header>
 
       <div className="iki-sutun">

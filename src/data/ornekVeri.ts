@@ -1,3 +1,4 @@
+import type { DosyaBasamaklari } from "../domain/basamaklar";
 import type { EvrakKaydi, Olay } from "../domain/dosya";
 import type { PiyasaArastirmasi } from "../domain/piyasa";
 import type { Alim, Asama, Ayarlar, Bent, LimitDonemi, Tedarikci } from "../domain/tipler";
@@ -162,3 +163,34 @@ export const ornekEvraklar: Record<string, Record<string, EvrakKaydi>> = {
     fatura: { tamam: true, tarih: "2026-10-15", not: "e-Fatura" },
   },
 };
+
+// DT-2026-041: ihtiyaç onayı imzalı, fiyat isteme yazısı gitmiş, üç firmanın ikisinden fiyat gelmiş.
+export const ornekBasamaklar: DosyaBasamaklari[] = [
+  {
+    alimId: "DT-2026-041",
+    talepEden: "Okul aile birliği ve hizmetliler",
+    teslimYeri: "Okul deposu",
+    odenek: 85_000 * TL,
+    sartlar: {
+      teslimSuresi: "Sipariş yazısının tebliğinden itibaren 10 takvim günü.",
+      parti: "Tamamı tek partide, okul deposuna teslim edilir.",
+      nakliye: "Nakliye, yükleme ve boşaltma yükleniciye aittir.",
+      ozel: "Ürünler orijinal ambalajında, son kullanma tarihi en az 12 ay olmalıdır.",
+      standart: "TSE veya eşdeğer kalite belgesi bulunmalıdır.",
+      teknik: "",
+      diger: "",
+    },
+    ihtiyacOnayi: { tarih: "2026-10-06", sayi: "", gerekce: "Okulumuzun ikinci dönem temizlik ihtiyacının karşılanması gerekmektedir.", imzali: true },
+    fiyatIsteme: { tarih: "2026-10-07", sayi: "", sonTarih: "2026-10-09" },
+    yaklasik: {
+      hesaplanmayacak: false,
+      yontem: "ortalama",
+      kdvOrani: 20,
+      firmalar: [
+        { tedarikciId: "toros", belgeAlindi: true, fiyatlar: { k1: 82 * TL, k2: 148 * TL, k3: 24 * TL } },
+        { tedarikciId: "ece", belgeAlindi: true, fiyatlar: { k1: 88 * TL, k2: 140 * TL, k3: 25 * TL } },
+        { tedarikciId: "kaya", belgeAlindi: false, fiyatlar: {} },
+      ],
+    },
+  },
+];

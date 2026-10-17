@@ -1,11 +1,12 @@
 import Database from "@tauri-apps/plugin-sql";
+import type { DosyaBasamaklari } from "../domain/basamaklar";
 import type { EvrakKaydi, Olay } from "../domain/dosya";
 import type { Muayene } from "../domain/muayene";
 import type { Odeme } from "../domain/odeme";
 import type { PiyasaArastirmasi } from "../domain/piyasa";
 import type { Alim, Asama, Ayarlar, Bent, LimitDonemi, Tedarikci } from "../domain/tipler";
 import type { AlimDegisikligi, Depo } from "./depo";
-import { ornekAlimlar, ornekAyarlar, ornekEvraklar, ornekLimitDonemleri, ornekOlaylar, ornekPiyasa, ornekTedarikciler } from "./ornekVeri";
+import { ornekAlimlar, ornekAyarlar, ornekBasamaklar, ornekEvraklar, ornekLimitDonemleri, ornekOlaylar, ornekPiyasa, ornekTedarikciler } from "./ornekVeri";
 
 // Şema src-tauri/migrations altındaki SQL dosyalarıyla Rust tarafında kurulur.
 const ADRES = "sqlite:temin.db";
@@ -93,6 +94,11 @@ async function ornekleriYaz(db: Database): Promise<void> {
   for (const p of ornekPiyasa) {
     if (await alimVar(p.alimId)) {
       await db.execute("INSERT OR IGNORE INTO piyasa_arastirmalari (alim_id, belge, guncelleme) VALUES ($1, $2, datetime('now'))", [p.alimId, JSON.stringify(p)]);
+    }
+  }
+  for (const d of ornekBasamaklar) {
+    if (await alimVar(d.alimId)) {
+      await db.execute("INSERT OR IGNORE INTO dosya_basamaklari (alim_id, belge, guncelleme) VALUES ($1, $2, datetime('now'))", [d.alimId, JSON.stringify(d)]);
     }
   }
   const [{ olayAdet }] = await db.select<{ olayAdet: number }[]>("SELECT COUNT(*) AS olayAdet FROM olaylar");
@@ -264,6 +270,17 @@ export async function sqliteDepo(): Promise<Depo> {
         `INSERT INTO odemeler (alim_id, belge, guncelleme) VALUES ($1, $2, datetime('now'))
          ON CONFLICT(alim_id) DO UPDATE SET belge = excluded.belge, guncelleme = excluded.guncelleme`,
         [o.alimId, JSON.stringify(o)],
+      );
+    },
+    async basamaklarGetir(alimId) {
+      const [satir] = await db.select<{ belge: string }[]>("SELECT belge FROM dosya_basamaklari WHERE alim_id = $1", [alimId]);
+      return satir ? (JSON.parse(satir.belge) as DosyaBasamaklari) : null;
+    },
+    async basamaklarKaydet(d) {
+      await db.execute(
+        `INSERT INTO dosya_basamaklari (alim_id, belge, guncelleme) VALUES ($1, $2, datetime('now'))
+         ON CONFLICT(alim_id) DO UPDATE SET belge = excluded.belge, guncelleme = excluded.guncelleme`,
+        [d.alimId, JSON.stringify(d)],
       );
     },
   };

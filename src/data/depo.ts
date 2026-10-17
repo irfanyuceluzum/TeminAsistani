@@ -1,10 +1,11 @@
 import { isTauri } from "@tauri-apps/api/core";
+import type { DosyaBasamaklari } from "../domain/basamaklar";
 import type { EvrakKaydi, Olay } from "../domain/dosya";
 import type { Muayene } from "../domain/muayene";
 import type { Odeme } from "../domain/odeme";
 import type { PiyasaArastirmasi } from "../domain/piyasa";
 import type { Alim, Ayarlar, LimitDonemi, Tedarikci } from "../domain/tipler";
-import { ornekAlimlar, ornekAyarlar, ornekEvraklar, ornekLimitDonemleri, ornekOlaylar, ornekPiyasa, ornekTedarikciler } from "./ornekVeri";
+import { ornekAlimlar, ornekAyarlar, ornekBasamaklar, ornekEvraklar, ornekLimitDonemleri, ornekOlaylar, ornekPiyasa, ornekTedarikciler } from "./ornekVeri";
 
 export type AlimDegisikligi = Partial<Pick<Alim, "asama" | "tutar" | "tedarikciId" | "sonIslem" | "ekapKayitNo" | "sureliIs">>;
 
@@ -33,6 +34,8 @@ export interface Depo {
   muayeneKaydet(m: Muayene): Promise<void>;
   odemeGetir(alimId: string): Promise<Odeme | null>;
   odemeKaydet(o: Odeme): Promise<void>;
+  basamaklarGetir(alimId: string): Promise<DosyaBasamaklari | null>;
+  basamaklarKaydet(d: DosyaBasamaklari): Promise<void>;
 }
 
 // Tarayıcıda (vite dev, testler) veritabanı yoktur; örnek verilerle bellekte çalışır, kayıtlar sayfa yenilenince kaybolur.
@@ -46,6 +49,7 @@ export function bellekDepo(): Depo {
   const evraklar: Record<string, Record<string, EvrakKaydi>> = structuredClone(ornekEvraklar);
   const muayeneler = new Map<string, Muayene>();
   const odemeler = new Map<string, Odeme>();
+  const basamakKayitlari = new Map(ornekBasamaklar.map((d) => [d.alimId, structuredClone(d)]));
   return {
     tur: "bellek",
     alimlar: async () => alimlar.map((a) => ({ ...a })),
@@ -110,6 +114,13 @@ export function bellekDepo(): Depo {
     },
     odemeKaydet: async (o) => {
       odemeler.set(o.alimId, structuredClone(o));
+    },
+    basamaklarGetir: async (alimId) => {
+      const d = basamakKayitlari.get(alimId);
+      return d ? structuredClone(d) : null;
+    },
+    basamaklarKaydet: async (d) => {
+      basamakKayitlari.set(d.alimId, structuredClone(d));
     },
   };
 }
