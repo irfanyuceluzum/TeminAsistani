@@ -15,14 +15,14 @@ Durum anlamları:
 |---|------|---------------|--------|-------|----------|
 | 1 | 22/d parasal limitleri | 01.02.2026–31.01.2027: büyükşehir ₺1.021.827, diğer ₺340.391; limit onay tarihine göre seçilir | 4734 md. 67; 2026/1 Kamu İhale Tebliği, RG 22.01.2026 | Doğrulandı | `kurallar.ts` `ddLimitKontrolu`, `ornekVeri.ts` |
 | 2 | Limit dönemi | 1 Şubat'ta başlar | 4734 md. 67 | Doğrulandı | `parametreler.ts` `onerilenDonem` |
-| 3 | Doğrudan temin bentleri | Kodda 22/a, b, c, d, e var | 4734 md. 22/1: a'dan i'ye on bent | Kısmen. f, g, h, ı, i eksik | `sihirbaz.ts` `BENTLER` |
+| 3 | Doğrudan temin bentleri | 22/a'dan 22/i'ye on bendin tamamı | 4734 md. 22/1 | Doğrulandı; f, g, h, ı, i eklendi (şema göçü 7) | `sihirbaz.ts` `BENTLER` |
 | 4 | Kısımlara bölme yasağı | Bölme riski uyarısı | 4734 **md. 5** | Düzeltildi: atıf "Madde 12" idi | `AnaPanel.tsx`, `kurallar.ts` |
 | 5 | %10 ödenek sınırı | 22/d yıllık toplamı ödeneğin %10'unu aşamaz | 4734 md. 62/ı: 21 ve 22. maddelerdeki parasal limitli harcamaların toplamı; aşmak için Kamu İhale Kurulu'nun uygun görüşü | Doğrulandı | `kurallar.ts` `yuzdeOnDurumu` |
 | 6 | KİK bildirimi | **Tüm** doğrudan temin alımları; son gün, alım ayını izleyen ayın 10'u | Doğrudan Temin Tebliği m.4/9 | Düzeltildi: 22/d bildirimden hariç tutuluyordu | `raporlar.ts` `kikBildirimleri`, `dosya.ts` |
-| 7 | EKAP kaydı | Yok | Tebliğ m.5/1: alım EKAP'a kaydedilir, doğrudan temin kayıt numarası alınır | Açık iş | — |
+| 7 | EKAP kaydı | Kayıt numarası onay belgesinde ya da dosyada girilir; girilmeden onaydan siparişe geçilmez, ödeme eki listesinde aranır | Tebliğ m.5/1 | Doğrulandı, uygulandı | `dosya.ts` `evrakListesi` |
 | 8 | Yasaklılık kontrolü | Yalnızca 22/d'de zorunlu, piyasa araştırmasında kazanan için engel | Tebliğ m.4/8 | Doğrulandı | `piyasa.ts` `piyasaKontrolleri` |
 | 9 | Yaklaşık maliyet | Onay belgesinde isteğe bağlı | Tebliğ m.4/4 (yapım işlerinde zorunlu) | Doğrulandı | `YeniAlim.tsx` |
-| 10 | Sözleşme zorunluluğu | 22/c'de sözleşme yoksa ödeme ekranında uyarı | Tebliğ m.4/5: 22/c ve teslimi belli süre gerektiren alımlar | Kısmen. Süreye yayılan işler için uyarı yok | `odeme.ts` `odemeKontrolleri` |
+| 10 | Sözleşme zorunluluğu | 22/c'de ve "süreye yayılan iş" işaretli dosyalarda sözleşme istenir: dayanak kontrolünde hatırlatılır, evrak adı "Sözleşme" olur, ödeme ekranı sözleşmeyi varsayılan yapar ve yoksa uyarır | Tebliğ m.4/5 | Doğrulandı, uygulandı | `sihirbaz.ts` `sozlesmeZorunlu` |
 | 11 | KDV tevkifat oranları | Bakım onarım 7/10, temizlik 9/10, yemek 5/10, işgücü 9/10 | KDV GUT I/C-2.1.3.2.3, .10, .4, .5 (Seri No: 35 değişikliği, 2021) | İkincil kaynak | `odeme.ts` `TEVKIFAT_TURLERI` |
 | 12 | Tevkifat sınırı | KDV dahil bedel sınırı aşarsa tevkifat; varsayılan ₺12.000 (2026) | Fatura düzenleme sınırı; 2025'te ₺9.900 | İkincil kaynak | `odeme.ts` `odemeHesabi`, Parametreler |
 | 13 | Sözleşme damga vergisi | Binde 9,48, yalnızca sözleşme varsa | 488 sayılı Kanun, 1 sayılı tablo I | Doğrulandı | `kurallar.ts` `damgaVergisi` |
@@ -42,12 +42,16 @@ Durum anlamları:
 
 ## Açık işler
 
-- **Eksik bentler:** 22/f (ilaç, aşı ve tıbbi sarf), g (milletlerarası tahkim avukatlığı), h (avukatlık ve fikri mülkiyet tescili), ı (Türkiye İş Kurumu) ve i (seçim malzemeleri) eklenmeli. Veritabanındaki `bent` kısıtı değişeceği için şema göçü gerekiyor.
-- **EKAP doğrudan temin kayıt numarası:** Dosyaya bir alan olarak eklenmeli ve kontrol listesine konmalı.
-- **Süreye yayılan işlerde sözleşme:** Tasarımdaki iş türü listesiyle bu iş türlerine uyarı eklenmeli.
 - **Borç sorgusu eşikleri:** Vergi ve SGK sorgu eşikleri resmi kaynaktan bulunup Parametreler'e eklenmeli.
 - **Resmi metinlerle teyit:** Tevkifat oranları ve sınırı GİB'in güncel KDV Genel Uygulama Tebliği metninden doğrulanmalı.
 - **Karar pulu:** Muhasebe birimiyle netleştirilmeli. Gerekirse GİB'den özelge istenmeli.
+- **Bende özgü kurallar:** 22/f'den 22/i'ye kadar eklenen bentlerin her biri için şimdilik yalnızca dayanak belgesi isteniyor. Bentlerin kendi ayrıntıları (örneğin 22/i'deki seçim malzemesi süreci) ileride eklenebilir.
+
+### Kapatılanlar (17.10.2026)
+
+- 22/f, g, h, ı ve i bentleri eklendi. `alimlar` tablosu yeniden kuruldu (şema göçü 7). Göç, masaüstü veritabanının bir kopyasında yabancı anahtarlar açıkken denendi.
+- EKAP doğrudan temin kayıt numarası alanı eklendi.
+- Süreye yayılan işlerde sözleşme zorunluluğu uygulandı.
 
 ## Kaynaklar
 

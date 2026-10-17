@@ -58,7 +58,7 @@ describe("ek listesi ve kontroller", () => {
 
   it("önceki aşamaların evrakı tamamsa engel çıkarmaz", () => {
     const o = odeme({ oebNo: "2026/1234" });
-    const ekler = ekListesi(evrakDurumlari(klima, tumu, piyasa), o);
+    const ekler = ekListesi(evrakDurumlari({ ...klima, ekapKayitNo: "2026/123456" }, tumu, piyasa), o);
     expect(ekler.map((e) => e.ad)).not.toContain("Ödeme emri belgesi");
     const k = odemeKontrolleri(o, odemeHesabi(matrah, o, ornekAyarlar), ekler, ornekAyarlar);
     expect(k.filter((x) => x.durum === "engel")).toEqual([]);
@@ -66,6 +66,8 @@ describe("ek listesi ve kontroller", () => {
 
   it("sorgu yapılmadıysa ve fatura eksikse engeller", () => {
     const o = odemeOlustur(klima);
+    expect(o.sozlesmeVar).toBe(false);
+    expect(odemeOlustur({ ...klima, sureliIs: true }).sozlesmeVar).toBe(true);
     const { fatura: _, ...faturasiz } = tumu;
     const ekler = ekListesi(evrakDurumlari(klima, faturasiz, piyasa), o);
     const engel = odemeKontrolleri(o, odemeHesabi(matrah, o, ornekAyarlar), ekler, ornekAyarlar).find((x) => x.durum === "engel");
@@ -81,10 +83,10 @@ describe("ek listesi ve kontroller", () => {
     expect(basliklar).toContain("uyari:Tevkifat sınırı tanımlı değil");
   });
 
-  it("22/c alımında sözleşme yoksa uyarır", () => {
+  it("sözleşme zorunlu dosyada sözleşme yoksa uyarır", () => {
     const o = odeme();
-    const k = odemeKontrolleri(o, odemeHesabi(matrah, o, ornekAyarlar), [], ornekAyarlar, "22/c");
+    const k = odemeKontrolleri({ ...o, sozlesmeVar: false }, odemeHesabi(matrah, o, ornekAyarlar), [], ornekAyarlar, true);
     expect(k[0]).toMatchObject({ durum: "uyari", baslik: "Sözleşme zorunlu" });
-    expect(odemeKontrolleri({ ...o, sozlesmeVar: true }, odemeHesabi(matrah, o, ornekAyarlar), [], ornekAyarlar, "22/c").some((x) => x.baslik === "Sözleşme zorunlu")).toBe(false);
+    expect(odemeKontrolleri({ ...o, sozlesmeVar: true }, odemeHesabi(matrah, o, ornekAyarlar), [], ornekAyarlar, true).some((x) => x.baslik === "Sözleşme zorunlu")).toBe(false);
   });
 });

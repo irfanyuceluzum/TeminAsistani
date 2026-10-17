@@ -21,6 +21,8 @@ interface AlimSatiri {
   tedarikci_id: string | null;
   asama: Asama;
   son_islem: string;
+  ekap_no: string;
+  sureli_is: number;
 }
 
 interface TedarikciSatiri {
@@ -48,13 +50,15 @@ const ALIM_SUTUNLARI: Record<keyof AlimDegisikligi, string> = {
   tutar: "tutar_kurus",
   tedarikciId: "tedarikci_id",
   sonIslem: "son_islem",
+  ekapKayitNo: "ekap_no",
+  sureliIs: "sureli_is",
 };
 
 async function alimYaz(db: Database, a: Alim): Promise<void> {
   await db.execute(
-    `INSERT INTO alimlar (id, onay_tarihi, konu, bent, tutar_kurus, ekonomik_kod, kalem_kodu, tedarikci_id, asama, son_islem)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-    [a.id, a.onayTarihi, a.konu, a.bent, a.tutar, a.ekonomikKod, a.kalemKodu, a.tedarikciId, a.asama, a.sonIslem],
+    `INSERT INTO alimlar (id, onay_tarihi, konu, bent, tutar_kurus, ekonomik_kod, kalem_kodu, tedarikci_id, asama, son_islem, ekap_no, sureli_is)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+    [a.id, a.onayTarihi, a.konu, a.bent, a.tutar, a.ekonomikKod, a.kalemKodu, a.tedarikciId, a.asama, a.sonIslem, a.ekapKayitNo ?? "", a.sureliIs ? 1 : 0],
   );
 }
 
@@ -132,6 +136,8 @@ export async function sqliteDepo(): Promise<Depo> {
           tedarikciId: s.tedarikci_id,
           asama: s.asama,
           sonIslem: s.son_islem,
+          ekapKayitNo: s.ekap_no || undefined,
+          sureliIs: s.sureli_is === 1,
         }),
       );
     },
@@ -174,7 +180,8 @@ export async function sqliteDepo(): Promise<Depo> {
       const anahtarlar = (Object.keys(d) as (keyof AlimDegisikligi)[]).filter((k) => d[k] !== undefined);
       if (anahtarlar.length === 0) return;
       const set = anahtarlar.map((k, i) => `${ALIM_SUTUNLARI[k]} = $${i + 1}`).join(", ");
-      await db.execute(`UPDATE alimlar SET ${set} WHERE id = $${anahtarlar.length + 1}`, [...anahtarlar.map((k) => d[k]), id]);
+      const deger = (k: keyof AlimDegisikligi) => (k === "sureliIs" ? (d.sureliIs ? 1 : 0) : k === "ekapKayitNo" ? d.ekapKayitNo ?? "" : d[k]);
+      await db.execute(`UPDATE alimlar SET ${set} WHERE id = $${anahtarlar.length + 1}`, [...anahtarlar.map(deger), id]);
     },
     async tedarikciEkle(t) {
       await db.execute(

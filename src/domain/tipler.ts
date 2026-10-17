@@ -1,6 +1,6 @@
 // Tutarlar kuruş cinsinden tam sayı olarak tutulur, tarihler "YYYY-AA-GG" biçimindedir.
 
-export type Bent = "22/a" | "22/b" | "22/c" | "22/d" | "22/e";
+export type Bent = "22/a" | "22/b" | "22/c" | "22/d" | "22/e" | "22/f" | "22/g" | "22/h" | "22/ı" | "22/i";
 
 export type Asama =
   | "ihtiyac"
@@ -26,6 +26,10 @@ export interface Alim {
   tedarikciId: string | null;
   asama: Asama;
   sonIslem: string;
+  // Doğrudan Temin Tebliği m.5/1: EKAP'tan alınan doğrudan temin kayıt numarası
+  ekapKayitNo?: string;
+  // Teslimi veya yapımı belli bir süre gerektiren iş; sözleşme zorunludur (Tebliğ m.4/5)
+  sureliIs?: boolean;
 }
 
 export interface Tedarikci {

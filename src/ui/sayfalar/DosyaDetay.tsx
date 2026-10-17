@@ -33,6 +33,7 @@ export function DosyaDetay() {
   const [detay, setDetay] = useState<Detay | null>(null);
   const [eksikler, setEksikler] = useState<string[]>([]);
   const [hata, setHata] = useState("");
+  const [ekapMetin, setEkapMetin] = useState<string | null>(null);
 
   const yukle = useCallback(async () => {
     const [evraklar, piyasa, olaylar] = await Promise.all([depo.evraklar(alimId), depo.piyasaGetir(alimId), depo.olaylar(alimId)]);
@@ -77,6 +78,31 @@ export function DosyaDetay() {
       await yukle();
     } catch (e) {
       setHata(`Evrak kaydedilemedi. ${String(e)}`);
+    }
+  }
+
+  async function ekapKaydet() {
+    if (ekapMetin === null || !alim) return;
+    const no = ekapMetin.trim();
+    try {
+      await depo.alimGuncelle(alimId, { ekapKayitNo: no });
+      await olayKaydet(depo, ayarlar, alimId, "ekap", no ? `EKAP kayıt numarası: ${no}` : "EKAP kayıt numarası silindi");
+      setEkapMetin(null);
+      await yenile();
+      await yukle();
+    } catch (e) {
+      setHata(`EKAP numarası kaydedilemedi. ${String(e)}`);
+    }
+  }
+
+  async function sureliDegistir(deger: boolean) {
+    try {
+      await depo.alimGuncelle(alimId, { sureliIs: deger });
+      await olayKaydet(depo, ayarlar, alimId, "sureli-is", deger ? "Süreye yayılan iş olarak işaretlendi, sözleşme zorunlu" : "Süreye yayılan iş işareti kaldırıldı");
+      await yenile();
+      await yukle();
+    } catch (e) {
+      setHata(`Değişiklik kaydedilemedi. ${String(e)}`);
     }
   }
 
@@ -199,7 +225,7 @@ export function DosyaDetay() {
                     {e.sistemden ? e.not : e.tamam && e.tarih ? `${uzunTarih(e.tarih)}${e.not ? ` · ${e.not}` : ""}` : `${ASAMA_ADI[e.asama]} aşamasında`}
                   </span>
                 </span>
-                {e.sistemden && alim.bent === "22/d" && (
+                {e.sistemden && e.kod !== "ekap-kaydi" && alim.bent === "22/d" && (
                   <Link to={`/piyasa/${alim.id}`} className="kucuk">
                     Aç
                   </Link>
@@ -238,6 +264,36 @@ export function DosyaDetay() {
               <span>Tedarikçi</span>
               <span>{tedarikci ?? "Belirlenmedi"}</span>
             </div>
+            {ekapMetin === null ? (
+              <div className="anahtar-deger">
+                <span>EKAP kayıt no</span>
+                <span className="satir">
+                  {alim.ekapKayitNo ? <span className="mono">{alim.ekapKayitNo}</span> : <span className="uyari-yazi">Girilmedi</span>}
+                  {!kapali && (
+                    <button type="button" className="metin-dugme" onClick={() => setEkapMetin(alim.ekapKayitNo ?? "")}>
+                      {alim.ekapKayitNo ? "Değiştir" : "Gir"}
+                    </button>
+                  )}
+                </span>
+              </div>
+            ) : (
+              <div className="alan">
+                <label htmlFor="ekap-no">EKAP doğrudan temin kayıt numarası</label>
+                <input id="ekap-no" className="mono" value={ekapMetin} onChange={(e) => setEkapMetin(e.target.value)} />
+                <span className="satir sag-hizali">
+                  <button type="button" className="dugme kucuk-dugme" onClick={() => setEkapMetin(null)}>
+                    Vazgeç
+                  </button>
+                  <button type="button" className="dugme kucuk-dugme dugme-ana" onClick={ekapKaydet}>
+                    Kaydet
+                  </button>
+                </span>
+              </div>
+            )}
+            <label className="onay-kutusu kucuk">
+              <input type="checkbox" checked={!!alim.sureliIs} disabled={kapali} onChange={(e) => sureliDegistir(e.target.checked)} />
+              Süreye yayılan iş, sözleşme zorunlu
+            </label>
           </section>
           <section className="panel" aria-labelledby="iz-baslik">
             <h2 id="iz-baslik">Denetim izi</h2>

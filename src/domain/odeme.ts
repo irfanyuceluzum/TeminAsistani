@@ -1,6 +1,6 @@
 import { damgaVergisi, type DamgaSonucu } from "./kurallar";
 import type { EvrakDurumu } from "./dosya";
-import type { Kontrol } from "./sihirbaz";
+import { sozlesmeZorunlu, type Kontrol } from "./sihirbaz";
 import type { Alim, Ayarlar } from "./tipler";
 
 export interface TevkifatTuru {
@@ -62,7 +62,7 @@ export function odemeOlustur(alim: Alim): Odeme {
     alimId: alim.id,
     kdvOrani: 20,
     tevkifatTuru: alim.ekonomikKod.startsWith("03.7") ? "bakim-onarim" : "yok",
-    sozlesmeVar: false,
+    sozlesmeVar: sozlesmeZorunlu(alim),
     komisyonKarariVar: false,
     vergiSorgusu: bosSorgu(),
     sgkSorgusu: bosSorgu(),
@@ -122,11 +122,10 @@ function tl(kurus: number): string {
   return "₺" + (kurus / 100).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-export function odemeKontrolleri(o: Odeme, h: OdemeHesabi, ekler: { ad: string; tamam: boolean }[], ayarlar: Ayarlar, bent?: string): Kontrol[] {
+export function odemeKontrolleri(o: Odeme, h: OdemeHesabi, ekler: { ad: string; tamam: boolean }[], ayarlar: Ayarlar, sozlesmeGerekli = false): Kontrol[] {
   const k: Kontrol[] = [];
-  // Doğrudan Temin Tebliği m.4/5: 22/c alımlarında ve teslimi belli süre gerektiren işlerde sözleşme zorunludur.
-  if (bent === "22/c" && !o.sozlesmeVar) {
-    k.push({ durum: "uyari", baslik: "Sözleşme zorunlu", detay: "22/c alımlarında sözleşme imzalanması zorunludur (Doğrudan Temin Tebliği m.4/5)." });
+  if (sozlesmeGerekli && !o.sozlesmeVar) {
+    k.push({ durum: "uyari", baslik: "Sözleşme zorunlu", detay: "22/c alımlarında ve süreye yayılan işlerde sözleşme imzalanması zorunludur (Doğrudan Temin Tebliği m.4/5)." });
   }
   const eksik = ekler.filter((e) => !e.tamam).map((e) => e.ad);
   k.push(

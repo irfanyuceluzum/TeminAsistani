@@ -16,7 +16,7 @@ describe("aşama sırası", () => {
 describe("evrak listesi", () => {
   it("22/d için sistemden gelen piyasa evrakı içerir", () => {
     const l = evrakListesi(alim("DT-2026-040"));
-    expect(l.filter((e) => e.sistemden).map((e) => e.kod)).toEqual(["piyasa-tutanagi", "yasaklilik"]);
+    expect(l.filter((e) => e.sistemden).map((e) => e.kod)).toEqual(["ekap-kaydi", "piyasa-tutanagi", "yasaklilik"]);
     expect(l.some((e) => e.kod === "kik-bildirimi")).toBe(true);
   });
 
@@ -46,7 +46,7 @@ describe("aşama ilerlemesi", () => {
   });
 
   it("evraklar tamamsa sonraki aşamayı verir", () => {
-    const a = alim("DT-2026-035");
+    const a = alim("DT-2026-035", { ekapKayitNo: "2026/123456" });
     const kayit = Object.fromEntries(evrakListesi(a).map((e) => [e.kod, tamam()]));
     expect(asamaIlerlemesi(a, evrakDurumlari(a, kayit, null))).toEqual({ sonraki: "tamamlandi", eksikler: [], ekran: null });
   });
@@ -69,5 +69,27 @@ describe("aşama ilerlemesi", () => {
   it("tamamlanan dosyada ilerleme yoktur", () => {
     const a = alim("DT-2026-033");
     expect(asamaIlerlemesi(a, evrakDurumlari(a, {}, null)).sonraki).toBeNull();
+  });
+});
+
+describe("EKAP kaydı ve sözleşme", () => {
+  it("EKAP kaydını kayıt numarasından çıkarır", () => {
+    const bos = evrakDurumlari(alim("DT-2026-039"), {}, null).find((e) => e.kod === "ekap-kaydi")!;
+    expect(bos.tamam).toBe(false);
+    const dolu = evrakDurumlari(alim("DT-2026-039", { ekapKayitNo: "2026/123456" }), {}, null).find((e) => e.kod === "ekap-kaydi")!;
+    expect(dolu).toMatchObject({ tamam: true, not: "No 2026/123456" });
+  });
+
+  it("EKAP kaydı yoksa onaydan siparişe geçirmez", () => {
+    const a = alim("DT-2026-035", { asama: "onay" });
+    const kayit = Object.fromEntries(evrakListesi(a).map((e) => [e.kod, tamam()]));
+    expect(asamaIlerlemesi(a, evrakDurumlari(a, kayit, null)).eksikler).toEqual(["EKAP doğrudan temin kaydı"]);
+  });
+
+  it("sözleşme zorunlu dosyada evrak adı sözleşmedir", () => {
+    const ad = (a: Alim) => evrakListesi(a).find((e) => e.kod === "siparis-yazisi")!.ad;
+    expect(ad(alim("DT-2026-039"))).toBe("Sipariş yazısı veya sözleşme");
+    expect(ad(alim("DT-2026-039", { sureliIs: true }))).toBe("Sözleşme");
+    expect(ad(alim("DT-2026-038"))).toBe("Sözleşme");
   });
 });

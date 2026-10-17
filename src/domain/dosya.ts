@@ -1,5 +1,5 @@
 import type { PiyasaArastirmasi } from "./piyasa";
-import { bentBilgisi } from "./sihirbaz";
+import { bentBilgisi, sozlesmeZorunlu } from "./sihirbaz";
 import type { Alim, Asama, Bent } from "./tipler";
 
 export interface Olay {
@@ -42,7 +42,12 @@ export function asamaSirasi(bent: Bent): Asama[] {
 
 export function evrakListesi(alim: Alim): EvrakTanimi[] {
   const e = (kod: string, ad: string, asama: Asama, sistemden = false): EvrakTanimi => ({ kod, ad, asama, sistemden });
-  const liste: EvrakTanimi[] = [e("ihtiyac-yazisi", "İhtiyaç talep yazısı", "ihtiyac"), e("onay-belgesi", "Doğrudan temin onay belgesi, imzalı", "onay")];
+  const liste: EvrakTanimi[] = [
+    e("ihtiyac-yazisi", "İhtiyaç talep yazısı", "ihtiyac"),
+    e("onay-belgesi", "Doğrudan temin onay belgesi, imzalı", "onay"),
+    // Doğrudan Temin Tebliği m.5/1: alım EKAP'a kaydedilir; numara dosya bilgilerinden girilir.
+    e("ekap-kaydi", "EKAP doğrudan temin kaydı", "onay", true),
+  ];
   if (alim.bent === "22/d") {
     liste.push(e("piyasa-tutanagi", "Piyasa fiyat araştırması tutanağı ve teklifler", "piyasa", true));
     liste.push(e("yasaklilik", "Yasaklılık sorgusu çıktıları", "piyasa", true));
@@ -51,7 +56,7 @@ export function evrakListesi(alim: Alim): EvrakTanimi[] {
     liste.push(e("fiyat-teklifi", "Firmadan fiyat teklifi", "onay"));
   }
   liste.push(
-    e("siparis-yazisi", "Sipariş yazısı veya sözleşme", "siparis"),
+    e("siparis-yazisi", sozlesmeZorunlu(alim) ? "Sözleşme" : "Sipariş yazısı veya sözleşme", "siparis"),
     e("fatura", "Fatura", "muayene"),
     e("muayene-tutanagi", "Muayene ve kabul tutanağı", "muayene"),
     e("borc-sorgusu", "Vergi ve SGK borç sorgusu", "odeme"),
@@ -64,6 +69,10 @@ export function evrakListesi(alim: Alim): EvrakTanimi[] {
 
 export function evrakDurumlari(alim: Alim, kayitlar: Record<string, EvrakKaydi>, piyasa: PiyasaArastirmasi | null): EvrakDurumu[] {
   return evrakListesi(alim).map((t) => {
+    if (t.kod === "ekap-kaydi") {
+      const no = alim.ekapKayitNo?.trim();
+      return { ...t, tamam: !!no, not: no ? `No ${no}` : "Kayıt numarası dosya bilgilerinden girilir", tarih: null };
+    }
     if (t.sistemden) {
       const tamamlandi = piyasa?.tamamlandi ?? false;
       const sorgulu = tamamlandi && piyasa!.teklifler.length > 0;

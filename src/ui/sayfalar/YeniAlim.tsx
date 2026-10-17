@@ -34,6 +34,7 @@ interface OnayBilgisi {
   gerceklestirme: string;
   harcamaYetkilisi: string;
   yaklasikMaliyetYaz: boolean;
+  ekapKayitNo: string;
 }
 
 type Hatalar = Partial<Record<keyof Form, string>>;
@@ -56,6 +57,7 @@ export function YeniAlim() {
 
   const [adim, setAdim] = useState(0);
   const [form, setForm] = useState<Form>({ konu: "", nitelik: "", tutar: "", ekonomikKod: "", kalemKodu: "", birim: "" });
+  const [sureliIs, setSureliIs] = useState(false);
   const [hatalar, setHatalar] = useState<Hatalar>({});
   const [bent, setBent] = useState<Bent>("22/d");
   const [onay, setOnay] = useState<OnayBilgisi>({
@@ -64,6 +66,7 @@ export function YeniAlim() {
     gerceklestirme: "",
     harcamaYetkilisi: "",
     yaklasikMaliyetYaz: true,
+    ekapKayitNo: "",
   });
   const [engelMesaji, setEngelMesaji] = useState("");
   const [kayitHatasi, setKayitHatasi] = useState("");
@@ -76,8 +79,8 @@ export function YeniAlim() {
     return [...m.entries()];
   }, [alimlar]);
   const kontroller = useMemo(
-    () => dayanakKontrolleri({ onayTarihi: tarih, tutar, ekonomikKod: form.ekonomikKod, kalemKodu: form.kalemKodu.trim() }, bent, alimlar, ayarlar, limitDonemleri),
-    [tarih, tutar, form.ekonomikKod, form.kalemKodu, bent, alimlar, ayarlar, limitDonemleri],
+    () => dayanakKontrolleri({ onayTarihi: tarih, tutar, ekonomikKod: form.ekonomikKod, kalemKodu: form.kalemKodu.trim(), sureliIs }, bent, alimlar, ayarlar, limitDonemleri),
+    [tarih, tutar, form.ekonomikKod, form.kalemKodu, sureliIs, bent, alimlar, ayarlar, limitDonemleri],
   );
   const bilgi = bentBilgisi(bent);
 
@@ -115,6 +118,8 @@ export function YeniAlim() {
         tedarikciId: null,
         asama: "onay",
         sonIslem: tarih,
+        ekapKayitNo: onay.ekapKayitNo.trim() || undefined,
+        sureliIs,
       });
       await olayKaydet(depo, ayarlar, dosyaNo, "olusturuldu", `Dosya açıldı, dayanak ${bent}, tahmini tutar ${tl(tutar)}`);
       await yenile();
@@ -189,6 +194,13 @@ export function YeniAlim() {
               <label htmlFor="birim">İhtiyacı bildiren birim</label>
               <input id="birim" value={form.birim} onChange={(e) => alan("birim", e.target.value)} placeholder="İdari İşler Şube Müdürlüğü" />
             </div>
+            <label className="secim tam">
+              <input type="checkbox" checked={sureliIs} onChange={(e) => setSureliIs(e.target.checked)} />
+              <span>
+                <span className="kalin">Teslimi veya yapımı belli bir süre gerektiren iş</span>
+                <span className="soluk kucuk blok">Bakım, kiralama, sürekli hizmet gibi işlerde sipariş yazısı yerine sözleşme zorunludur (Doğrudan Temin Tebliği m.4/5).</span>
+              </span>
+            </label>
           </div>
         </section>
       )}
@@ -251,6 +263,10 @@ export function YeniAlim() {
               <div className="alan">
                 <label htmlFor="hy">Harcama yetkilisi</label>
                 <input id="hy" value={onay.harcamaYetkilisi} onChange={(e) => setOnay({ ...onay, harcamaYetkilisi: e.target.value })} placeholder="Ad Soyad" />
+              </div>
+              <div className="alan tam">
+                <label htmlFor="ekap">EKAP doğrudan temin kayıt numarası</label>
+                <input id="ekap" className="mono" value={onay.ekapKayitNo} onChange={(e) => setOnay({ ...onay, ekapKayitNo: e.target.value })} placeholder="Kayıt yapıldıysa girin, sonra dosyadan da girilebilir" />
               </div>
               <label className="secim tam">
                 <input type="checkbox" checked={onay.yaklasikMaliyetYaz} onChange={(e) => setOnay({ ...onay, yaklasikMaliyetYaz: e.target.checked })} />

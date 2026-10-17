@@ -50,7 +50,47 @@ export const BENTLER: BentBilgisi[] = [
     ozet: "İdarenin ihtiyacı olan taşınmazın alımı ya da kiralanması.",
     belgeler: ["Değerleme veya emsal kira raporu", "Doğrudan temin onay belgesi", "Kira sözleşmesi taslağı"],
   },
+  {
+    kod: "22/f",
+    harf: "f",
+    ad: "İlaç, aşı ve tıbbi sarf",
+    ozet: "Stoklanması ekonomik olmayan ya da acil gereken ilaç, aşı, kan ürünü ve hastaya özgü tıbbi sarf.",
+    belgeler: ["Aciliyet veya stoklanamazlık gerekçesi", "Doğrudan temin onay belgesi", "Firmadan fiyat teklifi"],
+  },
+  {
+    kod: "22/g",
+    harf: "g",
+    ad: "Milletlerarası tahkim avukatlığı",
+    ozet: "Milletlerarası tahkimde idareyi temsil için avukat ya da avukatlık ortaklığından hizmet.",
+    belgeler: ["Uyuşmazlığa ve temsil ihtiyacına ilişkin yazı", "Doğrudan temin onay belgesi", "Avukatlık ücret teklifi"],
+  },
+  {
+    kod: "22/h",
+    harf: "h",
+    ad: "Avukatlık ve fikri mülkiyet tescili",
+    ozet: "4353 sayılı Kanun kapsamındaki avukatlık ile fikri ve sınai hakların tescili hizmetleri.",
+    belgeler: ["Hizmet ihtiyacına ilişkin yazı", "Doğrudan temin onay belgesi", "Ücret teklifi"],
+  },
+  {
+    kod: "22/ı",
+    harf: "ı",
+    ad: "Türkiye İş Kurumu hizmetleri",
+    ozet: "İŞKUR'un işsizlik sigortasına ilişkin görevleriyle ilgili hizmet alımları.",
+    belgeler: ["Görevle ilgisini gösteren gerekçe", "Doğrudan temin onay belgesi", "Firmadan fiyat teklifi"],
+  },
+  {
+    kod: "22/i",
+    harf: "i",
+    ad: "Seçim malzemeleri",
+    ozet: "Seçimlere ilişkin oy pusulası, zarf kâğıdı, basım ve diğer seçim malzemesi alımları.",
+    belgeler: ["Seçim takvimine ilişkin yazı", "Doğrudan temin onay belgesi", "Piyasa fiyat araştırması tutanağı"],
+  },
 ];
+
+// Doğrudan Temin Tebliği m.4/5: 22/c alımlarında ve teslimi ya da yapımı belli süre gerektiren işlerde sözleşme zorunludur.
+export function sozlesmeZorunlu(a: { bent: Bent; sureliIs?: boolean }): boolean {
+  return a.bent === "22/c" || !!a.sureliIs;
+}
 
 export function bentBilgisi(kod: Bent): BentBilgisi {
   return BENTLER.find((b) => b.kod === kod)!;
@@ -69,6 +109,7 @@ export interface Aday {
   tutar: number;
   ekonomikKod: string;
   kalemKodu: string;
+  sureliIs?: boolean;
 }
 
 function tl(kurus: number): string {
@@ -139,6 +180,9 @@ export function dayanakKontrolleri(
   } else {
     const bilgi = bentBilgisi(bent);
     sonuc.push({ durum: "yapilacak", baslik: "Dayanak belgesi", detay: `${bilgi.belgeler[0]} dosyaya eklenmeli.` });
+  }
+  if (sozlesmeZorunlu({ bent, sureliIs: aday.sureliIs })) {
+    sonuc.push({ durum: "yapilacak", baslik: "Sözleşme zorunlu", detay: "Sipariş yazısı yerine sözleşme imzalanmalı (Doğrudan Temin Tebliği m.4/5)." });
   }
   // Doğrudan Temin Tebliği m.4/9: tüm doğrudan temin alımlarının sonucu, alım ayını izleyen ayın 10'una kadar Kurum'a bildirilir.
   sonuc.push({ durum: "yapilacak", baslik: "KİK bildirimi", detay: "Alım sonucu, alımın yapıldığı ayı izleyen ayın 10'una kadar EKAP'tan bildirilecek." });

@@ -38,6 +38,12 @@ fn gocler() -> Vec<Migration> {
             sql: include_str!("../migrations/0006_tedarikci_bilgileri.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 7,
+            description: "tum_bentler_ekap_sureli_is",
+            sql: include_str!("../migrations/0007_tum_bentler_ekap_sureli_is.sql"),
+            kind: MigrationKind::Up,
+        },
     ]
 }
 

@@ -61,8 +61,8 @@ export function Raporlar() {
     setMesaj(null);
     try {
       const icerik = csvOlustur(
-        ["Dosya", "Onay tarihi", "Konu", "Bent", "Tedarikçi", "Ekonomik kod", "Tutar (KDV hariç, TL)", "Aşama"],
-        liste.map((a) => [a.id, uzunTarih(a.onayTarihi), a.konu, a.bent, firmaAdi(a.tedarikciId), a.ekonomikKod, a.tutar / 100, ASAMA_ADI[a.asama]]),
+        ["Dosya", "EKAP kayıt no", "Onay tarihi", "Konu", "Bent", "Tedarikçi", "Ekonomik kod", "Tutar (KDV hariç, TL)", "Aşama"],
+        liste.map((a) => [a.id, a.ekapKayitNo ?? "", uzunTarih(a.onayTarihi), a.konu, a.bent, firmaAdi(a.tedarikciId), a.ekonomikKod, a.tutar / 100, ASAMA_ADI[a.asama]]),
       );
       if (await metinDosyasiKaydet(`dogrudan-temin-${yil}${bent === "Tümü" ? "" : "-" + bent.replace("/", "")}.csv`, icerik)) {
         setMesaj({ tur: "tamam", metin: `${liste.length} satır Excel dosyasına aktarıldı.` });

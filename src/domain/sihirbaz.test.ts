@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ornekAlimlar, ornekAyarlar, ornekLimitDonemleri } from "../data/ornekVeri";
-import { dayanakKontrolleri, engelVarMi, tutarCoz, yeniDosyaNo, type Aday } from "./sihirbaz";
+import { BENTLER, dayanakKontrolleri, engelVarMi, tutarCoz, yeniDosyaNo, type Aday } from "./sihirbaz";
 
 const TL = 100;
 const aday: Aday = { onayTarihi: "2026-10-16", tutar: 38_500 * TL, ekonomikKod: "03.2.1.01", kalemKodu: "KRT" };
@@ -57,5 +57,17 @@ describe("tutar girişi", () => {
     expect(tutarCoz("")).toBeNull();
     expect(tutarCoz("abc")).toBeNull();
     expect(tutarCoz("12,345")).toBeNull();
+  });
+});
+
+describe("bentler ve sözleşme", () => {
+  it("22. maddenin on bendini içerir", () => {
+    expect(BENTLER.map((b) => b.kod)).toEqual(["22/a", "22/b", "22/c", "22/d", "22/e", "22/f", "22/g", "22/h", "22/ı", "22/i"]);
+  });
+
+  it("süreye yayılan işte ve 22/c'de sözleşme ister", () => {
+    expect(kontrol({ ...aday, sureliIs: true }).some((x) => x.baslik === "Sözleşme zorunlu")).toBe(true);
+    expect(kontrol(aday, "22/c").some((x) => x.baslik === "Sözleşme zorunlu")).toBe(true);
+    expect(kontrol(aday).some((x) => x.baslik === "Sözleşme zorunlu")).toBe(false);
   });
 });
