@@ -6,6 +6,7 @@ import { DosyaDetay } from "./ui/sayfalar/DosyaDetay";
 import { MuayeneKabul } from "./ui/sayfalar/MuayeneKabul";
 import { OdemeSayfasi } from "./ui/sayfalar/Odeme";
 import { Parametreler } from "./ui/sayfalar/Parametreler";
+import { Personel } from "./ui/sayfalar/Personel";
 import { PiyasaArastirmasiSayfasi } from "./ui/sayfalar/PiyasaArastirmasi";
 import { Raporlar } from "./ui/sayfalar/Raporlar";
 import { Tedarikciler } from "./ui/sayfalar/Tedarikciler";
@@ -28,6 +29,7 @@ export default function App() {
           <Route path="tedarikciler" element={<Tedarikciler />} />
           <Route path="tedarikciler/:tedarikciId" element={<Tedarikciler />} />
           <Route path="raporlar" element={<Raporlar />} />
+          <Route path="personel" element={<Personel />} />
           <Route path="parametreler" element={<Parametreler />} />
         </Route>
       </Routes>

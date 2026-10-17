@@ -3,7 +3,12 @@ import { useNavigate, useOutletContext } from "react-router-dom";
 import { BENTLER, bentBilgisi, dayanakKontrolleri, engelVarMi, tutarCoz, yeniDosyaNo } from "../../domain/sihirbaz";
 import type { Bent } from "../../domain/tipler";
 import { olayKaydet } from "../../data/olay";
+import { belgeGorevlileri } from "../../domain/personel";
+import { bosArastirma, bosYazi, type PiyasaKalemi } from "../../domain/piyasa";
+import { IhtiyacListesiDuzenleyici, IhtiyacTablosu, yeniKalem } from "../IhtiyacListesi";
 import { bugun, tl, tlKurus, uzunTarih } from "../bicim";
+import { BelgeOnizleme } from "../BelgeOnizleme";
+import { IdareBasligi } from "../IdareBasligi";
 import { KontrolSatiri } from "../KontrolSatiri";
 import type { Veri } from "../useVeri";
 
@@ -58,19 +63,24 @@ export function YeniAlim() {
   const [adim, setAdim] = useState(0);
   const [form, setForm] = useState<Form>({ konu: "", nitelik: "", tutar: "", ekonomikKod: "", kalemKodu: "", birim: "" });
   const [sureliIs, setSureliIs] = useState(false);
+  const [ihtiyaclar, setIhtiyaclar] = useState<PiyasaKalemi[]>(() => [yeniKalem()]);
+  const [ihtiyacHatasi, setIhtiyacHatasi] = useState("");
   const [hatalar, setHatalar] = useState<Hatalar>({});
   const [bent, setBent] = useState<Bent>("22/d");
+  // Görevliler Personel ve görevler ekranındaki atamalardan gelir; dosya için değiştirilebilir.
+  const gorevli = belgeGorevlileri(ayarlar);
   const [onay, setOnay] = useState<OnayBilgisi>({
     sayi: "",
-    piyasaGorevlileri: "",
-    gerceklestirme: "",
-    harcamaYetkilisi: "",
+    piyasaGorevlileri: gorevli.piyasaGorevlileri,
+    gerceklestirme: gorevli.gerceklestirme,
+    harcamaYetkilisi: gorevli.harcamaYetkilisi,
     yaklasikMaliyetYaz: true,
     ekapKayitNo: "",
   });
   const [engelMesaji, setEngelMesaji] = useState("");
   const [kayitHatasi, setKayitHatasi] = useState("");
   const [kaydediliyor, setKaydediliyor] = useState(false);
+  const [onizleme, setOnizleme] = useState(false);
 
   const tutar = tutarCoz(form.tutar) ?? 0;
   const kalemler = useMemo(() => {
@@ -93,7 +103,10 @@ export function YeniAlim() {
     if (adim === 0) {
       const h = formuDenetle(form);
       setHatalar(h);
-      if (Object.keys(h).length) return;
+      const eksik = ihtiyaclar.filter((k) => !k.ad.trim() || !(k.miktar > 0)).length;
+      const ihtiyacMesaji = ihtiyaclar.length === 0 ? "İhtiyaç listesine en az bir kalem ekleyin." : eksik ? `${eksik} kalemin adı ya da miktarı eksik.` : "";
+      setIhtiyacHatasi(ihtiyacMesaji);
+      if (Object.keys(h).length || ihtiyacMesaji) return;
     }
     if (adim === 1 && engelVarMi(kontroller)) {
       setEngelMesaji("Kırmızı işaretli kontrol çözülmeden onay belgesine geçilemez.");
@@ -121,7 +134,14 @@ export function YeniAlim() {
         ekapKayitNo: onay.ekapKayitNo.trim() || undefined,
         sureliIs,
       });
-      await olayKaydet(depo, ayarlar, dosyaNo, "olusturuldu", `Dosya açıldı, dayanak ${bent}, tahmini tutar ${tl(tutar)}`);
+      // İhtiyaç listesi piyasa araştırmasının kalemleri olur; teklif isteme yazısı ve fiyat girişi buradan başlar.
+      await depo.piyasaKaydet({
+        ...bosArastirma(dosyaNo),
+        kalemler: ihtiyaclar.map((k) => ({ ...k, ad: k.ad.trim(), ozellik: k.ozellik?.trim(), birim: k.birim.trim() })),
+        gorevliler: onay.piyasaGorevlileri.trim(),
+        yazi: bosYazi(tarih),
+      });
+      await olayKaydet(depo, ayarlar, dosyaNo, "olusturuldu", `Dosya açıldı, dayanak ${bent}, ${ihtiyaclar.length} kalem, tahmini tutar ${tl(tutar)}`);
       await yenile();
       navigate(bent === "22/d" ? `/piyasa/${dosyaNo}` : "/");
     } catch (e) {
@@ -129,6 +149,76 @@ export function YeniAlim() {
       setKaydediliyor(false);
     }
   }
+
+  // Onay belgesi ve EK-1 ayrı A4 sayfalarıdır.
+  const onaySayfalari = [
+    <>
+
+              <IdareBasligi ayarlar={ayarlar} />
+              <div className="belge-baslik">DOĞRUDAN TEMİN ONAY BELGESİ</div>
+              <div className="belge-satir">
+                <span>Sayı: {onay.sayi || "…"}</span>
+                <span>Tarih: {uzunTarih(tarih)}</span>
+              </div>
+              <table className="belge-tablo">
+                <tbody>
+                  <tr>
+                    <th scope="row">İşin adı</th>
+                    <td>{form.konu}</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Niteliği, türü ve miktarı</th>
+                    <td>{form.nitelik || `${ihtiyaclar.length} kalem, ekli ihtiyaç listesinde (EK-1)`}</td>
+                  </tr>
+                  {onay.yaklasikMaliyetYaz && (
+                    <tr>
+                      <th scope="row">Yaklaşık maliyet (KDV hariç)</th>
+                      <td>{tlKurus(tutar).replace("₺", "")} TL</td>
+                    </tr>
+                  )}
+                  <tr>
+                    <th scope="row">Bütçe tertibi</th>
+                    <td>[Kurumsal kod] · {form.ekonomikKod}</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Alım usulü</th>
+                    <td>4734 sayılı Kanun {bent}, doğrudan temin</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Piyasa fiyat araştırması görevlileri</th>
+                    <td>{onay.piyasaGorevlileri || "…"}</td>
+                  </tr>
+                </tbody>
+              </table>
+              <p>
+                Yukarıda belirtilen ihtiyacın 4734 sayılı Kamu İhale Kanununun 22 nci maddesinin ({bilgi.harf}) bendi uyarınca doğrudan temin usulüyle
+                karşılanması hususunu onaylarınıza arz ederim.
+              </p>
+              <div className="belge-imzalar">
+                <div>
+                  <span className="imza-bosluk" />
+                  <span className="kalin">{onay.gerceklestirme || "…"}</span>
+                  <span>Gerçekleştirme görevlisi</span>
+                </div>
+                <div>
+                  <span className="kalin">OLUR</span>
+                  <span>…/…/{tarih.slice(0, 4)}</span>
+                  <span className="kalin">{onay.harcamaYetkilisi || "…"}</span>
+                  <span>Harcama yetkilisi</span>
+                </div>
+              </div>
+    </>,
+    <>
+      <div className="belge-satir">
+        <span className="kalin">EK-1 İhtiyaç listesi</span>
+        <span>{dosyaNo}</span>
+      </div>
+      <p>
+        <span className="kalin">İşin adı:</span> {form.konu}
+      </p>
+      <IhtiyacTablosu kalemler={ihtiyaclar} />
+    </>,
+  ];
 
   return (
     <div className="sayfa">
@@ -159,7 +249,7 @@ export function YeniAlim() {
             </div>
             <div className="alan tam">
               <label htmlFor="nitelik">İşin niteliği, türü ve miktarı</label>
-              <textarea id="nitelik" rows={3} value={form.nitelik} onChange={(e) => alan("nitelik", e.target.value)} placeholder="12 kalem kırtasiye malzemesi (ekli listede), 1 parti" />
+              <textarea id="nitelik" rows={3} value={form.nitelik} onChange={(e) => alan("nitelik", e.target.value)} placeholder="Boş bırakılırsa ihtiyaç listesinden yazılır" />
             </div>
             <div className="alan">
               <label htmlFor="tutar">Tahmini tutar, KDV hariç</label>
@@ -205,6 +295,27 @@ export function YeniAlim() {
         </section>
       )}
 
+      {adim === 0 && (
+        <section className="panel yazdirma" aria-labelledby="liste-baslik">
+          <div className="sutun-dar">
+            <h2 id="liste-baslik">İhtiyaç listesi</h2>
+            <p className="soluk kucuk">Alınacak malzeme ya da hizmetleri yazın. Liste onay belgesine EK-1 olarak, firmalara gidecek teklif cetveline de kalem kalem girer.</p>
+          </div>
+          <IhtiyacListesiDuzenleyici
+            kalemler={ihtiyaclar}
+            degistir={(k) => {
+              setIhtiyaclar(k);
+              setIhtiyacHatasi("");
+            }}
+          />
+          {ihtiyacHatasi && (
+            <span className="hata-yazi" role="alert">
+              {ihtiyacHatasi}
+            </span>
+          )}
+        </section>
+      )}
+
       {adim === 1 && (
         <div className="iki-sutun yazdirma">
           <section className="genis sutun" aria-labelledby="bent-baslik">
@@ -240,8 +351,8 @@ export function YeniAlim() {
       )}
 
       {adim === 2 && (
-        <div className="iki-sutun">
-          <section className="panel sutun-form yazdirma" aria-labelledby="onay-baslik">
+        <div>
+          <section className="panel yazdirma" aria-labelledby="onay-baslik">
             <h2 id="onay-baslik">Belge bilgileri</h2>
             <div className="form-izgara">
               <div className="alan">
@@ -278,67 +389,6 @@ export function YeniAlim() {
             </div>
           </section>
 
-          <section className="belge-zemin" aria-label="Belge önizlemesi">
-            <article className="belge">
-              <div className="belge-ust">
-                <span>T.C.</span>
-                <span>[İDARE ADI]</span>
-                <span className="normal">{form.birim || "[Birim]"}</span>
-              </div>
-              <div className="belge-baslik">DOĞRUDAN TEMİN ONAY BELGESİ</div>
-              <div className="belge-satir">
-                <span>Sayı: {onay.sayi || "…"}</span>
-                <span>Tarih: {uzunTarih(tarih)}</span>
-              </div>
-              <table className="belge-tablo">
-                <tbody>
-                  <tr>
-                    <th scope="row">İşin adı</th>
-                    <td>{form.konu}</td>
-                  </tr>
-                  <tr>
-                    <th scope="row">Niteliği, türü ve miktarı</th>
-                    <td>{form.nitelik || "…"}</td>
-                  </tr>
-                  {onay.yaklasikMaliyetYaz && (
-                    <tr>
-                      <th scope="row">Yaklaşık maliyet (KDV hariç)</th>
-                      <td>{tlKurus(tutar).replace("₺", "")} TL</td>
-                    </tr>
-                  )}
-                  <tr>
-                    <th scope="row">Bütçe tertibi</th>
-                    <td>[Kurumsal kod] · {form.ekonomikKod}</td>
-                  </tr>
-                  <tr>
-                    <th scope="row">Alım usulü</th>
-                    <td>4734 sayılı Kanun {bent}, doğrudan temin</td>
-                  </tr>
-                  <tr>
-                    <th scope="row">Piyasa fiyat araştırması görevlileri</th>
-                    <td>{onay.piyasaGorevlileri || "…"}</td>
-                  </tr>
-                </tbody>
-              </table>
-              <p>
-                Yukarıda belirtilen ihtiyacın 4734 sayılı Kamu İhale Kanununun 22 nci maddesinin ({bilgi.harf}) bendi uyarınca doğrudan temin usulüyle
-                karşılanması hususunu onaylarınıza arz ederim.
-              </p>
-              <div className="belge-imzalar">
-                <div>
-                  <span className="imza-bosluk" />
-                  <span className="kalin">{onay.gerceklestirme || "…"}</span>
-                  <span>Gerçekleştirme görevlisi</span>
-                </div>
-                <div>
-                  <span className="kalin">OLUR</span>
-                  <span>…/…/{tarih.slice(0, 4)}</span>
-                  <span className="kalin">{onay.harcamaYetkilisi || "…"}</span>
-                  <span>Harcama yetkilisi</span>
-                </div>
-              </div>
-            </article>
-          </section>
         </div>
       )}
 
@@ -365,8 +415,8 @@ export function YeniAlim() {
         )}
         <div className="dugme-grubu">
           {adim === 2 && (
-            <button type="button" className="dugme" onClick={() => window.print()}>
-              Yazdır
+            <button type="button" className="dugme" onClick={() => setOnizleme(true)}>
+              Onay belgesini önizle
             </button>
           )}
           {adim < 2 ? (
@@ -380,6 +430,7 @@ export function YeniAlim() {
           )}
         </div>
       </div>
+      {onizleme && <BelgeOnizleme baslik={`${dosyaNo} · Doğrudan temin onay belgesi`} sayfalar={onaySayfalari} kapat={() => setOnizleme(false)} />}
     </div>
   );
 }

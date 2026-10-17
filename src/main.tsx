@@ -7,6 +7,8 @@ import "@fontsource/ibm-plex-mono/400.css";
 import "@fontsource/ibm-plex-mono/500.css";
 import "@fontsource/ibm-plex-serif/400.css";
 import "@fontsource/ibm-plex-serif/600.css";
+import "@fontsource/tinos/400.css";
+import "@fontsource/tinos/700.css";
 import "./styles.css";
 import App from "./App";
 

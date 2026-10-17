@@ -7,6 +7,18 @@ export interface PiyasaKalemi {
   ad: string;
   miktar: number;
   birim: string;
+  // Teknik özellik ya da açıklama; teklif cetveline yazılır
+  ozellik?: string;
+}
+
+// Firmalara gönderilen fiyat teklifi isteme yazısı. Ekinde ihtiyaç listesinden üretilen boş teklif cetveli bulunur.
+export interface TeklifYazisi {
+  sayi: string;
+  tarih: string;
+  sonTeklifTarihi: string;
+  teslimYeri: string;
+  teslimSuresi: string;
+  aciklama: string;
 }
 
 export interface FirmaTeklifi {
@@ -16,6 +28,8 @@ export interface FirmaTeklifi {
   yasaklilikSorgusu: string | null;
   // Kalem kimliğine göre KDV hariç birim fiyat, kuruş
   fiyatlar: Record<string, number | null>;
+  // Firmanın kaşeli ve imzalı teklif belgesi idareye ulaştı mı; fiyatlar bu belgeden girilir.
+  belgeAlindi?: boolean;
 }
 
 export type Degerlendirme = "toplam" | "kalem";
@@ -27,6 +41,7 @@ export interface PiyasaArastirmasi {
   degerlendirme: Degerlendirme;
   gorevliler: string;
   tamamlandi: boolean;
+  yazi?: TeklifYazisi;
 }
 
 export interface Atama {
@@ -42,6 +57,22 @@ export interface Sonuc {
   toplam: number;
   kazananlar: string[];
   esitlikler: string[];
+}
+
+export function bosYazi(tarih: string): TeklifYazisi {
+  return { sayi: "", tarih, sonTeklifTarihi: "", teslimYeri: "", teslimSuresi: "", aciklama: "" };
+}
+
+// Teklif isteme yazısı gönderilebilir mi: ihtiyaç listesi eksiksiz ve son teklif tarihi belirli olmalı.
+export function yaziEksikleri(p: PiyasaArastirmasi): string[] {
+  const e: string[] = [];
+  if (p.kalemler.length === 0) e.push("İhtiyaç listesinde kalem yok.");
+  const eksikKalem = p.kalemler.filter((k) => !k.ad.trim() || !(k.miktar > 0));
+  if (eksikKalem.length) e.push(`${eksikKalem.length} kalemin adı ya da miktarı eksik.`);
+  if (!p.yazi?.tarih) e.push("Yazı tarihi girilmedi.");
+  if (!p.yazi?.sonTeklifTarihi) e.push("Son teklif tarihi girilmedi.");
+  else if (p.yazi.tarih && p.yazi.sonTeklifTarihi < p.yazi.tarih) e.push("Son teklif tarihi yazı tarihinden önce olamaz.");
+  return e;
 }
 
 export function bosArastirma(alimId: string): PiyasaArastirmasi {
@@ -135,6 +166,12 @@ export function piyasaKontrolleri(
   if (p.kalemler.length === 0) return [{ durum: "engel", baslik: "Kalem yok", detay: "Fiyat istenecek kalemleri ekleyin." }];
 
   const k: Kontrol[] = [];
+  const yaziEksik = yaziEksikleri(p);
+  k.push(
+    yaziEksik.length
+      ? { durum: "yapilacak", baslik: "Teklif isteme yazısı", detay: yaziEksik.join(" ") }
+      : { durum: "tamam", baslik: "Teklif isteme yazısı", detay: `Son teklif tarihi ${p.yazi!.sonTeklifTarihi.split("-").reverse().join(".")}.` },
+  );
   const verenler = teklifVerenler(p);
   if (verenler.length === 0) {
     k.push({ durum: "engel", baslik: "Teklif yok", detay: "Firmaları ekleyip fiyatlarını girin." });
@@ -160,6 +197,11 @@ export function piyasaKontrolleri(
       });
     }
     return k;
+  }
+
+  const belgesiz = sonuc.kazananlar.filter((id) => !p.teklifler.find((t) => t.tedarikciId === id)?.belgeAlindi);
+  if (belgesiz.length) {
+    k.push({ durum: "engel", baslik: "Kaşeli teklif belgesi yok", detay: `${belgesiz.map(ad).join(", ")} için kaşeli ve imzalı teklif belgesinin alındığını işaretleyin.` });
   }
 
   const sorgusuz = sonuc.kazananlar.filter((id) => !p.teklifler.find((t) => t.tedarikciId === id)?.yasaklilikSorgusu);

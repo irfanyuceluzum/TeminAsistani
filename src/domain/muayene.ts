@@ -33,7 +33,8 @@ export interface Muayene {
 }
 
 // Kalemler piyasa araştırmasının sonucundan gelir; araştırma yoksa (22/d dışı) dosya tek kalem sayılır.
-export function muayeneOlustur(alim: Alim, piyasa: PiyasaArastirmasi | null, bugun: string): Muayene {
+// Komisyon verilmezse boş üç satır (başkan ve iki üye) açılır.
+export function muayeneOlustur(alim: Alim, piyasa: PiyasaArastirmasi | null, bugun: string, komisyon: KomisyonUyesi[] = []): Muayene {
   const sonuc = piyasa ? degerlendir(piyasa) : null;
   const kalemler: MuayeneKalemi[] =
     piyasa && sonuc
@@ -49,11 +50,13 @@ export function muayeneOlustur(alim: Alim, piyasa: PiyasaArastirmasi | null, bug
     faturaNo: "",
     faturaTarihi: "",
     kalemler,
-    uyeler: [
-      { ad: "", unvan: "", rol: "baskan" },
-      { ad: "", unvan: "", rol: "uye" },
-      { ad: "", unvan: "", rol: "uye" },
-    ],
+    uyeler: komisyon.length
+      ? komisyon.map((u) => ({ ...u }))
+      : [
+          { ad: "", unvan: "", rol: "baskan" },
+          { ad: "", unvan: "", rol: "uye" },
+          { ad: "", unvan: "", rol: "uye" },
+        ],
     tamamlandi: false,
   };
 }

@@ -77,6 +77,16 @@ export const ornekAyarlar: Ayarlar = {
   damga: { makbuzOrani: 948, sozlesmeOrani: 948, kararOrani: 569, kararPulu: "uygulanmaz" },
   // 2026 için KDV dahil 12.000 TL (fatura düzenleme sınırı); ikincil kaynaktan, docs/mevzuat-varsayimlari.md
   tevkifatSiniri: 12_000 * TL,
+  idare: { ustIdare: "Karataş Kaymakamlığı", birim: "Kırmızıdağ İlkokulu Müdürlüğü" },
+  personel: [
+    { id: "p1", ad: "Mehmet Arslan", unvan: "Okul Müdürü" },
+    { id: "p2", ad: "Ayşe Demir", unvan: "Müdür Yardımcısı" },
+    { id: "p3", ad: "Ali Yılmaz", unvan: "Öğretmen" },
+    { id: "p4", ad: "Fatma Kaya", unvan: "Öğretmen" },
+    { id: "p5", ad: "Hasan Çelik", unvan: "Öğretmen" },
+    { id: "p6", ad: "Zeynep Aksoy", unvan: "Memur" },
+  ],
+  gorevler: { harcamaYetkilisi: "p1", gerceklestirme: "p2", piyasaGorevlileri: ["p3", "p6"], muayeneBaskani: "p4", muayeneUyeleri: ["p5", "p3"] },
 };
 
 // DT-2026-041 için iki teklifi gelmiş, Kaya Ticaret'in sorgusu henüz işaretlenmemiş bir araştırma.
@@ -89,10 +99,11 @@ export const ornekPiyasa: PiyasaArastirmasi[] = [
       { id: "k3", ad: "Çöp poşeti, büyük boy", miktar: 300, birim: "rulo" },
     ],
     teklifler: [
-      { tedarikciId: "ece", teklifTarihi: "2026-10-14", yasaklilikSorgusu: "2026-10-16", fiyatlar: { k1: 86 * TL, k2: 142 * TL, k3: 24 * TL } },
-      { tedarikciId: "toros", teklifTarihi: "2026-10-15", yasaklilikSorgusu: "2026-10-16", fiyatlar: { k1: 79 * TL, k2: 150 * TL, k3: 23 * TL } },
+      { tedarikciId: "ece", teklifTarihi: "2026-10-14", yasaklilikSorgusu: "2026-10-16", fiyatlar: { k1: 86 * TL, k2: 142 * TL, k3: 24 * TL }, belgeAlindi: true },
+      { tedarikciId: "toros", teklifTarihi: "2026-10-15", yasaklilikSorgusu: "2026-10-16", fiyatlar: { k1: 79 * TL, k2: 150 * TL, k3: 23 * TL }, belgeAlindi: true },
       { tedarikciId: "kaya", teklifTarihi: null, yasaklilikSorgusu: null, fiyatlar: {} },
     ],
+    yazi: { sayi: "", tarih: "2026-10-09", sonTeklifTarihi: "2026-10-15", teslimYeri: "İdare ambarı", teslimSuresi: "Siparişten itibaren 5 iş günü", aciklama: "" },
     degerlendirme: "toplam",
     gorevliler: "A. Yılmaz (Şef), M. Kaya (Memur)",
     tamamlandi: false,
@@ -106,7 +117,7 @@ export const ornekPiyasa: PiyasaArastirmasi[] = [
       { id: "k4", ad: "Gaz takviyesi, R410A", miktar: 3, birim: "adet" },
     ],
     teklifler: [
-      { tedarikciId: "serin", teklifTarihi: "2026-10-02", yasaklilikSorgusu: "2026-10-03", fiyatlar: { k1: 1_250 * TL, k2: 2_800 * TL, k3: 150 * TL, k4: 700 * TL } },
+      { tedarikciId: "serin", teklifTarihi: "2026-10-02", yasaklilikSorgusu: "2026-10-03", fiyatlar: { k1: 1_250 * TL, k2: 2_800 * TL, k3: 150 * TL, k4: 700 * TL }, belgeAlindi: true },
     ],
     degerlendirme: "toplam",
     gorevliler: "A. Yılmaz (Şef), M. Kaya (Memur)",

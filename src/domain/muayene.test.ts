@@ -69,4 +69,13 @@ describe("muayene kontrolleri", () => {
     const uyarilar = muayeneKontrolleri(m).filter((x) => x.durum === "uyari").map((x) => x.baslik);
     expect(uyarilar).toEqual(["1 kişilik komisyon", "Fatura bilgisi eksik"]);
   });
+
+  it("verilen komisyonu satır olarak açar", () => {
+    const m = muayeneOlustur(klima, klimaPiyasa, "2026-10-16", [
+      { ad: "Fatma Kaya", unvan: "Öğretmen", rol: "baskan" },
+      { ad: "Hasan Çelik", unvan: "Öğretmen", rol: "uye" },
+    ]);
+    expect(m.uyeler.map((u) => u.ad)).toEqual(["Fatma Kaya", "Hasan Çelik"]);
+    expect(muayeneOlustur(klima, klimaPiyasa, "2026-10-16").uyeler).toHaveLength(3);
+  });
 });

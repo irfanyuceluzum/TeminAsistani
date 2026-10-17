@@ -5,6 +5,7 @@ import { ayarHatalari, limitDonemiHatalari, onerilenDonem } from "../../domain/p
 import { tutarCoz } from "../../domain/sihirbaz";
 import type { Ayarlar, KararPulu, Konum } from "../../domain/tipler";
 import { bugun, tl, uzunTarih } from "../bicim";
+import { IdareBasligi } from "../IdareBasligi";
 import type { Veri } from "../useVeri";
 
 const KARAR_PULU: [KararPulu, string, string][] = [
@@ -194,6 +195,27 @@ export function Parametreler() {
               </button>
             ))}
           </div>
+        </div>
+      </section>
+
+      <section className="panel idare-paneli" aria-labelledby="idare-baslik">
+        <div className="sutun genis-panel">
+          <div>
+            <h2 id="idare-baslik">İdare</h2>
+            <p className="soluk kucuk">Belgelerin başlığında "T.C." altında iki satır olarak yazılır. Yan menüde de görünür.</p>
+          </div>
+          <div className="alan">
+            <label htmlFor="ust-idare">Üst idare (1. satır)</label>
+            <input id="ust-idare" value={taslak.idare?.ustIdare ?? ""} onChange={(e) => taslakDegistir({ idare: { birim: taslak.idare?.birim ?? "", ustIdare: e.target.value } })} placeholder="Karataş Kaymakamlığı" />
+          </div>
+          <div className="alan">
+            <label htmlFor="birim-adi">Birim (2. satır)</label>
+            <input id="birim-adi" value={taslak.idare?.birim ?? ""} onChange={(e) => taslakDegistir({ idare: { ustIdare: taslak.idare?.ustIdare ?? "", birim: e.target.value } })} placeholder="Kırmızıdağ İlkokulu Müdürlüğü" />
+          </div>
+        </div>
+        <div className="baslik-onizleme">
+          <span className="kucuk kalin">Belge başlığı önizlemesi</span>
+          <IdareBasligi ayarlar={taslak} />
         </div>
       </section>
 

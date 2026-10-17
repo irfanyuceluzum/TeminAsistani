@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ornekAlimlar, ornekAyarlar, ornekLimitDonemleri, ornekTedarikciler } from "../data/ornekVeri";
-import { degerlendir, firmaToplami, piyasaKontrolleri, type PiyasaArastirmasi } from "./piyasa";
+import { degerlendir, firmaToplami, piyasaKontrolleri, yaziEksikleri, type PiyasaArastirmasi } from "./piyasa";
 
 const TL = 100;
 const alim = ornekAlimlar.find((a) => a.id === "DT-2026-041")!;
@@ -14,13 +14,14 @@ function arastirma(p: Partial<PiyasaArastirmasi> = {}): PiyasaArastirmasi {
       { id: "k3", ad: "Çöp poşeti", miktar: 300, birim: "rulo" },
     ],
     teklifler: [
-      { tedarikciId: "ece", teklifTarihi: "2026-10-14", yasaklilikSorgusu: "2026-10-16", fiyatlar: { k1: 86 * TL, k2: 142 * TL, k3: 24 * TL } },
-      { tedarikciId: "toros", teklifTarihi: "2026-10-15", yasaklilikSorgusu: "2026-10-16", fiyatlar: { k1: 79 * TL, k2: 150 * TL, k3: 23 * TL } },
-      { tedarikciId: "kaya", teklifTarihi: "2026-10-15", yasaklilikSorgusu: "2026-10-16", fiyatlar: { k1: 91 * TL, k2: 149 * TL, k3: 21 * TL } },
+      { tedarikciId: "ece", teklifTarihi: "2026-10-14", yasaklilikSorgusu: "2026-10-16", fiyatlar: { k1: 86 * TL, k2: 142 * TL, k3: 24 * TL }, belgeAlindi: true },
+      { tedarikciId: "toros", teklifTarihi: "2026-10-15", yasaklilikSorgusu: "2026-10-16", fiyatlar: { k1: 79 * TL, k2: 150 * TL, k3: 23 * TL }, belgeAlindi: true },
+      { tedarikciId: "kaya", teklifTarihi: "2026-10-15", yasaklilikSorgusu: "2026-10-16", fiyatlar: { k1: 91 * TL, k2: 149 * TL, k3: 21 * TL }, belgeAlindi: true },
     ],
     degerlendirme: "toplam",
     gorevliler: "",
     tamamlandi: false,
+    yazi: { sayi: "", tarih: "2026-10-09", sonTeklifTarihi: "2026-10-15", teslimYeri: "", teslimSuresi: "", aciklama: "" },
     ...p,
   };
 }
@@ -70,7 +71,8 @@ describe("kontroller", () => {
   it("tam araştırmada engel çıkarmaz", () => {
     const k = kontroller(arastirma());
     expect(k.filter((x) => x.durum === "engel")).toEqual([]);
-    expect(k[0].baslik).toBe("3 teklif alındı");
+    expect(k.map((x) => x.baslik)).toContain("3 teklif alındı");
+    expect(k[0]).toMatchObject({ durum: "tamam", baslik: "Teklif isteme yazısı" });
   });
 
   it("kazananın yasaklılık sorgusu yoksa engeller", () => {
@@ -96,5 +98,25 @@ describe("kontroller", () => {
 
   it("kalem yoksa tek engel döner", () => {
     expect(kontroller(arastirma({ kalemler: [] }))).toHaveLength(1);
+  });
+
+  it("kazananın kaşeli teklif belgesi yoksa engeller", () => {
+    const p = arastirma();
+    p.teklifler[1].belgeAlindi = false;
+    expect(kontroller(p).find((x) => x.durum === "engel")).toMatchObject({ baslik: "Kaşeli teklif belgesi yok" });
+  });
+});
+
+describe("teklif isteme yazısı", () => {
+  it("eksik kalem bilgisini ve son teklif tarihini ister", () => {
+    const p = arastirma({ yazi: undefined });
+    p.kalemler[0].miktar = 0;
+    expect(yaziEksikleri(p)).toEqual(["1 kalemin adı ya da miktarı eksik.", "Yazı tarihi girilmedi.", "Son teklif tarihi girilmedi."]);
+    expect(kontroller(p)[0]).toMatchObject({ durum: "yapilacak", baslik: "Teklif isteme yazısı" });
+  });
+
+  it("son teklif tarihinin yazıdan önce olmasını reddeder", () => {
+    const p = arastirma({ yazi: { sayi: "", tarih: "2026-10-09", sonTeklifTarihi: "2026-10-01", teslimYeri: "", teslimSuresi: "", aciklama: "" } });
+    expect(yaziEksikleri(p)).toEqual(["Son teklif tarihi yazı tarihinden önce olamaz."]);
   });
 });

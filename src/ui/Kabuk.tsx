@@ -17,6 +17,11 @@ const MENU: { yol: string; ad: string; ikon: ReactNode }[] = [
   { yol: "/tedarikciler", ad: "Tedarikçiler", ikon: <path d="M4 9h16l-1-5H5zM5 9v11h14V9M9 20v-6h6v6" /> },
   { yol: "/raporlar", ad: "Raporlar", ikon: <path d="M4 20V10M10 20V4M16 20v-8M21 20H3" /> },
   {
+    yol: "/personel",
+    ad: "Personel ve görevler",
+    ikon: <><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5M16 4.8a3.5 3.5 0 0 1 0 6.4M18 14.8c1.9.7 3.1 2.4 3.5 5.2" /></>,
+  },
+  {
     yol: "/parametreler",
     ad: "Parametreler",
     ikon: <><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1" /><circle cx="15" cy="6" r="2" /><circle cx="9" cy="12" r="2" /><circle cx="17" cy="18" r="2" /></>,
@@ -45,7 +50,8 @@ export function Kabuk({ veri }: { veri: VeriDurumu }) {
           </NavLink>
         ))}
         <div className="menu-alt">
-          <span className="menu-alt-vurgu">[İdare adı]</span>
+          <span className="menu-alt-vurgu">{hazir?.ayarlar.idare?.birim || "İdare adı girilmedi"}</span>
+          {hazir?.ayarlar.idare?.ustIdare && <span>{hazir.ayarlar.idare.ustIdare}</span>}
           <span>{hazir?.ayarlar.konum === "diger" ? "Büyükşehir dışında" : "Büyükşehir sınırları içinde"}</span>
           {hazir?.depo.tur === "bellek" && <span className="menu-uyari">Örnek veri, tarayıcı önizlemesi</span>}
         </div>

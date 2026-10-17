@@ -2,8 +2,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useOutletContext, useParams } from "react-router-dom";
 import { olayKaydet } from "../../data/olay";
 import { kabulTutari, muayeneKontrolleri, muayeneOlustur, muayeneOzeti, type KomisyonUyesi, type Muayene, type MuayeneKalemi } from "../../domain/muayene";
+import { belgeGorevlileri } from "../../domain/personel";
 import { engelVarMi } from "../../domain/sihirbaz";
 import { bugun, tl, tlKurus, uzunTarih } from "../bicim";
+import { BelgeOnizleme } from "../BelgeOnizleme";
+import { IdareBasligi } from "../IdareBasligi";
 import { KontrolSatiri } from "../KontrolSatiri";
 import type { Veri } from "../useVeri";
 
@@ -26,6 +29,8 @@ export function MuayeneKabul() {
   const yuklendi = useRef(false);
   const alimRef = useRef(alim);
   alimRef.current = alim;
+  const ayarlarRef = useRef(ayarlar);
+  ayarlarRef.current = ayarlar;
 
   useEffect(() => {
     let iptal = false;
@@ -34,7 +39,7 @@ export function MuayeneKabul() {
       const kayitli = await depo.muayeneGetir(alimId);
       const a = alimRef.current;
       if (iptal || !a) return;
-      setM(kayitli ?? muayeneOlustur(a, await depo.piyasaGetir(alimId), bugun()));
+      setM(kayitli ?? muayeneOlustur(a, await depo.piyasaGetir(alimId), bugun(), belgeGorevlileri(ayarlarRef.current).komisyon));
     })();
     return () => {
       iptal = true;
@@ -121,6 +126,94 @@ export function MuayeneKabul() {
 
   const kayitYazisi = { kayitli: "Kaydedildi", bekliyor: "Değişiklik var", kaydediliyor: "Kaydediliyor…", hata: "Kaydedilemedi" }[kayit];
   const sayi = (deger: string) => Math.max(0, Number(deger.replace(",", ".")) || 0);
+
+  const tutanakSayfalari = [<>
+            <IdareBasligi ayarlar={ayarlar} />
+            <div className="belge-baslik">MUAYENE VE KABUL TUTANAĞI</div>
+            <table className="belge-tablo">
+              <tbody>
+                <tr>
+                  <th scope="row">İşin adı</th>
+                  <td>{alim.konu}</td>
+                </tr>
+                <tr>
+                  <th scope="row">Dosya</th>
+                  <td>
+                    {alim.id} · 4734 sayılı Kanun {alim.bent}
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">Yüklenici</th>
+                  <td>{tedarikci}</td>
+                </tr>
+                <tr>
+                  <th scope="row">Fatura</th>
+                  <td>{m.faturaNo ? `${m.faturaNo}${m.faturaTarihi ? `, ${uzunTarih(m.faturaTarihi)}` : ""}` : "…"}</td>
+                </tr>
+                <tr>
+                  <th scope="row">Muayene tarihi ve yeri</th>
+                  <td>
+                    {m.muayeneTarihi ? uzunTarih(m.muayeneTarihi) : "…"}
+                    {m.yer ? `, ${m.yer}` : ""}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <table className="belge-tablo tutanak-tablo">
+              <thead>
+                <tr>
+                  <th scope="col">Kalem</th>
+                  <th scope="col">Fatura</th>
+                  <th scope="col">Kabul</th>
+                  <th scope="col">Tutar (TL)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {m.kalemler.map((k) => (
+                  <tr key={k.kalemId}>
+                    <td>{k.ad}</td>
+                    <td>
+                      {miktar(k.faturaMiktari)} {k.birim}
+                    </td>
+                    <td>
+                      {miktar(k.kabulMiktari)} {k.birim}
+                    </td>
+                    <td>{tlKurus(kabulTutari(k)).replace("₺", "")}</td>
+                  </tr>
+                ))}
+                <tr>
+                  <th scope="row" colSpan={3}>
+                    Kabul edilen toplam, KDV hariç
+                  </th>
+                  <td className="kalin">{tlKurus(ozet.kabulToplami).replace("₺", "")}</td>
+                </tr>
+              </tbody>
+            </table>
+            <p>
+              {ozet.kismi
+                ? "Komisyonumuzca yapılan incelemede işin bir kısmının sipariş şartlarına uygun olarak tamamlanmadığı tespit edilmiş, yalnızca yukarıda miktarları gösterilen kısmın kabulüne karar verilmiştir."
+                : "Komisyonumuzca yapılan incelemede işin sipariş şartlarına uygun olarak eksiksiz yapıldığı görülmüş ve kabulüne karar verilmiştir."}
+            </p>
+            <div className="belge-imzalar uc-imza">
+              {m.uyeler.map((u, i) => (
+                <div key={i}>
+                  <span className="imza-bosluk" />
+                  <span className="kalin">{u.ad || "…"}</span>
+                  <span>
+                    {u.unvan ? `${u.unvan} · ` : ""}
+                    {u.rol === "baskan" ? "Başkan" : "Üye"}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <div className="belge-onay">
+              <span className="kalin">ONAY</span>
+              <span>…/…/{bugun().slice(0, 4)}</span>
+              <span className="imza-bosluk" />
+              <span className="kalin">{belgeGorevlileri(ayarlar).harcamaYetkilisi || "…"}</span>
+              <span>Harcama yetkilisi</span>
+            </div>
+  </>];
 
   return (
     <div className="sayfa">
@@ -306,14 +399,9 @@ export function MuayeneKabul() {
             </div>
           )}
           <div className="dugme-grubu sarmali">
-            <button type="button" className="dugme" onClick={() => setTutanakAcik((a) => !a)}>
-              {tutanakAcik ? "Tutanağı gizle" : "Tutanağı göster"}
+            <button type="button" className="dugme" onClick={() => setTutanakAcik(true)}>
+              Tutanağı önizle
             </button>
-            {tutanakAcik && (
-              <button type="button" className="dugme" onClick={() => window.print()}>
-                Yazdır
-              </button>
-            )}
             {!kilitli && (
               <button type="button" className="dugme dugme-ana" onClick={tamamla}>
                 Muayeneyi tamamla
@@ -329,99 +417,7 @@ export function MuayeneKabul() {
         </aside>
       </div>
 
-      {tutanakAcik && (
-        <section className="belge-zemin" aria-label="Tutanak önizlemesi">
-          <article className="belge genis-belge">
-            <div className="belge-ust">
-              <span>T.C.</span>
-              <span>[İDARE ADI]</span>
-            </div>
-            <div className="belge-baslik">MUAYENE VE KABUL TUTANAĞI</div>
-            <table className="belge-tablo">
-              <tbody>
-                <tr>
-                  <th scope="row">İşin adı</th>
-                  <td>{alim.konu}</td>
-                </tr>
-                <tr>
-                  <th scope="row">Dosya</th>
-                  <td>
-                    {alim.id} · 4734 sayılı Kanun {alim.bent}
-                  </td>
-                </tr>
-                <tr>
-                  <th scope="row">Yüklenici</th>
-                  <td>{tedarikci}</td>
-                </tr>
-                <tr>
-                  <th scope="row">Fatura</th>
-                  <td>{m.faturaNo ? `${m.faturaNo}${m.faturaTarihi ? `, ${uzunTarih(m.faturaTarihi)}` : ""}` : "…"}</td>
-                </tr>
-                <tr>
-                  <th scope="row">Muayene tarihi ve yeri</th>
-                  <td>
-                    {m.muayeneTarihi ? uzunTarih(m.muayeneTarihi) : "…"}
-                    {m.yer ? `, ${m.yer}` : ""}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-            <table className="belge-tablo tutanak-tablo">
-              <thead>
-                <tr>
-                  <th scope="col">Kalem</th>
-                  <th scope="col">Fatura</th>
-                  <th scope="col">Kabul</th>
-                  <th scope="col">Tutar (TL)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {m.kalemler.map((k) => (
-                  <tr key={k.kalemId}>
-                    <td>{k.ad}</td>
-                    <td>
-                      {miktar(k.faturaMiktari)} {k.birim}
-                    </td>
-                    <td>
-                      {miktar(k.kabulMiktari)} {k.birim}
-                    </td>
-                    <td>{tlKurus(kabulTutari(k)).replace("₺", "")}</td>
-                  </tr>
-                ))}
-                <tr>
-                  <th scope="row" colSpan={3}>
-                    Kabul edilen toplam, KDV hariç
-                  </th>
-                  <td className="kalin">{tlKurus(ozet.kabulToplami).replace("₺", "")}</td>
-                </tr>
-              </tbody>
-            </table>
-            <p>
-              {ozet.kismi
-                ? "Komisyonumuzca yapılan incelemede işin bir kısmının sipariş şartlarına uygun olarak tamamlanmadığı tespit edilmiş, yalnızca yukarıda miktarları gösterilen kısmın kabulüne karar verilmiştir."
-                : "Komisyonumuzca yapılan incelemede işin sipariş şartlarına uygun olarak eksiksiz yapıldığı görülmüş ve kabulüne karar verilmiştir."}
-            </p>
-            <div className="belge-imzalar uc-imza">
-              {m.uyeler.map((u, i) => (
-                <div key={i}>
-                  <span className="imza-bosluk" />
-                  <span className="kalin">{u.ad || "…"}</span>
-                  <span>
-                    {u.unvan ? `${u.unvan} · ` : ""}
-                    {u.rol === "baskan" ? "Başkan" : "Üye"}
-                  </span>
-                </div>
-              ))}
-            </div>
-            <div className="belge-onay">
-              <span className="kalin">ONAY</span>
-              <span>…/…/{bugun().slice(0, 4)}</span>
-              <span className="imza-bosluk" />
-              <span>Harcama yetkilisi</span>
-            </div>
-          </article>
-        </section>
-      )}
+      {tutanakAcik && <BelgeOnizleme baslik={`${alim.id} · Muayene ve kabul tutanağı`} sayfalar={tutanakSayfalari} kapat={() => setTutanakAcik(false)} />}
     </div>
   );
 }

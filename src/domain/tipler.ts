@@ -79,4 +79,28 @@ export interface Ayarlar {
   damga: DamgaAyarlari;
   // KDV dahil bedel bu tutarı aşarsa tevkifat uygulanır; kuruş. Tanımsızsa her tutara uygulanır.
   tevkifatSiniri?: number;
+  idare?: IdareBilgisi;
+  personel?: Personel[];
+  gorevler?: GorevAtamalari;
+}
+
+// Belge başlığında "T.C." altındaki iki satır: Karataş Kaymakamlığı / Kırmızıdağ İlkokulu Müdürlüğü
+export interface IdareBilgisi {
+  ustIdare: string;
+  birim: string;
+}
+
+export interface Personel {
+  id: string;
+  ad: string;
+  unvan: string;
+}
+
+// Yıllık görevlendirmeler; dosya açılırken belgelere ön değer olarak dolar.
+export interface GorevAtamalari {
+  harcamaYetkilisi: string | null;
+  gerceklestirme: string | null;
+  piyasaGorevlileri: string[];
+  muayeneBaskani: string | null;
+  muayeneUyeleri: string[];
 }

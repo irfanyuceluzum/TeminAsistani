@@ -2,18 +2,24 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useOutletContext, useParams } from "react-router-dom";
 import {
   bosArastirma,
+  bosYazi,
+  yaziEksikleri,
+  type TeklifYazisi,
   degerlendir,
   firmaToplami,
   piyasaKontrolleri,
   type Degerlendirme,
   type FirmaTeklifi,
   type PiyasaArastirmasi,
-  type PiyasaKalemi,
 } from "../../domain/piyasa";
-import { engelVarMi, tutarCoz } from "../../domain/sihirbaz";
+import { bentBilgisi, engelVarMi, tutarCoz } from "../../domain/sihirbaz";
+import { belgeGorevlileri } from "../../domain/personel";
 import { firmaKimligi } from "../../domain/tedarikci";
 import { olayKaydet } from "../../data/olay";
 import { bugun, tl, tlKurus, uzunTarih } from "../bicim";
+import { IhtiyacListesiDuzenleyici, IhtiyacTablosu } from "../IhtiyacListesi";
+import { BelgeOnizleme } from "../BelgeOnizleme";
+import { IdareBasligi } from "../IdareBasligi";
 import { KontrolSatiri } from "../KontrolSatiri";
 import type { Veri } from "../useVeri";
 
@@ -28,9 +34,6 @@ function fiyatYazisi(kurus: number | null | undefined): string {
   return (kurus / 100).toLocaleString("tr-TR", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 }
 
-function kisaKimlik(): string {
-  return "k" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
-}
 
 
 export function PiyasaArastirmasiSayfasi() {
@@ -45,7 +48,8 @@ export function PiyasaArastirmasiSayfasi() {
   const [secilenFirma, setSecilenFirma] = useState("");
   const [yeniFirma, setYeniFirma] = useState({ ad: "", kategori: "" });
   const [yeniFirmaHatasi, setYeniFirmaHatasi] = useState("");
-  const [tutanakAcik, setTutanakAcik] = useState(false);
+  // Ekranın altında gösterilen belge: tutanak ya da (firmaya özel veya boş) teklif isteme yazısı
+  const [onizleme, setOnizleme] = useState<{ tur: "tutanak" } | { tur: "yazi"; firma: string | null } | null>(null);
   const [mesaj, setMesaj] = useState("");
   const yuklendi = useRef(false);
   const alimRef = useRef(alim);
@@ -59,6 +63,8 @@ export function PiyasaArastirmasiSayfasi() {
     depo.piyasaGetir(alimId).then((kayitli) => {
       if (iptal) return;
       const ilk = kayitli ?? bosArastirma(alimId);
+      // Görevli girilmemiş eski dosyalarda Personel ve görevler ekranındaki atama kullanılır.
+      if (!ilk.gorevliler) ilk.gorevliler = belgeGorevlileri(ayarlarRef.current).piyasaGorevlileri;
       const m: Record<string, string> = {};
       for (const t of ilk.teklifler) for (const k of ilk.kalemler) m[hucre(t.tedarikciId, k.id)] = fiyatYazisi(t.fiyatlar[k.id]);
       setMetinler(m);
@@ -114,6 +120,8 @@ export function PiyasaArastirmasiSayfasi() {
 
   const firmaAdi = (id: string) => tedarikciler.find((t) => t.id === id)?.ad ?? id;
   const kilitli = p.tamamlandi;
+  const yazi = p.yazi ?? bosYazi(bugun());
+  const yaziEksik = yaziEksikleri({ ...p, yazi });
   const eklenebilir = tedarikciler.filter((t) => !p.teklifler.some((x) => x.tedarikciId === t.id));
   const kazandi = (firma: string, kalem: string) => sonuc?.atamalar.some((a) => a.tedarikciId === firma && a.kalemId === kalem) ?? false;
 
@@ -122,9 +130,13 @@ export function PiyasaArastirmasiSayfasi() {
     setP((eski) => (eski ? f(eski) : eski));
   }
 
-  function kalemDegistir(id: string, d: Partial<PiyasaKalemi>) {
-    guncelle((x) => ({ ...x, kalemler: x.kalemler.map((k) => (k.id === id ? { ...k, ...d } : k)) }));
+  function yaziDegistir(d: Partial<TeklifYazisi>) {
+    guncelle((x) => ({ ...x, yazi: { ...(x.yazi ?? bosYazi(bugun())), ...d } }));
   }
+
+
+
+
 
   function teklifDegistir(firma: string, d: Partial<FirmaTeklifi>) {
     guncelle((x) => ({ ...x, teklifler: x.teklifler.map((t) => (t.tedarikciId === firma ? { ...t, ...d } : t)) }));
@@ -188,6 +200,152 @@ export function PiyasaArastirmasiSayfasi() {
 
   const kayitYazisi = { kayitli: "Kaydedildi", bekliyor: "Değişiklik var", kaydediliyor: "Kaydediliyor…", hata: "Kaydedilemedi" }[kayit];
 
+  // Önizlenen belgelerin A4 sayfaları: yazı ve ekindeki teklif cetveli ayrı sayfalardır.
+  const yaziFirma = onizleme?.tur === "yazi" ? onizleme.firma : null;
+  const yaziSayfalari = [
+    <>
+            <IdareBasligi ayarlar={ayarlar} />
+            <div className="belge-satir">
+              <span>Sayı: {yazi.sayi || "…"}</span>
+              <span>{yazi.tarih ? uzunTarih(yazi.tarih) : "…"}</span>
+            </div>
+            <p>
+              <span className="kalin">Konu:</span> Fiyat teklifi istenmesi
+            </p>
+            <p className="kalin">{yaziFirma ? firmaAdi(yaziFirma) : "Sayın Yetkili"}</p>
+            <p>
+              İdaremiz ihtiyacı olan ve ekli cetvelde nitelik ve miktarları belirtilen mal veya hizmetlerin ("{alim.konu}") 4734 sayılı Kamu İhale
+              Kanununun 22 nci maddesinin ({bentBilgisi(alim.bent).harf}) bendi uyarınca doğrudan temin usulüyle alınması planlanmaktadır.
+            </p>
+            <p>
+              Ekli fiyat teklif cetvelinin birim fiyat ve tutarları KDV hariç olarak doldurulup kaşelenerek imzalanması ve en geç{" "}
+              <span className="kalin">{yazi.sonTeklifTarihi ? uzunTarih(yazi.sonTeklifTarihi) : "…"}</span> tarihine kadar idaremize ulaştırılması
+              hususunda gereğini rica ederim.
+            </p>
+            {(yazi.teslimYeri || yazi.teslimSuresi || yazi.aciklama) && (
+              <table className="belge-tablo">
+                <tbody>
+                  {yazi.teslimYeri && (
+                    <tr>
+                      <th scope="row">Teslim yeri</th>
+                      <td>{yazi.teslimYeri}</td>
+                    </tr>
+                  )}
+                  {yazi.teslimSuresi && (
+                    <tr>
+                      <th scope="row">Teslim süresi</th>
+                      <td>{yazi.teslimSuresi}</td>
+                    </tr>
+                  )}
+                  {yazi.aciklama && (
+                    <tr>
+                      <th scope="row">Açıklama</th>
+                      <td>{yazi.aciklama}</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            )}
+            <div className="belge-imzalar">
+              <div />
+              <div>
+                <span className="imza-bosluk" />
+                <span className="kalin">{p.gorevliler ? p.gorevliler.split(",")[0].trim() : "…"}</span>
+                <span>Piyasa fiyat araştırması görevlisi</span>
+              </div>
+            </div>
+            <p className="kucuk">EK: Fiyat teklif cetveli ({p.kalemler.length} kalem)</p>
+    </>,
+    <>
+      <div className="belge-satir">
+        <span className="kalin">FİYAT TEKLİF CETVELİ</span>
+        <span>EK-1</span>
+      </div>
+            <div className="belge-satir">
+              <span>İşin adı: {alim.konu}</span>
+              <span>Dosya: {alim.id}</span>
+            </div>
+            <IhtiyacTablosu kalemler={p.kalemler} fiyatSutunlari />
+            <p className="kucuk">Yukarıdaki kalemleri belirtilen fiyatlarla, şartlara uygun olarak teslim etmeyi kabul ederiz.</p>
+            <div className="firma-kase">
+              <div className="firma-kase-bilgi">
+                <span>Firma unvanı: {yaziFirma ? firmaAdi(yaziFirma) : ""}</span>
+                <span>Vergi dairesi ve no: {yaziFirma ? [tedarikciler.find((x) => x.id === yaziFirma)?.vergiDairesi, tedarikciler.find((x) => x.id === yaziFirma)?.vkn].filter(Boolean).join(" · ") : ""}</span>
+                <span>Adres ve telefon:</span>
+                <span>Teklif tarihi: …/…/{bugun().slice(0, 4)}</span>
+              </div>
+              <div className="firma-kase-alan">Kaşe ve imza</div>
+            </div>
+    </>,
+  ];
+  const tutanakSayfalari = [<>
+            <IdareBasligi ayarlar={ayarlar} />
+            <div className="belge-baslik">PİYASA FİYAT ARAŞTIRMASI TUTANAĞI</div>
+            <div className="belge-satir">
+              <span>Dosya: {alim.id}</span>
+              <span>Tarih: {uzunTarih(bugun())}</span>
+            </div>
+            <p>
+              <span className="kalin">İşin adı:</span> {alim.konu} · 4734 sayılı Kanun {alim.bent}
+            </p>
+            <table className="belge-tablo tutanak-tablo">
+              <thead>
+                <tr>
+                  <th scope="col">Kalem</th>
+                  <th scope="col">Miktar</th>
+                  {p.teklifler.map((t) => (
+                    <th key={t.tedarikciId} scope="col">
+                      {firmaAdi(t.tedarikciId)}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {p.kalemler.map((k) => (
+                  <tr key={k.id}>
+                    <td>{k.ad}</td>
+                    <td>
+                      {k.miktar.toLocaleString("tr-TR")} {k.birim}
+                    </td>
+                    {p.teklifler.map((t) => {
+                      const f = t.fiyatlar[k.id];
+                      return (
+                        <td key={t.tedarikciId} className={kazandi(t.tedarikciId, k.id) ? "kalin" : ""}>
+                          {f === null || f === undefined ? "—" : tlKurus(f).replace("₺", "") + " TL"}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+                <tr>
+                  <th scope="row" colSpan={2}>
+                    Toplam, KDV hariç
+                  </th>
+                  {p.teklifler.map((t) => {
+                    const toplam = firmaToplami(p, t.tedarikciId);
+                    return <td key={t.tedarikciId}>{toplam === null ? "—" : tlKurus(toplam).replace("₺", "") + " TL"}</td>;
+                  })}
+                </tr>
+              </tbody>
+            </table>
+            <p>
+              {sonuc
+                ? sonuc.kazananlar.length === 1
+                  ? `Yapılan piyasa fiyat araştırması sonucunda en uygun teklifin ${tlKurus(sonuc.toplam).replace("₺", "")} TL (KDV hariç) ile ${firmaAdi(sonuc.kazananlar[0])} tarafından verildiği tespit edilmiştir.`
+                  : `Yapılan piyasa fiyat araştırması sonucunda kalemler en düşük fiyatı veren firmalara (${sonuc.kazananlar.map(firmaAdi).join(", ")}) toplam ${tlKurus(sonuc.toplam).replace("₺", "")} TL (KDV hariç) ile atanmıştır.`
+                : "Değerlendirme için fiyatlar tamamlanmamıştır."}
+            </p>
+            <div className="belge-imzalar">
+              {(p.gorevliler ? p.gorevliler.split(",") : ["…", "…"]).map((g, i) => (
+                <div key={i}>
+                  <span className="imza-bosluk" />
+                  <span className="kalin">{g.trim()}</span>
+                  <span>Görevli</span>
+                </div>
+              ))}
+            </div>
+  </>];
+
   return (
     <div className="sayfa">
       <header className="sayfa-ust yazdirma">
@@ -209,45 +367,63 @@ export function PiyasaArastirmasiSayfasi() {
 
       <fieldset className="kilit yazdirma" disabled={kilitli}>
         <section className="panel" aria-labelledby="kalem-baslik">
+          <div className="sutun-dar">
+            <h2 id="kalem-baslik">1. İhtiyaç listesi</h2>
+            <p className="soluk kucuk">Sihirbazda girilen liste. Teklif isteme yazısı gönderildikten sonra değiştirmeyin; firmalar bu listeye fiyat verir.</p>
+          </div>
+          <IhtiyacListesiDuzenleyici kalemler={p.kalemler} degistir={(kalemler) => guncelle((x) => ({ ...x, kalemler }))} kilitli={kilitli} />
+        </section>
+
+        <section className="panel" aria-labelledby="yazi-baslik">
           <div className="panel-baslik-satiri">
-            <h2 id="kalem-baslik">Kalemler</h2>
-            <button type="button" className="dugme kucuk-dugme" onClick={() => guncelle((x) => ({ ...x, kalemler: [...x.kalemler, { id: kisaKimlik(), ad: "", miktar: 1, birim: "adet" }] }))}>
-              Kalem ekle
+            <div>
+              <h2 id="yazi-baslik">2. Teklif isteme yazısı</h2>
+              <p className="soluk kucuk">Ekinde ihtiyaç listesinden üretilen boş fiyat teklif cetveli bulunur. Firmalar cetveli doldurup kaşeleyip imzalayarak geri gönderir.</p>
+            </div>
+            <button type="button" className="dugme kucuk-dugme" onClick={() => setOnizleme({ tur: "yazi", firma: null })}>
+              Boş yazıyı önizle
             </button>
           </div>
-          {p.kalemler.length === 0 && <p className="soluk">Fiyat istenecek kalemleri ekleyin. Her kalem için miktar ve birim girin.</p>}
-          {p.kalemler.map((k, i) => (
-            <div key={k.id} className="kalem-satiri">
-              <span className="mono soluk sira">{i + 1}</span>
-              <label className="gizli" htmlFor={`ad-${k.id}`}>
-                Kalem adı
-              </label>
-              <input id={`ad-${k.id}`} className="girdi genis-girdi" value={k.ad} onChange={(e) => kalemDegistir(k.id, { ad: e.target.value })} placeholder="Çamaşır suyu, 4 L" />
-              <label className="gizli" htmlFor={`miktar-${k.id}`}>
-                Miktar
-              </label>
-              <input
-                id={`miktar-${k.id}`}
-                className="girdi mono miktar-girdi"
-                type="number"
-                min="0"
-                step="any"
-                value={k.miktar}
-                onChange={(e) => kalemDegistir(k.id, { miktar: Math.max(0, Number(e.target.value) || 0) })}
-              />
-              <label className="gizli" htmlFor={`birim-${k.id}`}>
-                Birim
-              </label>
-              <input id={`birim-${k.id}`} className="girdi birim-girdi" value={k.birim} onChange={(e) => kalemDegistir(k.id, { birim: e.target.value })} />
-              <button type="button" className="dugme kucuk-dugme" aria-label={`${k.ad || "Kalemi"} sil`} onClick={() => guncelle((x) => ({ ...x, kalemler: x.kalemler.filter((y) => y.id !== k.id) }))}>
-                Sil
-              </button>
+          <div className="form-izgara">
+            <div className="alan">
+              <label htmlFor="yazi-sayi">Sayı</label>
+              <input id="yazi-sayi" className="mono" value={yazi.sayi} onChange={(e) => yaziDegistir({ sayi: e.target.value })} placeholder="E-12345678-934.01-…" />
             </div>
-          ))}
+            <div className="alan">
+              <label htmlFor="yazi-tarih">Yazı tarihi</label>
+              <input id="yazi-tarih" type="date" value={yazi.tarih} onChange={(e) => yaziDegistir({ tarih: e.target.value })} />
+            </div>
+            <div className="alan">
+              <label htmlFor="yazi-son">Son teklif tarihi</label>
+              <input id="yazi-son" type="date" value={yazi.sonTeklifTarihi} onChange={(e) => yaziDegistir({ sonTeklifTarihi: e.target.value })} aria-invalid={!yazi.sonTeklifTarihi} />
+            </div>
+            <div className="alan">
+              <label htmlFor="yazi-yer">Teslim yeri</label>
+              <input id="yazi-yer" value={yazi.teslimYeri} onChange={(e) => yaziDegistir({ teslimYeri: e.target.value })} placeholder="İdare ambarı" />
+            </div>
+            <div className="alan">
+              <label htmlFor="yazi-sure">Teslim süresi</label>
+              <input id="yazi-sure" value={yazi.teslimSuresi} onChange={(e) => yaziDegistir({ teslimSuresi: e.target.value })} placeholder="Siparişten itibaren 5 iş günü" />
+            </div>
+            <div className="alan tam">
+              <label htmlFor="yazi-aciklama">Açıklama</label>
+              <input id="yazi-aciklama" value={yazi.aciklama} onChange={(e) => yaziDegistir({ aciklama: e.target.value })} placeholder="Numune istenebilir, nakliye teklif fiyatına dahildir" />
+            </div>
+          </div>
+          {yaziEksik.length > 0 ? (
+            <ul className="hata-listesi">
+              {yaziEksik.map((h) => (
+                <li key={h}>{h}</li>
+              ))}
+            </ul>
+          ) : (
+            <span className="basari-yazi kucuk">Yazı hazır. Aşağıda her firma için kendi adıyla yazdırabilirsiniz.</span>
+          )}
         </section>
 
         <section className="panel" aria-labelledby="firma-baslik">
-          <h2 id="firma-baslik">Firmalar</h2>
+          <h2 id="firma-baslik">3. Firmalar ve gelen teklifler</h2>
+          <p className="soluk kucuk">Fiyatları firmanın kaşeli ve imzalı teklif belgesinden girin, belgenin ulaştığını işaretleyin.</p>
           <div className="firma-kartlari">
             {p.teklifler.map((t) => (
               <div key={t.tedarikciId} className={sonuc?.kazananlar.includes(t.tedarikciId) ? "firma-karti kazanan" : "firma-karti"}>
@@ -273,6 +449,13 @@ export function PiyasaArastirmasiSayfasi() {
                     EKAP sorgusu yapıldı
                   </button>
                 )}
+                <label className="onay-kutusu kucuk">
+                  <input type="checkbox" checked={!!t.belgeAlindi} onChange={(e) => teklifDegistir(t.tedarikciId, { belgeAlindi: e.target.checked })} />
+                  Kaşeli, imzalı teklif belgesi alındı
+                </label>
+                <button type="button" className="metin-dugme sola" onClick={() => setOnizleme({ tur: "yazi", firma: t.tedarikciId })}>
+                  Bu firmanın yazısını önizle
+                </button>
                 <span className="kart-not">
                   Toplam: <span className="mono">{firmaToplami(p, t.tedarikciId) === null ? "eksik fiyat" : tl(firmaToplami(p, t.tedarikciId)!)}</span>
                 </span>
@@ -428,14 +611,9 @@ export function PiyasaArastirmasiSayfasi() {
             </div>
           )}
           <div className="dugme-grubu sarmali">
-            <button type="button" className="dugme" onClick={() => setTutanakAcik((a) => !a)}>
-              {tutanakAcik ? "Tutanağı gizle" : "Tutanağı göster"}
+            <button type="button" className="dugme" onClick={() => setOnizleme({ tur: "tutanak" })}>
+              Tutanağı önizle
             </button>
-            {tutanakAcik && (
-              <button type="button" className="dugme" onClick={() => window.print()}>
-                Yazdır
-              </button>
-            )}
             {!kilitli && (
               <button type="button" className="dugme dugme-ana" onClick={tamamla}>
                 Araştırmayı tamamla
@@ -451,79 +629,12 @@ export function PiyasaArastirmasiSayfasi() {
         </aside>
       </div>
 
-      {tutanakAcik && (
-        <section className="belge-zemin" aria-label="Tutanak önizlemesi">
-          <article className="belge genis-belge">
-            <div className="belge-ust">
-              <span>T.C.</span>
-              <span>[İDARE ADI]</span>
-            </div>
-            <div className="belge-baslik">PİYASA FİYAT ARAŞTIRMASI TUTANAĞI</div>
-            <div className="belge-satir">
-              <span>Dosya: {alim.id}</span>
-              <span>Tarih: {uzunTarih(bugun())}</span>
-            </div>
-            <p>
-              <span className="kalin">İşin adı:</span> {alim.konu} · 4734 sayılı Kanun {alim.bent}
-            </p>
-            <table className="belge-tablo tutanak-tablo">
-              <thead>
-                <tr>
-                  <th scope="col">Kalem</th>
-                  <th scope="col">Miktar</th>
-                  {p.teklifler.map((t) => (
-                    <th key={t.tedarikciId} scope="col">
-                      {firmaAdi(t.tedarikciId)}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {p.kalemler.map((k) => (
-                  <tr key={k.id}>
-                    <td>{k.ad}</td>
-                    <td>
-                      {k.miktar.toLocaleString("tr-TR")} {k.birim}
-                    </td>
-                    {p.teklifler.map((t) => {
-                      const f = t.fiyatlar[k.id];
-                      return (
-                        <td key={t.tedarikciId} className={kazandi(t.tedarikciId, k.id) ? "kalin" : ""}>
-                          {f === null || f === undefined ? "—" : tlKurus(f).replace("₺", "") + " TL"}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
-                <tr>
-                  <th scope="row" colSpan={2}>
-                    Toplam, KDV hariç
-                  </th>
-                  {p.teklifler.map((t) => {
-                    const toplam = firmaToplami(p, t.tedarikciId);
-                    return <td key={t.tedarikciId}>{toplam === null ? "—" : tlKurus(toplam).replace("₺", "") + " TL"}</td>;
-                  })}
-                </tr>
-              </tbody>
-            </table>
-            <p>
-              {sonuc
-                ? sonuc.kazananlar.length === 1
-                  ? `Yapılan piyasa fiyat araştırması sonucunda en uygun teklifin ${tlKurus(sonuc.toplam).replace("₺", "")} TL (KDV hariç) ile ${firmaAdi(sonuc.kazananlar[0])} tarafından verildiği tespit edilmiştir.`
-                  : `Yapılan piyasa fiyat araştırması sonucunda kalemler en düşük fiyatı veren firmalara (${sonuc.kazananlar.map(firmaAdi).join(", ")}) toplam ${tlKurus(sonuc.toplam).replace("₺", "")} TL (KDV hariç) ile atanmıştır.`
-                : "Değerlendirme için fiyatlar tamamlanmamıştır."}
-            </p>
-            <div className="belge-imzalar">
-              {(p.gorevliler ? p.gorevliler.split(",") : ["…", "…"]).map((g, i) => (
-                <div key={i}>
-                  <span className="imza-bosluk" />
-                  <span className="kalin">{g.trim()}</span>
-                  <span>Görevli</span>
-                </div>
-              ))}
-            </div>
-          </article>
-        </section>
+      {onizleme && (
+        <BelgeOnizleme
+          baslik={onizleme.tur === "tutanak" ? `${alim.id} · Piyasa fiyat araştırması tutanağı` : `${alim.id} · Teklif isteme yazısı${yaziFirma ? ` · ${firmaAdi(yaziFirma)}` : ""}`}
+          sayfalar={onizleme.tur === "tutanak" ? tutanakSayfalari : yaziSayfalari}
+          kapat={() => setOnizleme(null)}
+        />
       )}
     </div>
   );

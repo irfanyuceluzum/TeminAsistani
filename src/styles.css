@@ -22,6 +22,8 @@
   --tehlike: #8e2216;
   --tehlike-zemin: #fbe6e3;
   --mono: "IBM Plex Mono", ui-monospace, monospace;
+  /* Resmi yazışma: Times New Roman; yoksa ölçüleri aynı Tinos (uygulamaya gömülü) */
+  --resmi: "Times New Roman", Times, Tinos, "Liberation Serif", serif;
   font-family: "IBM Plex Sans", system-ui, sans-serif;
   font-size: 14px;
   line-height: 1.5;
@@ -170,7 +172,7 @@ th:last-child, td:last-child { padding-right: 20px; }
 
 .sutun-form { flex: 1 1 400px; min-width: 0; }
 .belge-zemin { flex: 1 1 520px; min-width: 0; background: #e4e8ec; border-radius: 12px; padding: 24px; display: flex; justify-content: center; }
-.belge { width: 100%; max-width: 560px; background: #fff; box-shadow: 0 1px 2px rgba(20, 33, 43, 0.12), 0 8px 24px rgba(20, 33, 43, 0.08); padding: 44px 48px; font-family: "IBM Plex Serif", Georgia, serif; font-size: 13px; line-height: 1.5; color: #111; display: flex; flex-direction: column; gap: 18px; }
+.belge { width: 100%; max-width: 560px; background: #fff; box-shadow: 0 1px 2px rgba(20, 33, 43, 0.12), 0 8px 24px rgba(20, 33, 43, 0.08); padding: 44px 48px; font-family: var(--resmi); font-size: 12pt; line-height: 1.5; color: #000; display: flex; flex-direction: column; gap: 18px; }
 .belge-ust { text-align: center; display: flex; flex-direction: column; gap: 2px; font-weight: 600; }
 .belge-ust .normal { font-weight: 400; }
 .belge-baslik { text-align: center; font-weight: 600; font-size: 15px; letter-spacing: 0.02em; }
@@ -348,3 +350,74 @@ th:last-child, td:last-child { padding-right: 20px; }
 .liste-filtreleri { padding: 12px 20px 4px; }
 .liste-alti { padding: 12px 20px; border-top: 1px solid var(--cizgi-acik); }
 .etiket-gecikti { background: var(--tehlike-zemin); color: var(--tehlike); }
+
+.ihtiyac-baslik { display: flex; gap: 8px; align-items: center; padding-bottom: 2px; }
+.ihtiyac-ad { flex: 2 1 220px; }
+.ihtiyac-ozellik { flex: 2 1 220px; }
+.ihtiyac-baslik .miktar-girdi, .ihtiyac-baslik .birim-girdi { flex: none; }
+.sil-yeri { flex: none; min-width: 52px; }
+.kendi-genisligi { align-self: flex-start; }
+.ek-baslik { font-weight: 600; margin-top: 18px; border-top: 1px dashed #999; padding-top: 14px; }
+.ek-tablo th, .ek-tablo td { width: auto; font-size: 12px; }
+.bos-hucre { min-width: 90px; height: 22px; }
+
+.sutun-belge { flex-direction: column; align-items: center; gap: 12px; }
+.belge-arac { width: 100%; max-width: 760px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; }
+.metin-dugme.sola { align-self: flex-start; padding-left: 0; }
+.firma-kase { display: flex; gap: 16px; margin-top: 12px; font-size: 12px; }
+.firma-kase-bilgi { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+.firma-kase-bilgi span { border-bottom: 1px dotted #999; padding-bottom: 2px; }
+.firma-kase-alan { flex: none; width: 180px; height: 110px; border: 1px dashed #666; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 6px; color: #555; }
+@media print { .belge-zemin { display: block; } .ek-baslik { break-before: page; border-top: 0; } }
+
+.idare-paneli { flex-direction: row; flex-wrap: wrap; gap: 20px; align-items: flex-start; }
+.baslik-onizleme { flex: 1 1 260px; min-width: 0; background: #e4e8ec; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 8px; }
+.baslik-onizleme .belge-ust { background: #fff; padding: 18px; font-family: var(--resmi); font-size: 12pt; color: #111; box-shadow: 0 1px 2px rgba(20, 33, 43, 0.12); }
+
+.personel-listesi { flex: 1 1 380px; min-width: 0; }
+.personel-satirlari { list-style: none; margin: 0; padding: 0; }
+.personel-satiri { display: flex; align-items: center; gap: 12px; padding: 12px 20px; border-top: 1px solid var(--cizgi-acik); }
+.gorev-etiketleri { display: flex; flex-wrap: wrap; gap: 4px; }
+.gorev-etiketi { font-size: 11px; padding: 2px 8px; border-radius: 999px; background: var(--cizgi-acik); color: #33424e; }
+.personel-ekle { padding: 16px 20px; display: flex; flex-direction: column; gap: 10px; background: #fbfcfd; border-top: 1px solid var(--cizgi-acik); }
+.personel-ekle .girdi { flex: 1 1 140px; }
+.secim-cipi { height: 36px; }
+.filtre.secim-cipi[aria-pressed="true"] { background: var(--vurgu); border-color: var(--vurgu); }
+.kucuk-belge { padding: 22px 24px; font-size: 12px; gap: 12px; max-width: none; }
+
+
+/* Tam ekran A4 önizleme */
+.onizleme-katmani { position: fixed; inset: 0; z-index: 100; background: #3b4650; display: flex; flex-direction: column; }
+.onizleme-arac { flex: none; display: flex; align-items: center; gap: 16px; padding: 10px 16px; background: var(--menu); color: #fff; }
+.onizleme-baslik { flex: 1; min-width: 0; display: flex; flex-direction: column; font-weight: 500; }
+.onizleme-bilgi { font-size: 12px; color: #93a2af; font-weight: 400; }
+.onizleme-dugme { height: 40px; display: inline-flex; align-items: center; gap: 6px; padding: 0 14px; border-radius: 8px; border: 1px solid #4a5b67; background: transparent; color: #fff; cursor: pointer; }
+.onizleme-dugme:hover { background: #22343f; }
+.onizleme-yazdir { background: var(--vurgu); border-color: var(--vurgu); font-weight: 500; }
+.onizleme-alan { flex: 1; overflow: auto; padding: 28px 16px 48px; display: flex; flex-direction: column; align-items: center; gap: 28px; }
+.a4-sayfa { flex: none; position: relative; width: 210mm; min-height: 297mm; padding: 20mm 15mm 20mm 25mm; box-sizing: border-box; background: #fff; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3), 0 12px 32px rgba(0, 0, 0, 0.25); }
+.a4-no { position: absolute; bottom: 8mm; right: 15mm; font: 10pt var(--resmi); color: #555; }
+.belge-metni { font-family: var(--resmi); font-size: 12pt; line-height: 1.5; color: #000; display: flex; flex-direction: column; gap: 12pt; }
+.belge-metni p { margin: 0; text-align: justify; }
+.belge-metni .belge-ust { font-weight: 700; gap: 0; }
+.belge-metni .belge-ust .normal { font-weight: 700; }
+.belge-metni .belge-baslik { font-size: 12pt; font-weight: 700; letter-spacing: 0; }
+.belge-metni .belge-satir { font-size: 12pt; }
+.belge-metni .belge-tablo { width: 100%; min-width: 0; border-collapse: collapse; }
+.belge-metni .belge-tablo th, .belge-metni .belge-tablo td { font-size: 11pt; border: 1px solid #000; color: #000; padding: 4pt 6pt; vertical-align: top; }
+.belge-metni .belge-imzalar, .belge-metni .belge-onay { font-size: 12pt; }
+.belge-metni .kucuk { font-size: 11pt; }
+.belge-metni .ek-baslik { font-weight: 700; border-top: 0; margin-top: 0; padding-top: 0; }
+.belge-metni .firma-kase { font-size: 11pt; }
+.belge-metni .kalin { font-weight: 700; }
+
+@media print {
+  @page { size: A4; margin: 20mm 15mm 20mm 25mm; }
+  body.onizleme-acik #root { display: none !important; }
+  body.onizleme-acik { background: #fff; overflow: visible !important; }
+  .onizleme-katmani { position: static; background: none; display: block; }
+  .onizleme-arac, .a4-no { display: none; }
+  .onizleme-alan { display: block; padding: 0; overflow: visible; }
+  .a4-sayfa { width: auto; min-height: 0; padding: 0; box-shadow: none; break-after: page; }
+  .a4-sayfa:last-child { break-after: auto; }
+}
