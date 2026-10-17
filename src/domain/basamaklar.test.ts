@@ -7,6 +7,8 @@ import {
   bosBasamaklar,
   ilerleme,
   ihtiyacOnayiKontrolleri,
+  isinTuruBul,
+  onayBelgesiKontrolleri,
   oncekiSonraki,
   veriKontrolleri,
   yaklasikHesapla,
@@ -14,6 +16,7 @@ import {
   type BasamakGirdisi,
   type YaklasikMaliyet,
 } from "./basamaklar";
+
 import type { PiyasaKalemi } from "./piyasa";
 
 const TL = 100;
@@ -68,16 +71,15 @@ describe("yaklaşık maliyet", () => {
     const k = yaklasikKontrolleri({ ...bosBasamaklar("x", "2026-10-17"), yaklasik: y, odenek: 85_000 * TL }, s, temizlik, ornekAyarlar, ornekLimitDonemleri, (id) => id);
     expect(k.filter((x) => x.durum === "uyari").map((x) => x.baslik)).toEqual(["Eksik fiyat", "Aykırı fiyat"]);
     expect(k.find((x) => x.baslik === "22/d limiti içinde")).toBeTruthy();
-    expect(k.find((x) => x.baslik === "Ödenek yeterli")).toBeTruthy();
   });
 
-  it("fiyatsız kalemi ve yetersiz ödeneği engeller", () => {
+  it("fiyatsız kalemi engeller", () => {
     const y = maliyet();
     y.firmalar.forEach((f) => (f.fiyatlar.b = null));
     const s = yaklasikHesapla(kalemler, y);
     expect(s.hesaplanabilir).toBe(false);
-    const k = yaklasikKontrolleri({ ...bosBasamaklar("x", "2026-10-17"), yaklasik: y, odenek: 100 * TL }, s, temizlik, ornekAyarlar, ornekLimitDonemleri, (id) => id);
-    expect(k.filter((x) => x.durum === "engel").map((x) => x.baslik)).toEqual(["Fiyatı olmayan kalem", "Ödenek yetersiz"]);
+    const k = yaklasikKontrolleri({ ...bosBasamaklar("x", "2026-10-17"), yaklasik: y }, s, temizlik, ornekAyarlar, ornekLimitDonemleri, (id) => id);
+    expect(k.filter((x) => x.durum === "engel").map((x) => x.baslik)).toEqual(["Fiyatı olmayan kalem"]);
   });
 
   it("hesaplanmayacaksa tek tamam kontrolü verir", () => {
@@ -122,6 +124,34 @@ describe("basamak listesi", () => {
     expect(basamaklar(girdi({ alim: { ...temizlik, sureliIs: true } }))[7].ad).toBe("Sözleşme");
   });
 
+  it("3. basamak fiyat girilince tamamlanır, 4. basamak onay bekler ve onaylanınca tamamlanır", () => {
+    const dosya = bosBasamaklar(temizlik.id, "2026-10-17");
+    dosya.ihtiyacOnayi.imzali = true;
+    dosya.fiyatIsteme.tarih = "2026-10-18";
+    dosya.yaklasik = maliyet({ onaylandi: false });
+    const p = { ...temizlikPiyasa, kalemler };
+
+    // 3. basamak tamam olmalı, 4. basamak sürüyor olmalı
+    let b = basamaklar(girdi({ dosya, piyasa: p }));
+    expect(b[2]).toMatchObject({ no: 3, ad: "Fiyat isteme yazısı", durum: "tamam" });
+    expect(b[3]).toMatchObject({ no: 4, ad: "Yaklaşık maliyet cetveli", durum: "suruyor" });
+
+    // 4. basamak onaylanınca tamam olmalı ve 5. basamak sürmeli
+    dosya.yaklasik.onaylandi = true;
+    b = basamaklar(girdi({ dosya, piyasa: p }));
+    expect(b[3]).toMatchObject({ no: 4, ad: "Yaklaşık maliyet cetveli", durum: "tamam" });
+    expect(b[4]).toMatchObject({ no: 5, ad: "Onay belgesi", durum: "suruyor" });
+  });
+
+  it("3, 4 ve 5. basamaklar arasında sıralı gezinir", () => {
+    const dosya = bosBasamaklar(temizlik.id, "2026-10-17");
+    const b = basamaklar(girdi({ dosya }));
+    expect(oncekiSonraki(b, 3).sonraki?.no).toBe(4);
+    expect(oncekiSonraki(b, 4).onceki?.no).toBe(3);
+    expect(oncekiSonraki(b, 4).sonraki?.no).toBe(5);
+    expect(oncekiSonraki(b, 5).onceki?.no).toBe(4);
+  });
+
   it("önceki ve sonraki basamakta gerekmeyenleri atlar", () => {
     const dosya = bosBasamaklar(temizlik.id, "2026-10-17");
     dosya.yaklasik.hesaplanmayacak = true;
@@ -153,4 +183,27 @@ describe("kayıt ve kontroller", () => {
     const k = ihtiyacOnayiKontrolleri(d, true);
     expect(k.map((x) => x.durum)).toEqual(["uyari", "tamam", "yapilacak"]);
   });
+
+  it("onay belgesi kontrollerinde yaklaşık maliyet onayını engeller, ödenek ve ekap için uyarır", () => {
+    const d = bosBasamaklar(temizlik.id, "2026-10-18");
+    d.yaklasik = maliyet({ onaylandi: false });
+    const k1 = onayBelgesiKontrolleri(temizlik, d, ornekAyarlar, temizlikPiyasa);
+    expect(k1.find((x) => x.baslik === "Yaklaşık maliyet onaylanmamış")?.durum).toBe("engel");
+    expect(k1.find((x) => x.baslik === "Kullanılabilir ödenek girilmemiş")?.durum).toBe("uyari");
+
+    d.yaklasik.onaylandi = true;
+    d.odenek = 50_000 * TL;
+    const alimEkap = { ...temizlik, ekapKayitNo: "26DT12345" };
+    const k2 = onayBelgesiKontrolleri(alimEkap, d, ornekAyarlar, temizlikPiyasa);
+    expect(k2.find((x) => x.baslik === "Yaklaşık maliyet hazır")?.durum).toBe("tamam");
+    expect(k2.find((x) => x.baslik === "Kullanılabilir ödenek hazır")?.durum).toBe("tamam");
+    expect(k2.find((x) => x.baslik === "EKAP kayıt numarası girildi")?.durum).toBe("tamam");
+  });
+
+  it("ekonomik koda göre işin türünü doğru tespit eder", () => {
+    expect(isinTuruBul("03.2.1.01")).toBe("Mal Alımı");
+    expect(isinTuruBul("03.5.5.01")).toBe("Hizmet Alımı");
+    expect(isinTuruBul("06.1.1.01")).toBe("Yapım İşi");
+  });
 });
+

@@ -18,9 +18,18 @@ import type { Alim } from "../../domain/tipler";
 import { olayKaydet } from "../../data/olay";
 import { bugun, tl } from "../bicim";
 import { BaglantiBasamagi, EvrakBasamagi } from "../basamaklar/EvrakBasamagi";
+import { FiyatIstemeBasamagi } from "../basamaklar/FiyatIsteme";
 import { IhtiyacOnayiBasamagi } from "../basamaklar/IhtiyacOnayi";
+import { OnayBelgesiBasamagi } from "../basamaklar/OnayBelgesi";
+import { TeklifMektuplariBasamagi } from "../basamaklar/TeklifMektuplari";
+import { PiyasaTutanagiBasamagi } from "../basamaklar/PiyasaTutanagi";
+import { SiparisBasamagi } from "../basamaklar/SiparisBasamagi";
+import { MuayeneBasamagi } from "../basamaklar/MuayeneBasamagi";
+import { TasinirBasamagi } from "../basamaklar/TasinirBasamagi";
+import { OdemeBasamagi } from "../basamaklar/OdemeBasamagi";
 import { VeriGirisi } from "../basamaklar/VeriGirisi";
 import { YaklasikMaliyetBasamagi } from "../basamaklar/YaklasikMaliyet";
+
 import type { Veri } from "../useVeri";
 
 type KayitDurumu = "kayitli" | "bekliyor" | "kaydediliyor" | "hata";
@@ -31,6 +40,7 @@ export interface BasamakBaglami {
   alim: Alim;
   piyasa: PiyasaArastirmasi;
   dosya: DosyaBasamaklari;
+  kalemler: PiyasaKalemi[];
   evraklar: Record<string, EvrakKaydi>;
   muayene: Muayene | null;
   odeme: Odeme | null;
@@ -38,7 +48,7 @@ export interface BasamakBaglami {
   dosyaDegistir: (f: (d: DosyaBasamaklari) => DosyaBasamaklari) => void;
   kalemleriDegistir: (k: PiyasaKalemi[]) => void;
   evrakDegistir: (kod: string, ad: string, kayit: EvrakKaydi) => Promise<void>;
-  alimDegistir: (d: { sureliIs?: boolean; tutar?: number }, aciklama: string) => Promise<void>;
+  alimDegistir: (d: Partial<Alim>, aciklama: string) => Promise<void>;
 }
 
 // Değişiklikten yarım saniye sonra kaydeder; sayfadan çıkılırken bekleyen kaydı hemen yazar.
@@ -153,10 +163,9 @@ function CalismaAlani({ alimId }: { alimId: string }) {
   if (!secili) return <Navigate to={`/dosyalar/${alimId}/basamak/${acilisBasamagi(liste)}`} replace />;
 
   const { biten, gerekli } = ilerleme(liste);
-  // 3. ve 4. basamak aynı sayfadadır; ileri geri giderken ikisi tek basamak sayılır.
   const gezinme = oncekiSonraki(liste, secili.no);
-  const onceki = gezinme.onceki?.no === 3 ? oncekiSonraki(liste, 3).onceki : gezinme.onceki;
-  const sonraki = gezinme.sonraki?.no === 4 ? oncekiSonraki(liste, 4).sonraki : gezinme.sonraki;
+  const onceki = gezinme.onceki;
+  const sonraki = gezinme.sonraki;
   const yol = (n: number) => `/dosyalar/${alimId}/basamak/${n}`;
 
   const baglam: BasamakBaglami = {
@@ -164,6 +173,7 @@ function CalismaAlani({ alimId }: { alimId: string }) {
     alim,
     piyasa,
     dosya,
+    kalemler: piyasa.kalemler,
     ...yuk,
     basamak: secili,
     dosyaDegistir: (f) => setDosya((d) => (d ? f(d) : d)),
@@ -193,9 +203,18 @@ function CalismaAlani({ alimId }: { alimId: string }) {
   let icerik;
   if (secili.no === 1) icerik = <VeriGirisi b={baglam} />;
   else if (secili.no === 2) icerik = <IhtiyacOnayiBasamagi b={baglam} />;
-  else if (secili.no === 3 || secili.no === 4) icerik = <YaklasikMaliyetBasamagi b={baglam} />;
+  else if (secili.no === 3) icerik = <FiyatIstemeBasamagi b={baglam} />;
+  else if (secili.no === 4) icerik = <YaklasikMaliyetBasamagi b={baglam} />;
+  else if (secili.no === 5) icerik = <OnayBelgesiBasamagi b={baglam} />;
+  else if (secili.no === 6) icerik = <TeklifMektuplariBasamagi b={baglam} />;
+  else if (secili.no === 7) icerik = <PiyasaTutanagiBasamagi b={baglam} />;
+  else if (secili.no === 8) icerik = <SiparisBasamagi b={baglam} />;
+  else if (secili.no === 9 || secili.no === 10 || secili.no === 11) icerik = <MuayeneBasamagi b={baglam} />;
+  else if (secili.no === 12) icerik = <TasinirBasamagi b={baglam} />;
+  else if (secili.no === 13) icerik = <OdemeBasamagi b={baglam} />;
   else if (secili.evrakKodu) icerik = <EvrakBasamagi b={baglam} />;
   else icerik = <BaglantiBasamagi b={baglam} />;
+
 
   return (
     <div className="sayfa">
@@ -281,7 +300,7 @@ function CalismaAlani({ alimId }: { alimId: string }) {
               <span />
             )}
             {sonraki && (
-              <Link to={yol(sonraki.no)} className="dugme dugme-ana">
+              <Link to={yol(sonraki.no)} className="dugme">
                 Sonraki: {sonraki.ad} ›
               </Link>
             )}

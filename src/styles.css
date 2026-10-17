@@ -473,3 +473,224 @@ th:last-child, td:last-child { padding-right: 20px; }
 .belge-metni .sart-listesi { margin: 0; padding-left: 1.5em; text-align: justify; }
 .belge-metni .cetvel-tablo th { width: auto; }
 .onay-zemin { padding: 12px 14px; border-radius: 10px; background: var(--zemin); }
+
+/* A4 Yatay ve Yaklaşık Maliyet Şablonu */
+.a4-sayfa.a4-yatay {
+  width: 297mm;
+  min-height: 210mm;
+  padding: 8mm 10mm;
+}
+.belge-metni-yatay {
+  font-family: var(--resmi);
+  font-size: 8pt;
+  line-height: 1.25;
+  color: #000;
+  display: flex;
+  flex-direction: column;
+  gap: 4pt;
+}
+
+/* Yaklaşık Maliyet Hesap Cetveli Tablosu (Resmî Yatay Yazdırma Şablonu - Renksiz / Sade) */
+.ym-sablon-kapsayici {
+  width: 100%;
+  background: #ffffff;
+}
+.ym-sablon-tablo {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--resmi);
+  font-size: 7.5pt;
+  line-height: 1.2;
+  border: 1px solid #000;
+  background: #ffffff;
+}
+.ym-sablon-tablo th,
+.ym-sablon-tablo td {
+  border: 1px solid #000;
+  padding: 3pt 4pt;
+  color: #000;
+  vertical-align: middle;
+  background: #ffffff;
+}
+.ym-sablon-tablo thead th {
+  text-align: center;
+  font-weight: 600;
+}
+.ym-ana-baslik {
+  text-align: center;
+  font-weight: 700;
+  font-size: 11pt;
+  letter-spacing: 0.5px;
+  padding: 5pt;
+  border-bottom: 2px solid #000;
+}
+.ym-bilgi-etiket {
+  text-align: left;
+  font-weight: 600;
+  background: #ffffff;
+}
+.ym-bilgi-deger {
+  text-align: left;
+  background: #ffffff;
+}
+.ym-firma-baslik {
+  text-align: center;
+  padding: 3pt;
+  font-size: 7pt;
+}
+.ym-firma-baslik-icerik {
+  display: flex;
+  flex-direction: column;
+  gap: 2pt;
+  align-items: center;
+}
+.ym-firma-sira {
+  font-size: 6.5pt;
+  color: #333;
+  font-weight: 500;
+}
+.ym-firma-adi {
+  font-size: 7pt;
+  font-weight: 700;
+  line-height: 1.15;
+  word-break: break-word;
+  max-width: 110px;
+}
+.ym-sonuc-baslik {
+  text-align: center;
+  font-weight: 700;
+  font-size: 7.5pt;
+  line-height: 1.15;
+  padding: 4pt;
+}
+.ym-aciklama-kutusu {
+  margin-top: 6pt;
+  font-size: 7.5pt;
+  line-height: 1.35;
+  display: flex;
+  flex-direction: column;
+  gap: 3pt;
+  text-align: justify;
+  color: #000;
+}
+.ym-imza-bolumu {
+  margin-top: 10pt;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6pt;
+}
+.ym-imza-baslik {
+  font-weight: 700;
+  font-size: 8.5pt;
+  letter-spacing: 1px;
+  text-align: center;
+  margin: 0;
+  color: #000;
+}
+.ym-imzalar-sirasi {
+  width: 100%;
+  display: flex;
+  justify-content: space-around;
+  margin-top: 4pt;
+}
+.ym-imza-kutusu {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 130px;
+  font-size: 7.5pt;
+  gap: 2pt;
+  text-align: center;
+}
+.imza-cizgi {
+  display: block;
+  width: 90px;
+  height: 24px;
+}
+.ym-dipnot {
+  margin-top: 6pt;
+  font-size: 7pt;
+  font-style: italic;
+  color: #222;
+}
+
+/* Doğrudan Temin Onay Belgesi Şablonu (Resmî Şablon - Sade / Renksiz) */
+.onay-sablon-kapsayici {
+  width: 100%;
+  font-family: var(--resmi);
+  color: #000;
+  background: #ffffff;
+}
+.onay-sablon-ana-baslik {
+  text-align: center;
+  font-weight: 700;
+  font-size: 13pt;
+  letter-spacing: 0.5px;
+  margin-bottom: 8pt;
+}
+.onay-sablon-tablo {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid #000;
+  font-size: 8.5pt;
+  line-height: 1.25;
+}
+.onay-sablon-tablo th,
+.onay-sablon-tablo td {
+  border: 1px solid #000;
+  padding: 3.5pt 5pt;
+  color: #000;
+  vertical-align: middle;
+}
+.onay-th-etiket {
+  text-align: left;
+  font-weight: 600;
+}
+.onay-td-deger {
+  text-align: left;
+}
+.onay-ara-bosluk {
+  height: 6pt;
+  background: #ffffff;
+  padding: 0 !important;
+}
+.onay-makam-baslik {
+  text-align: center;
+  font-weight: 700;
+  font-size: 9.5pt;
+  padding: 4pt;
+}
+.onay-bolum-baslik {
+  text-align: center;
+  font-weight: 700;
+  font-size: 9pt;
+  padding: 3.5pt;
+  background: #ffffff;
+}
+.onay-aciklamalar-alani {
+  padding: 6pt 8pt !important;
+  font-size: 8.5pt;
+  line-height: 1.4;
+}
+.onay-aciklama-satir {
+  margin-bottom: 4pt;
+}
+.onay-ekler-satir {
+  margin-top: 4pt;
+}
+.onay-imza-sol,
+.onay-imza-sag {
+  padding: 8pt !important;
+}
+.onay-imza-kutu {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  font-size: 8.5pt;
+  gap: 2pt;
+}
+
+
+

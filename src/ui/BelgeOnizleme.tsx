@@ -3,7 +3,17 @@ import { createPortal } from "react-dom";
 
 // Belgeyi tam ekran, A4 kâğıtlar hâlinde öne getirir. Her sayfa ayrı kâğıttır; yazdırırken de ayrı sayfaya düşer.
 // Esc ve "Geri dön" kapatır. Uygulamanın geri kalanı yazdırılmaz.
-export function BelgeOnizleme({ baslik, sayfalar, kapat }: { baslik: string; sayfalar: ReactNode[]; kapat: () => void }) {
+export function BelgeOnizleme({
+  baslik,
+  sayfalar,
+  kapat,
+  yatay = false,
+}: {
+  baslik: string;
+  sayfalar: ReactNode[];
+  kapat: () => void;
+  yatay?: boolean;
+}) {
   const geriRef = useRef<HTMLButtonElement>(null);
   // Üst bileşen her çizimde yeni kapat işlevi verebilir; odak ve kaydırma kilidi yalnızca açılışta kurulur.
   const kapatRef = useRef(kapat);
@@ -28,7 +38,12 @@ export function BelgeOnizleme({ baslik, sayfalar, kapat }: { baslik: string; say
   }, []);
 
   return createPortal(
-    <div className="onizleme-katmani" role="dialog" aria-modal="true" aria-label={baslik}>
+    <div className={`onizleme-katmani ${yatay ? "onizleme-katmani-yatay" : ""}`} role="dialog" aria-modal="true" aria-label={baslik}>
+      {yatay && (
+        <style>{`
+          @page { size: A4 landscape !important; margin: 8mm 10mm !important; }
+        `}</style>
+      )}
       <div className="onizleme-arac">
         <button type="button" className="onizleme-dugme" onClick={kapat} ref={geriRef}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -39,7 +54,7 @@ export function BelgeOnizleme({ baslik, sayfalar, kapat }: { baslik: string; say
         <span className="onizleme-baslik">
           {baslik}
           <span className="onizleme-bilgi">
-            A4 · {sayfalar.length} sayfa
+            {yatay ? "A4 Yatay" : "A4"} · {sayfalar.length} sayfa
           </span>
         </span>
         <button type="button" className="onizleme-dugme onizleme-yazdir" onClick={() => window.print()}>
@@ -48,8 +63,8 @@ export function BelgeOnizleme({ baslik, sayfalar, kapat }: { baslik: string; say
       </div>
       <div className="onizleme-alan">
         {sayfalar.map((s, i) => (
-          <section key={i} className="a4-sayfa" aria-label={`Sayfa ${i + 1}`}>
-            <div className="belge-metni">{s}</div>
+          <section key={i} className={`a4-sayfa ${yatay ? "a4-yatay" : ""}`} aria-label={`Sayfa ${i + 1}`}>
+            <div className={`belge-metni ${yatay ? "belge-metni-yatay" : ""}`}>{s}</div>
             {sayfalar.length > 1 && (
               <span className="a4-no" aria-hidden="true">
                 {i + 1} / {sayfalar.length}

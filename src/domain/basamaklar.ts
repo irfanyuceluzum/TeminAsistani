@@ -52,6 +52,14 @@ export interface YaklasikMaliyet {
   yontem: MaliyetYontemi;
   kdvOrani: number;
   firmalar: MaliyetFirmasi[];
+  onaylandi?: boolean;
+}
+
+export interface OnayBelgesiAyari {
+  makam?: string;
+  fiyatFarki?: string;
+  avans?: string;
+  dokuman?: string;
 }
 
 export interface DosyaBasamaklari {
@@ -64,6 +72,7 @@ export interface DosyaBasamaklari {
   ihtiyacOnayi: IhtiyacOnayi;
   fiyatIsteme: FiyatIsteme;
   yaklasik: YaklasikMaliyet;
+  onayBelgesi?: OnayBelgesiAyari;
 }
 
 export function bosBasamaklar(alimId: string, bugun: string): DosyaBasamaklari {
@@ -75,7 +84,13 @@ export function bosBasamaklar(alimId: string, bugun: string): DosyaBasamaklari {
     sartlar: { teslimSuresi: "", parti: "", nakliye: "", ozel: "", standart: "", teknik: "", diger: "" },
     ihtiyacOnayi: { tarih: bugun, sayi: "", gerekce: "", imzali: false },
     fiyatIsteme: { tarih: "", sayi: "", sonTarih: "" },
-    yaklasik: { hesaplanmayacak: false, yontem: "ortalama", kdvOrani: 20, firmalar: [] },
+    yaklasik: { hesaplanmayacak: false, yontem: "ortalama", kdvOrani: 20, firmalar: [], onaylandi: false },
+    onayBelgesi: {
+      makam: "BAŞKANLIK MAKAMINA",
+      fiyatFarki: "Verilmeyecektir",
+      avans: "Verilmeyecektir",
+      dokuman: "İhtiyaç Listesi ve Şartlar hazırlanmıştır",
+    },
   };
 }
 
@@ -89,8 +104,10 @@ export function basamaklariTamamla(kayit: Partial<DosyaBasamaklari> & { alimId: 
     ihtiyacOnayi: { ...bos.ihtiyacOnayi, ...kayit.ihtiyacOnayi },
     fiyatIsteme: { ...bos.fiyatIsteme, ...kayit.fiyatIsteme },
     yaklasik: { ...bos.yaklasik, ...kayit.yaklasik },
+    onayBelgesi: { ...bos.onayBelgesi, ...(kayit.onayBelgesi ?? {}) },
   };
 }
+
 
 export interface MaliyetSatiri {
   kalem: PiyasaKalemi;
@@ -180,9 +197,6 @@ export function yaklasikKontrolleri(
     else k.push({ durum: "uyari", baslik: "Limit dönemi yok", detay: "Onay tarihini kapsayan limit dönemini Parametreler'den ekleyin." });
   }
 
-  if (!d.odenek) k.push({ durum: "yapilacak", baslik: "Ödenek girilmedi", detay: "1. basamakta kullanılabilir ödeneği girin." });
-  else if (sonuc.kdvDahil > d.odenek) k.push({ durum: "engel", baslik: "Ödenek yetersiz", detay: `KDV dahil tutar ödeneği ${tl(sonuc.kdvDahil - d.odenek)} aşıyor.` });
-  else k.push({ durum: "tamam", baslik: "Ödenek yeterli", detay: `KDV dahil ${tl(sonuc.kdvDahil)}, kalan ${tl(d.odenek - sonuc.kdvDahil)}.` });
   return k;
 }
 
@@ -234,21 +248,27 @@ export function basamaklar(g: BasamakGirdisi): Basamak[] {
       no: 3,
       ad: "Fiyat isteme yazısı",
       grup: "Fiyat ve onay",
-      tamam: !!dosya.fiyatIsteme.tarih && dosya.yaklasik.firmalar.some((f) => f.belgeAlindi),
+      tamam:
+        !!dosya.fiyatIsteme.tarih &&
+        dosya.yaklasik.firmalar.length > 0 &&
+        dosya.yaklasik.firmalar.some((f) => f.belgeAlindi || Object.values(f.fiyatlar).some((v) => v !== null && v > 0)),
       gerekmez: yaklasikYok ? "yaklaşık maliyet hesaplanmıyor" : undefined,
     },
     {
       no: 4,
       ad: "Yaklaşık maliyet cetveli",
       grup: "Fiyat ve onay",
-      tamam: dosya.yaklasik.firmalar.length > 0 && yaklasikHesapla(kalemler, dosya.yaklasik).hesaplanabilir,
+      tamam:
+        dosya.yaklasik.firmalar.length > 0 &&
+        yaklasikHesapla(kalemler, dosya.yaklasik).hesaplanabilir &&
+        !!dosya.yaklasik.onaylandi,
       gerekmez: yaklasikYok ? "Tebliğ m.4/4" : undefined,
     },
     { no: 5, ad: "Onay belgesi", grup: "Fiyat ve onay", tamam: evrak("onay-belgesi"), evrakKodu: "onay-belgesi" },
     dd
-      ? { no: 6, ad: "Teklif mektupları", grup: "Fiyat ve onay", tamam: !!piyasa?.teklifler.some((t) => t.belgeAlindi) }
+      ? { no: 6, ad: "Teklif mektupları", grup: "Fiyat ve onay", tamam: !!piyasa?.teklifler.some((t) => t.belgeAlindi) || evrak("fiyat-teklifi"), evrakKodu: "fiyat-teklifi" }
       : { no: 6, ad: "Firmadan fiyat teklifi", grup: "Fiyat ve onay", tamam: evrak("fiyat-teklifi"), evrakKodu: "fiyat-teklifi" },
-    { no: 7, ad: "Piyasa fiyat araştırma tutanağı", grup: "Fiyat ve onay", tamam: !!piyasa?.tamamlandi, gerekmez: dd ? undefined : "22/d dışı" },
+    { no: 7, ad: "Piyasa fiyat araştırma tutanağı", grup: "Fiyat ve onay", tamam: !!piyasa?.tamamlandi || evrak("piyasa-tutanagi"), evrakKodu: "piyasa-tutanagi", gerekmez: dd ? undefined : "22/d dışı" },
     {
       no: 8,
       ad: sozlesmeZorunlu(alim) ? "Sözleşme" : "Sipariş yazısı",
@@ -340,3 +360,125 @@ export function ihtiyacOnayiKontrolleri(d: DosyaBasamaklari, imzacilarVar: boole
   );
   return k;
 }
+
+export function isinTuruBul(ekonomikKod: string): string {
+  if (ekonomikKod.startsWith("03.2")) return "Mal Alımı";
+  if (ekonomikKod.startsWith("03.5") || ekonomikKod.startsWith("03.7") || ekonomikKod.startsWith("03.8")) return "Hizmet Alımı";
+  if (ekonomikKod.startsWith("06")) return "Yapım İşi";
+  return "Mal Alımı";
+}
+
+export function onayBelgesiKontrolleri(
+  alim: Alim,
+  dosya: DosyaBasamaklari,
+  ayarlar: Ayarlar,
+  _piyasa: PiyasaArastirmasi | null,
+): Kontrol[] {
+  const k: Kontrol[] = [];
+  const g = ayarlar.gorevler;
+
+  // 1. Yaklaşık Maliyet kontrolü
+  if (!dosya.yaklasik.hesaplanmayacak) {
+    if (!dosya.yaklasik.onaylandi) {
+      k.push({
+        durum: "engel",
+        baslik: "Yaklaşık maliyet onaylanmamış",
+        detay: "4. basamakta yaklaşık maliyet cetvelini onaylamanız gerekir.",
+      });
+    } else {
+      k.push({
+        durum: "tamam",
+        baslik: "Yaklaşık maliyet hazır",
+        detay: `Yaklaşık maliyet ${tl(alim.tutar)} (KDV Hariç) olarak onaylandı.`,
+      });
+    }
+  }
+
+  // 2. Kullanılabilir ödenek kontrolü
+  if (!dosya.odenek || dosya.odenek <= 0) {
+    k.push({
+      durum: "uyari",
+      baslik: "Kullanılabilir ödenek girilmemiş",
+      detay: "Onay belgesinde ödenek tutarının görünmesi için 1. basamakta ödenek miktarını girmeniz önerilir.",
+    });
+  } else {
+    k.push({
+      durum: "tamam",
+      baslik: "Kullanılabilir ödenek hazır",
+      detay: `Bütçe tertibindeki kullanılabilir ödenek: ${tl(dosya.odenek)}.`,
+    });
+  }
+
+  // 3. EKAP doğrudan temin kayıt numarası
+  if (!alim.ekapKayitNo?.trim()) {
+    k.push({
+      durum: "uyari",
+      baslik: "EKAP kayıt numarası boş",
+      detay: "Doğrudan Temin Tebliği m.5/1 uyarınca EKAP'tan alınan doğrudan temin kayıt numarasını girmeniz önerilir.",
+    });
+  } else {
+    k.push({
+      durum: "tamam",
+      baslik: "EKAP kayıt numarası girildi",
+      detay: `Kayıt No: ${alim.ekapKayitNo}`,
+    });
+  }
+
+  // 4. Bütçe Tertibi (Ekonomik Kod)
+  if (!alim.ekonomikKod?.trim()) {
+    k.push({
+      durum: "uyari",
+      baslik: "Bütçe tertibi seçilmemiş",
+      detay: "Alımın bütçe tertibi (ekonomik kodu) boş.",
+    });
+  } else {
+    k.push({
+      durum: "tamam",
+      baslik: "Bütçe tertibi hazır",
+      detay: `Tertip / Kod: ${alim.ekonomikKod}`,
+    });
+  }
+
+  // 5. Harcama Yetkilisi ve Gerçekleştirme Görevlisi
+  if (!g?.harcamaYetkilisi || !g?.gerceklestirme) {
+    k.push({
+      durum: "engel",
+      baslik: "Harcama görevlileri eksik",
+      detay: "Onay belgesinin imzacıları olan Harcama Yetkilisi ve Gerçekleştirme Görevlisini Personel ekranından atayın.",
+    });
+  } else {
+    k.push({
+      durum: "tamam",
+      baslik: "İmzacı yetkililer hazır",
+      detay: "Gerçekleştirme görevlisi ve harcama yetkilisi belirlendi.",
+    });
+  }
+
+  // 6. Piyasa Fiyat Araştırması Görevlileri
+  const piyasaGorevlileri = g?.piyasaGorevlileri ?? [];
+  if (piyasaGorevlileri.length === 0) {
+    k.push({
+      durum: "uyari",
+      baslik: "Piyasa görevlileri seçilmemiş",
+      detay: "Onay belgesinin görevlendirme maddesinde yer alacak piyasa araştırma görevlilerini seçin.",
+    });
+  } else {
+    k.push({
+      durum: "tamam",
+      baslik: `${piyasaGorevlileri.length} piyasa görevlisi görevlendirildi`,
+      detay: "Onay belgesinde görevlendirme kısmına yazılacak.",
+    });
+  }
+
+  // 7. İhtiyaç Gerekçesi
+  if (!dosya.ihtiyacOnayi.gerekce?.trim()) {
+    k.push({
+      durum: "uyari",
+      baslik: "İhtiyaç gerekçesi boş",
+      detay: "Alım gerekçesini doldurmanız önerilir.",
+    });
+  }
+
+  return k;
+}
+

@@ -100,7 +100,9 @@ export interface Personel {
 export interface GorevAtamalari {
   harcamaYetkilisi: string | null;
   gerceklestirme: string | null;
+  yaklasikMaliyetGorevlileri?: string[];
   piyasaGorevlileri: string[];
   muayeneBaskani: string | null;
   muayeneUyeleri: string[];
 }
+

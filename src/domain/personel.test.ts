@@ -18,12 +18,23 @@ describe("görev kontrolleri", () => {
     expect(gorevKontrolleri(personel, BOS_GOREVLER)[0].durum).toBe("yapilacak");
   });
 
-  it("çift sayılı komisyonu ve komisyondaki harcama yetkilisini uyarır", () => {
+  it("çift sayılı komisyonu uyarır ve komisyondaki yetkiliyi engeller", () => {
     const g: GorevAtamalari = { ...gorevler, muayeneUyeleri: [gorevler.harcamaYetkilisi!] };
-    const basliklar = gorevKontrolleri(personel, g).map((x) => x.baslik);
+    const kontroller = gorevKontrolleri(personel, g);
+    const basliklar = kontroller.map((x) => x.baslik);
     expect(basliklar).toContain("2 kişilik komisyon");
-    expect(basliklar).toContain("Harcama yetkilisi komisyonda");
+    expect(basliklar).toContain("Yetkili muayene komisyonunda yer alamaz");
+    expect(kontroller.find((x) => x.baslik === "Yetkili muayene komisyonunda yer alamaz")?.durum).toBe("engel");
   });
+
+  it("harcama yetkilisi ve gerçekleştirme görevlisinin piyasa ve yaklaşık maliyette yer almasını engeller", () => {
+    const g1: GorevAtamalari = { ...gorevler, piyasaGorevlileri: [gorevler.gerceklestirme!, "p3"] };
+    expect(gorevKontrolleri(personel, g1).find((x) => x.baslik === "Yetkili piyasa araştırmasında yer alamaz")?.durum).toBe("engel");
+
+    const g2: GorevAtamalari = { ...gorevler, yaklasikMaliyetGorevlileri: [gorevler.harcamaYetkilisi!, "p3"] };
+    expect(gorevKontrolleri(personel, g2).find((x) => x.baslik === "Yetkili yaklaşık maliyette yer alamaz")?.durum).toBe("engel");
+  });
+
 });
 
 describe("personel işlemleri", () => {
