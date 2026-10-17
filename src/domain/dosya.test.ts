@@ -17,7 +17,7 @@ describe("evrak listesi", () => {
   it("22/d için sistemden gelen piyasa evrakı içerir", () => {
     const l = evrakListesi(alim("DT-2026-040"));
     expect(l.filter((e) => e.sistemden).map((e) => e.kod)).toEqual(["piyasa-tutanagi", "yasaklilik"]);
-    expect(l.some((e) => e.kod === "kik-bildirimi")).toBe(false);
+    expect(l.some((e) => e.kod === "kik-bildirimi")).toBe(true);
   });
 
   it("22/b için dayanak belgesi ve KİK bildirimi ister", () => {

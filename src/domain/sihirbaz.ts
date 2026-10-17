@@ -7,7 +7,6 @@ export interface BentBilgisi {
   ad: string;
   ozet: string;
   belgeler: string[];
-  kikBildirimi: boolean;
 }
 
 export const BENTLER: BentBilgisi[] = [
@@ -17,7 +16,6 @@ export const BENTLER: BentBilgisi[] = [
     ad: "Tek kişi karşılayabilir",
     ozet: "İhtiyacı yalnızca bir gerçek veya tüzel kişi karşılayabiliyor.",
     belgeler: ["Tek kaynak tespit raporu (gerekçeli)", "Doğrudan temin onay belgesi", "Firmadan fiyat teklifi"],
-    kikBildirimi: true,
   },
   {
     kod: "22/b",
@@ -25,7 +23,6 @@ export const BENTLER: BentBilgisi[] = [
     ad: "Özel hak sahibi",
     ozet: "Yalnızca bir kişinin ihtiyaçla ilgili özel bir hakkı var.",
     belgeler: ["Özel hak belgesi (patent, lisans, münhasır yetki)", "Doğrudan temin onay belgesi", "Firmadan fiyat teklifi"],
-    kikBildirimi: true,
   },
   {
     kod: "22/c",
@@ -33,7 +30,6 @@ export const BENTLER: BentBilgisi[] = [
     ad: "Uyum ve standardizasyon",
     ozet: "Mevcut mal veya sistemle uyum için asıl yükleniciden alım.",
     belgeler: ["Asıl sözleşmenin bilgileri", "Uyum zorunluluğu gerekçesi", "Doğrudan temin onay belgesi"],
-    kikBildirimi: true,
   },
   {
     kod: "22/d",
@@ -46,7 +42,6 @@ export const BENTLER: BentBilgisi[] = [
       "Sipariş yazısı veya sözleşme",
       "Muayene ve kabul tutanağı, fatura",
     ],
-    kikBildirimi: false,
   },
   {
     kod: "22/e",
@@ -54,7 +49,6 @@ export const BENTLER: BentBilgisi[] = [
     ad: "Taşınmaz alımı veya kiralama",
     ozet: "İdarenin ihtiyacı olan taşınmazın alımı ya da kiralanması.",
     belgeler: ["Değerleme veya emsal kira raporu", "Doğrudan temin onay belgesi", "Kira sözleşmesi taslağı"],
-    kikBildirimi: true,
   },
 ];
 
@@ -146,9 +140,8 @@ export function dayanakKontrolleri(
     const bilgi = bentBilgisi(bent);
     sonuc.push({ durum: "yapilacak", baslik: "Dayanak belgesi", detay: `${bilgi.belgeler[0]} dosyaya eklenmeli.` });
   }
-  if (bentBilgisi(bent).kikBildirimi) {
-    sonuc.push({ durum: "yapilacak", baslik: "KİK bildirimi", detay: "Alım sonrası Kurum'a bildirilecekler listesine eklenecek." });
-  }
+  // Doğrudan Temin Tebliği m.4/9: tüm doğrudan temin alımlarının sonucu, alım ayını izleyen ayın 10'una kadar Kurum'a bildirilir.
+  sonuc.push({ durum: "yapilacak", baslik: "KİK bildirimi", detay: "Alım sonucu, alımın yapıldığı ayı izleyen ayın 10'una kadar EKAP'tan bildirilecek." });
   return sonuc;
 }
 

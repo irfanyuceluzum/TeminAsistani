@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { ornekAlimlar, ornekAyarlar, ornekPiyasa } from "../data/ornekVeri";
-import { csvOlustur, kikBildirimleri, yillar, yillikOzet } from "./raporlar";
+import { ornekAlimlar, ornekAyarlar, ornekEvraklar, ornekPiyasa } from "../data/ornekVeri";
+import { csvOlustur, kikBildirimleri, kikSonGunu, yillar, yillikOzet } from "./raporlar";
 
 const TL = 100;
 
@@ -39,10 +39,26 @@ describe("yıllık özet", () => {
 });
 
 describe("KİK bildirimleri", () => {
-  it("22/d dışındaki alımları, bekleyenler önce olmak üzere listeler", () => {
-    const k = kikBildirimleri(ornekAlimlar, 2026, { "DT-2026-019": { "kik-bildirimi": { tamam: true, tarih: "2026-04-02", not: "" } } });
-    expect(k.map((x) => x.alim.id)).toEqual(["DT-2026-038", "DT-2026-035", "DT-2026-031", "DT-2026-024", "DT-2026-012", "DT-2026-019"]);
-    expect(k[k.length - 1]).toMatchObject({ bildirildi: true, tarih: "2026-04-02" });
+  const evraklar = { ...ornekEvraklar, "DT-2026-019": { "kik-bildirimi": { tamam: true, tarih: "2026-04-02", not: "" } } };
+  const k = kikBildirimleri(ornekAlimlar, 2026, evraklar, "2026-10-17");
+
+  it("siparişi verilmiş tüm alımları bentten bağımsız listeler", () => {
+    expect(k).toHaveLength(16);
+    expect(k.some((x) => x.alim.bent === "22/d")).toBe(true);
+    expect(k.some((x) => x.alim.id === "DT-2026-041")).toBe(false);
+  });
+
+  it("son günü sipariş ayını izleyen ayın 10'u olarak hesaplar", () => {
+    expect(k.find((x) => x.alim.id === "DT-2026-040")!.sonGun).toBe("2026-11-10");
+    expect(k.find((x) => x.alim.id === "DT-2026-039")).toMatchObject({ sonGun: "2026-10-10", gecikti: true });
+    expect(kikSonGunu({ ...ornekAlimlar[0], onayTarihi: "2026-12-20" }, undefined)).toBe("2027-01-10");
+  });
+
+  it("bekleyenleri öne, bildirilenleri sona koyar", () => {
+    const ilkBildirilen = k.findIndex((x) => x.bildirildi);
+    expect(ilkBildirilen).toBeGreaterThan(0);
+    expect(k.slice(ilkBildirilen).every((x) => x.bildirildi && !x.gecikti)).toBe(true);
+    expect(k.find((x) => x.alim.id === "DT-2026-019")).toMatchObject({ bildirildi: true, tarih: "2026-04-02" });
   });
 });
 

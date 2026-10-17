@@ -46,7 +46,8 @@ export interface YuzdeOnDurumu {
   asiyor: boolean;
 }
 
-// 22/d alımlarının mali yıl toplamı, ödeneğin %10'unu Kurum'un uygun görüşü olmadan aşamaz.
+// 4734 md. 62/ı: parasal limitler dahilindeki doğrudan temin harcamalarının yıllık toplamı, ödeneğin %10'unu
+// Kurul'un uygun görüşü olmadan aşamaz. Uygulama 21/f pazarlık alımlarını tutmadığından yalnızca 22/d sayılır.
 export function yuzdeOnDurumu(
   alimlar: Alim[],
   yil: number,
@@ -70,7 +71,7 @@ function benzerMi(a: Alim, b: Alim, k: BolmeKurallari): boolean {
   );
 }
 
-// Aday alımla aynı pencerede yapılmış, kurallara göre benzer sayılan alımlar (madde 12, kısımlara bölme).
+// Aday alımla aynı pencerede yapılmış, kurallara göre benzer sayılan alımlar (4734 md. 5, kısımlara bölme yasağı).
 export function benzerAlimlar(
   aday: Alim,
   alimlar: Alim[],

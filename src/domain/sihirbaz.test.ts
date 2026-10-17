@@ -16,6 +16,7 @@ describe("dayanak kontrolleri", () => {
       ["tamam", "22/d limiti içinde"],
       ["tamam", "Yıllık %10 sınırı"],
       ["uyari", "1 benzer alım var"],
+      ["yapilacak", "KİK bildirimi"],
     ]);
     expect(k[2].detay).toContain("DT-2026-042");
     expect(engelVarMi(k)).toBe(false);

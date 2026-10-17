@@ -1,7 +1,7 @@
 import type { EvrakKaydi } from "./dosya";
 import { yuzdeOnDurumu, type YuzdeOnDurumu } from "./kurallar";
 import { teklifVerenler, type PiyasaArastirmasi } from "./piyasa";
-import { BENTLER, bentBilgisi } from "./sihirbaz";
+import { BENTLER } from "./sihirbaz";
 import type { Alim, Ayarlar, Bent } from "./tipler";
 
 export interface BentPayi {
@@ -75,17 +75,32 @@ export interface KikSatiri {
   alim: Alim;
   bildirildi: boolean;
   tarih: string | null;
+  sonGun: string;
+  gecikti: boolean;
 }
 
-// 22/d dışındaki bentler Kurum'a bildirilir; bildirim, dosyadaki "KİK bildirimi" evrakı işaretlenince tamam sayılır.
-export function kikBildirimleri(alimlar: Alim[], yil: number, evraklar: Record<string, Record<string, EvrakKaydi>>): KikSatiri[] {
+const ALIM_YAPILDI = new Set(["siparis", "muayene", "odeme", "tamamlandi"]);
+
+// Doğrudan Temin Tebliği m.4/9: alım sonucu, alımın yapıldığı ayı izleyen ayın 10'una kadar bildirilir.
+// Alım tarihi olarak sipariş yazısı tarihi, yoksa onay tarihi alınır.
+export function kikSonGunu(alim: Alim, evraklar: Record<string, EvrakKaydi> | undefined): string {
+  const esas = evraklar?.["siparis-yazisi"]?.tamam ? evraklar["siparis-yazisi"].tarih : alim.onayTarihi;
+  const yil = Number(esas.slice(0, 4));
+  const ay = Number(esas.slice(5, 7));
+  return ay === 12 ? `${yil + 1}-01-10` : `${yil}-${String(ay + 1).padStart(2, "0")}-10`;
+}
+
+// Bildirim, siparişi verilmiş (alımı yapılmış) dosyalar için istenir; dosyadaki "KİK bildirimi" evrakı işaretlenince tamam sayılır.
+export function kikBildirimleri(alimlar: Alim[], yil: number, evraklar: Record<string, Record<string, EvrakKaydi>>, bugun: string): KikSatiri[] {
   return yilAlimlari(alimlar, yil)
-    .filter((a) => bentBilgisi(a.bent).kikBildirimi)
+    .filter((a) => ALIM_YAPILDI.has(a.asama))
     .map((a) => {
       const k = evraklar[a.id]?.["kik-bildirimi"];
-      return { alim: a, bildirildi: !!k?.tamam, tarih: k?.tamam ? k.tarih : null };
+      const sonGun = kikSonGunu(a, evraklar[a.id]);
+      const bildirildi = !!k?.tamam;
+      return { alim: a, bildirildi, tarih: bildirildi ? k!.tarih : null, sonGun, gecikti: !bildirildi && bugun > sonGun };
     })
-    .sort((x, y) => Number(x.bildirildi) - Number(y.bildirildi) || y.alim.onayTarihi.localeCompare(x.alim.onayTarihi));
+    .sort((x, y) => Number(x.bildirildi) - Number(y.bildirildi) || x.sonGun.localeCompare(y.sonGun) || y.alim.id.localeCompare(x.alim.id));
 }
 
 function hucre(deger: string | number): string {

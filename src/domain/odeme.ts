@@ -10,7 +10,7 @@ export interface TevkifatTuru {
   payda: number;
 }
 
-// Oranlar KDV Genel Uygulama Tebliği'nden doğrulanmalı; ileride Parametreler'den yönetilecek.
+// KDV GUT I/C-2.1.3.2 oranları; doğrulama durumu docs/mevzuat-varsayimlari.md. İleride Parametreler'den yönetilecek.
 export const TEVKIFAT_TURLERI: TevkifatTuru[] = [
   { kod: "yok", ad: "Tevkifat yok", pay: 0, payda: 10 },
   { kod: "bakim-onarim", ad: "Makine, teçhizat, demirbaş ve taşıt bakım onarımı", pay: 7, payda: 10 },
@@ -122,8 +122,12 @@ function tl(kurus: number): string {
   return "₺" + (kurus / 100).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-export function odemeKontrolleri(o: Odeme, h: OdemeHesabi, ekler: { ad: string; tamam: boolean }[], ayarlar: Ayarlar): Kontrol[] {
+export function odemeKontrolleri(o: Odeme, h: OdemeHesabi, ekler: { ad: string; tamam: boolean }[], ayarlar: Ayarlar, bent?: string): Kontrol[] {
   const k: Kontrol[] = [];
+  // Doğrudan Temin Tebliği m.4/5: 22/c alımlarında ve teslimi belli süre gerektiren işlerde sözleşme zorunludur.
+  if (bent === "22/c" && !o.sozlesmeVar) {
+    k.push({ durum: "uyari", baslik: "Sözleşme zorunlu", detay: "22/c alımlarında sözleşme imzalanması zorunludur (Doğrudan Temin Tebliği m.4/5)." });
+  }
   const eksik = ekler.filter((e) => !e.tamam).map((e) => e.ad);
   k.push(
     eksik.length

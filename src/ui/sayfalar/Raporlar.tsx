@@ -39,7 +39,7 @@ export function Raporlar() {
   }, [yukle, alimlar]);
 
   const ozet = useMemo(() => yillikOzet(alimlar, yil, ayarlar, piyasalar), [alimlar, yil, ayarlar, piyasalar]);
-  const kik = useMemo(() => kikBildirimleri(alimlar, yil, evraklar), [alimlar, yil, evraklar]);
+  const kik = useMemo(() => kikBildirimleri(alimlar, yil, evraklar, gun), [alimlar, yil, evraklar, gun]);
   const firmaAdi = (id: string | null) => tedarikciler.find((t) => t.id === id)?.ad ?? "";
 
   const q = arama.trim().toLocaleLowerCase("tr-TR");
@@ -76,8 +76,8 @@ export function Raporlar() {
     setMesaj(null);
     try {
       const icerik = csvOlustur(
-        ["Dosya", "Onay tarihi", "Konu", "Bent", "Tedarikçi", "Tutar (KDV hariç, TL)", "Bildirim durumu", "Bildirim tarihi"],
-        kik.map((k) => [k.alim.id, uzunTarih(k.alim.onayTarihi), k.alim.konu, k.alim.bent, firmaAdi(k.alim.tedarikciId), k.alim.tutar / 100, k.bildirildi ? "Bildirildi" : "Bekliyor", k.tarih ? uzunTarih(k.tarih) : ""]),
+        ["Dosya", "Onay tarihi", "Konu", "Bent", "Tedarikçi", "Tutar (KDV hariç, TL)", "Son gün", "Bildirim durumu", "Bildirim tarihi"],
+        kik.map((k) => [k.alim.id, uzunTarih(k.alim.onayTarihi), k.alim.konu, k.alim.bent, firmaAdi(k.alim.tedarikciId), k.alim.tutar / 100, uzunTarih(k.sonGun), k.bildirildi ? "Bildirildi" : k.gecikti ? "Gecikti" : "Bekliyor", k.tarih ? uzunTarih(k.tarih) : ""]),
       );
       if (await metinDosyasiKaydet(`kik-bildirimleri-${yil}.csv`, icerik)) setMesaj({ tur: "tamam", metin: `${kik.length} satır Excel dosyasına aktarıldı.` });
     } catch (e) {
@@ -230,7 +230,7 @@ export function Raporlar() {
         <div className="panel-ust">
           <div>
             <h2 id="kik-baslik">KİK bildirimleri</h2>
-            <span className="soluk kucuk">22/d dışındaki doğrudan teminler. Bildirim yapıldıkça işaretleyin.</span>
+            <span className="soluk kucuk">Siparişi verilen tüm doğrudan teminler. Sonuç, alım ayını izleyen ayın 10'una kadar EKAP'tan bildirilir.</span>
           </div>
           <button type="button" className="dugme kucuk-dugme" onClick={kikAktar} disabled={kik.length === 0}>
             Excel'e aktar
@@ -249,6 +249,7 @@ export function Raporlar() {
                   <th scope="col" className="sag">
                     Tutar
                   </th>
+                  <th scope="col">Son gün</th>
                   <th scope="col">Durum</th>
                   <th scope="col">Bildirim</th>
                 </tr>
@@ -262,8 +263,11 @@ export function Raporlar() {
                     <td>{k.alim.konu}</td>
                     <td className="mono">{k.alim.bent}</td>
                     <td className="mono sag">{tl(k.alim.tutar)}</td>
+                    <td className={k.gecikti ? "mono hata-yazi" : "mono soluk"}>{uzunTarih(k.sonGun)}</td>
                     <td>
-                      <span className={k.bildirildi ? "etiket etiket-Teslim" : "etiket etiket-Ödeme"}>{k.bildirildi ? "Bildirildi" : "Bekliyor"}</span>
+                      <span className={k.bildirildi ? "etiket etiket-Teslim" : k.gecikti ? "etiket etiket-gecikti" : "etiket etiket-Ödeme"}>
+                        {k.bildirildi ? "Bildirildi" : k.gecikti ? "Gecikti" : "Bekliyor"}
+                      </span>
                     </td>
                     <td>
                       {k.bildirildi ? (

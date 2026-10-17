@@ -26,4 +26,4 @@ Masaüstü sürümü için Rust ve Tauri ön koşulları kurulu olmalıdır: htt
 
 ## Mevzuat notu
 
-Limitler, oranlar ve bazı kurallar (KİK bildirimi, tevkifat, karar pulu, sürekli işlerde sözleşme) güncel mevzuattan doğrulanmalıdır. Örnek veriler `src/data/ornekVeri.ts` dosyasındadır ve gerçek kullanıma geçmeden kaldırılmalıdır.
+Her kuralın kaynağı ve doğrulama durumu `docs/mevzuat-varsayimlari.md` dosyasındadır; "İkincil kaynak" ve "Doğrulanamadı" olanlar resmi metinle teyit edilmelidir. Örnek veriler `src/data/ornekVeri.ts` dosyasındadır ve gerçek kullanıma geçmeden kaldırılmalıdır.

@@ -335,7 +335,7 @@ export function Parametreler() {
               Yıl ekle
             </button>
           </div>
-          <p className="soluk kucuk">22/d alımlarının yıllık toplamı bu tutarın %10'unu Kurum'un uygun görüşü olmadan aşamaz.</p>
+          <p className="soluk kucuk">Parasal limit dahilindeki doğrudan temin harcamalarının yıllık toplamı bu tutarın %10'unu Kamu İhale Kurulu'nun uygun görüşü olmadan aşamaz (4734 md. 62/ı).</p>
           {odenekYillari.map((yil) => (
             <div key={yil} className="alan">
               <label htmlFor={`odenek-${yil}`}>{yil} ödeneği, TL</label>

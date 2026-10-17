@@ -75,8 +75,16 @@ describe("ek listesi ve kontroller", () => {
 
   it("tutarsız borç girişini engeller, sınır yoksa uyarır", () => {
     const o = odeme({ vergiSorgusu: { durum: "borclu", tarih: "", belgeNo: "", borc: 0 } });
-    const basliklar = odemeKontrolleri(o, odemeHesabi(matrah, o, ornekAyarlar), [], ornekAyarlar).map((x) => `${x.durum}:${x.baslik}`);
+    const sinirsiz = { ...ornekAyarlar, tevkifatSiniri: undefined };
+    const basliklar = odemeKontrolleri(o, odemeHesabi(matrah, o, sinirsiz), [], sinirsiz).map((x) => `${x.durum}:${x.baslik}`);
     expect(basliklar).toContain("engel:Vergi borcu tutarı");
     expect(basliklar).toContain("uyari:Tevkifat sınırı tanımlı değil");
+  });
+
+  it("22/c alımında sözleşme yoksa uyarır", () => {
+    const o = odeme();
+    const k = odemeKontrolleri(o, odemeHesabi(matrah, o, ornekAyarlar), [], ornekAyarlar, "22/c");
+    expect(k[0]).toMatchObject({ durum: "uyari", baslik: "Sözleşme zorunlu" });
+    expect(odemeKontrolleri({ ...o, sozlesmeVar: true }, odemeHesabi(matrah, o, ornekAyarlar), [], ornekAyarlar, "22/c").some((x) => x.baslik === "Sözleşme zorunlu")).toBe(false);
   });
 });

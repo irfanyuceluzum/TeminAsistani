@@ -101,7 +101,7 @@ export function AnaPanel() {
       {ozet.riskler.map((r) => (
         <div key={r.kalemKodu} className="bant bant-uyari" role="alert">
           <strong>Bölme riski:</strong> "{r.konu}" için son {ayarlar.bolme.pencereGun} günde {r.alimlar.length} ayrı alım yapıldı
-          (toplam {tl(r.toplam)}). İhtiyacı tek alımda toplamayı düşünün. Madde 12'ye bakın.
+          (toplam {tl(r.toplam)}). İhtiyacı tek alımda toplamayı düşünün (4734 md. 5, kısımlara bölme yasağı).
         </div>
       ))}
 

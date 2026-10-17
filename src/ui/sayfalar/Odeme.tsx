@@ -90,7 +90,7 @@ export function OdemeSayfasi() {
 
   const hesap = useMemo(() => (o && alim ? odemeHesabi(alim.tutar, o, ayarlar) : null), [o, alim, ayarlar]);
   const ekler = useMemo(() => (o && alim ? ekListesi(evrakDurumlari(alim, evrakKayitlari, piyasa), o) : []), [o, alim, evrakKayitlari, piyasa]);
-  const kontroller = useMemo(() => (o && hesap ? odemeKontrolleri(o, hesap, ekler, ayarlar) : []), [o, hesap, ekler, ayarlar]);
+  const kontroller = useMemo(() => (o && hesap ? odemeKontrolleri(o, hesap, ekler, ayarlar, alim?.bent) : []), [o, hesap, ekler, ayarlar, alim?.bent]);
 
   if (!alim) {
     return (

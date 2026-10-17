@@ -75,6 +75,8 @@ export const ornekAyarlar: Ayarlar = {
   odenekler: { 2026: 20_000_000 * TL },
   bolme: { pencereGun: 60, ayniEkonomikKod: false, ayniKalem: true, ayniTedarikci: false },
   damga: { makbuzOrani: 948, sozlesmeOrani: 948, kararOrani: 569, kararPulu: "uygulanmaz" },
+  // 2026 için KDV dahil 12.000 TL (fatura düzenleme sınırı); ikincil kaynaktan, docs/mevzuat-varsayimlari.md
+  tevkifatSiniri: 12_000 * TL,
 };
 
 // DT-2026-041 için iki teklifi gelmiş, Kaya Ticaret'in sorgusu henüz işaretlenmemiş bir araştırma.
@@ -128,7 +130,20 @@ export const ornekOlaylar: Olay[] = [
   { alimId: "DT-2026-040", zaman: "2026-10-15T16:05:00", kim: "M. Kaya", tur: "evrak", aciklama: "Fatura: tamamlandı" },
 ];
 
+// Tamamlanmış örnek dosyaların KİK bildirimi, alım ayını izleyen ayın 5'inde yapılmış sayılır.
+const kikBildirildi = Object.fromEntries(
+  ornekAlimlar
+    .filter((a) => a.asama === "tamamlandi")
+    .map((a) => {
+      const yil = Number(a.onayTarihi.slice(0, 4));
+      const ay = Number(a.onayTarihi.slice(5, 7));
+      const tarih = ay === 12 ? `${yil + 1}-01-05` : `${yil}-${String(ay + 1).padStart(2, "0")}-05`;
+      return [a.id, { "kik-bildirimi": { tamam: true, tarih, not: "EKAP" } }];
+    }),
+);
+
 export const ornekEvraklar: Record<string, Record<string, EvrakKaydi>> = {
+  ...kikBildirildi,
   "DT-2026-040": {
     "ihtiyac-yazisi": { tamam: true, tarih: "2026-09-29", not: "" },
     "onay-belgesi": { tamam: true, tarih: "2026-09-30", not: "" },

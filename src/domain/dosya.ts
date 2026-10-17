@@ -57,7 +57,8 @@ export function evrakListesi(alim: Alim): EvrakTanimi[] {
     e("borc-sorgusu", "Vergi ve SGK borç sorgusu", "odeme"),
     e("odeme-emri", "Ödeme emri belgesi", "odeme"),
   );
-  if (bentBilgisi(alim.bent).kikBildirimi) liste.push(e("kik-bildirimi", "KİK bildirimi", "odeme"));
+  // Doğrudan Temin Tebliği m.4/9: bildirim bentten bağımsızdır.
+  liste.push(e("kik-bildirimi", "KİK bildirimi", "odeme"));
   return liste;
 }
 
