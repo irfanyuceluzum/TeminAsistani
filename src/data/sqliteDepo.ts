@@ -228,6 +228,12 @@ export async function sqliteDepo(): Promise<Depo> {
       );
       return Object.fromEntries(satirlar.map((s) => [s.kod, { tamam: s.tamam === 1, tarih: s.tarih, not: s.aciklama }]));
     },
+    async tumEvraklar() {
+      const satirlar = await db.select<{ alim_id: string; kod: string; tamam: number; tarih: string; aciklama: string }[]>("SELECT * FROM evraklar");
+      const sonuc: Record<string, Record<string, EvrakKaydi>> = {};
+      for (const s of satirlar) (sonuc[s.alim_id] ??= {})[s.kod] = { tamam: s.tamam === 1, tarih: s.tarih, not: s.aciklama };
+      return sonuc;
+    },
     async evrakKaydet(alimId, kod, kayit) {
       await evrakYaz(db, alimId, kod, kayit);
     },

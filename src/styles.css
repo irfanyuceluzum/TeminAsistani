@@ -326,3 +326,24 @@ th:last-child, td:last-child { padding-right: 20px; }
 .bilgi { display: flex; flex-direction: column; gap: 2px; min-width: 0; overflow-wrap: anywhere; }
 .sorgu-satiri { flex-direction: row !important; align-items: flex-start; gap: 12px !important; }
 .sorgu-isaret { background: #1d6b3a; color: #fff; }
+
+.grafik { display: flex; gap: 10px; }
+.grafik-eksen { display: flex; flex-direction: column; justify-content: space-between; height: 214px; min-width: 52px; font-family: var(--mono); font-size: 11px; color: var(--soluk); text-align: right; }
+.grafik-eksen span { line-height: 1; transform: translateY(-50%); }
+.grafik-eksen span:last-child { transform: translateY(50%); }
+.grafik-alan { flex: 1; min-width: 0; position: relative; height: 240px; }
+.grafik-cizgiler { position: absolute; left: 0; right: 0; top: 0; height: 214px; display: flex; flex-direction: column; justify-content: space-between; pointer-events: none; }
+.grafik-cizgiler span { height: 1px; background: var(--cizgi-acik); }
+.grafik-cizgiler span:last-child { background: #b8c2cb; }
+.grafik-sutunlar { position: absolute; inset: 0; display: flex; gap: 2px; }
+.grafik-sutun { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; }
+.grafik-cubuk-alani { position: relative; height: 214px; width: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; }
+.grafik-cubuk { width: 72%; max-width: 44px; background: var(--vurgu); border-radius: 4px 4px 0 0; }
+.grafik-cubuk.soluk-cubuk { background: #8fb8c1; }
+.grafik-etiket { font-size: 11px; color: #33424e; margin-bottom: 4px; white-space: nowrap; }
+.grafik-ipucu { position: absolute; bottom: calc(100% - 8px); left: 50%; transform: translateX(-50%); background: var(--murekkep); color: #fff; border-radius: 8px; padding: 8px 10px; font-size: 12px; white-space: nowrap; z-index: 2; display: flex; flex-direction: column; gap: 2px; pointer-events: none; }
+.grafik-ay { height: 26px; display: flex; align-items: flex-end; font-size: 12px; color: var(--ikincil); }
+.ust-cizgi { border-top: 1px solid #e7ebef; padding-top: 12px; gap: 8px; }
+.kucuk-baslik { margin: 0; font-size: 14px; font-weight: 600; }
+.liste-filtreleri { padding: 12px 20px 4px; }
+.liste-alti { padding: 12px 20px; border-top: 1px solid var(--cizgi-acik); }

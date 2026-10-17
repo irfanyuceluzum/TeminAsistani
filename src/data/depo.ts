@@ -27,6 +27,7 @@ export interface Depo {
   olaylar(alimId: string): Promise<Olay[]>;
   olayEkle(o: Olay): Promise<void>;
   evraklar(alimId: string): Promise<Record<string, EvrakKaydi>>;
+  tumEvraklar(): Promise<Record<string, Record<string, EvrakKaydi>>>;
   evrakKaydet(alimId: string, kod: string, kayit: EvrakKaydi): Promise<void>;
   muayeneGetir(alimId: string): Promise<Muayene | null>;
   muayeneKaydet(m: Muayene): Promise<void>;
@@ -92,6 +93,7 @@ export function bellekDepo(): Depo {
       olaylar.push({ ...o, id: olaylar.length + 1 });
     },
     evraklar: async (alimId) => structuredClone(evraklar[alimId] ?? {}),
+    tumEvraklar: async () => structuredClone(evraklar),
     evrakKaydet: async (alimId, kod, kayit) => {
       evraklar[alimId] = { ...(evraklar[alimId] ?? {}), [kod]: { ...kayit } };
     },

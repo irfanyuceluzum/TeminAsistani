@@ -7,8 +7,8 @@ import { MuayeneKabul } from "./ui/sayfalar/MuayeneKabul";
 import { OdemeSayfasi } from "./ui/sayfalar/Odeme";
 import { Parametreler } from "./ui/sayfalar/Parametreler";
 import { PiyasaArastirmasiSayfasi } from "./ui/sayfalar/PiyasaArastirmasi";
+import { Raporlar } from "./ui/sayfalar/Raporlar";
 import { Tedarikciler } from "./ui/sayfalar/Tedarikciler";
-import { Yakinda } from "./ui/sayfalar/Yakinda";
 import { YeniAlim } from "./ui/sayfalar/YeniAlim";
 import { useVeri } from "./ui/useVeri";
 
@@ -27,7 +27,7 @@ export default function App() {
           <Route path="dosyalar/:alimId" element={<DosyaDetay />} />
           <Route path="tedarikciler" element={<Tedarikciler />} />
           <Route path="tedarikciler/:tedarikciId" element={<Tedarikciler />} />
-          <Route path="raporlar" element={<Yakinda baslik="Raporlar" aciklama="Yıllık liste, KİK bildirimleri ve harcama dağılımı." />} />
+          <Route path="raporlar" element={<Raporlar />} />
           <Route path="parametreler" element={<Parametreler />} />
         </Route>
       </Routes>
