@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { ornekAlimlar, ornekAyarlar } from "../data/ornekVeri";
 import { evrakDurumlari, evrakListesi } from "./dosya";
 import { muayeneOlustur } from "./muayene";
-import { ekListesi, odemeHesabi, odemeKontrolleri, odemeMatrahi, odemeOlustur, oebSatirlari, type Odeme } from "./odeme";
+import { ekListesi, kbsAlanlari, odemeHesabi, odemeKontrolleri, odemeMatrahi, odemeOlustur, oebSatirlari, type Odeme } from "./odeme";
 
 const TL = 100;
 const klima = ornekAlimlar.find((a) => a.id === "DT-2026-040")!;
@@ -137,5 +137,41 @@ describe("ödeme emri belgesi satırları", () => {
     m.tamamlandi = true;
     expect(odemeMatrahi(klima, m)).toBe(0);
     expect(odemeMatrahi(klima, null)).toBe(klima.tutar);
+  });
+});
+
+describe("KBS alanları", () => {
+  const ad = "Serin Soğutma Ltd.";
+
+  it("alanları eski ekrandaki sırayla ve adlarla verir", () => {
+    const a = kbsAlanlari(klima, odemeHesabi(matrah, odeme(), ornekAyarlar), ad, "TR00 0000");
+    expect(a.map((x) => x.ad)).toEqual([
+      "Ekonomik kod",
+      "Alacaklı",
+      "IBAN",
+      "Brüt tutar, KDV dahil",
+      "KDV tevkifatı",
+      "Damga vergisi",
+      "Net ödeme",
+      "Ödeme emri açıklaması",
+    ]);
+    expect(a[0].deger).toBe(klima.ekonomikKod);
+    expect(a[1].deger).toBe(ad);
+    expect(a[2].deger).toBe("TR00 0000");
+  });
+
+  it("brüt ve net tutarlar ödeme hesabıyla tutarlıdır", () => {
+    const h = odemeHesabi(matrah, odeme(), ornekAyarlar);
+    const a = kbsAlanlari(klima, h, ad, "");
+    expect(a[3].deger).toBe("56.280,00");
+    expect(a[4].deger).toBe("6.566,00");
+    expect(a[5].deger).toBe("444,61");
+    expect(a[6].deger).toBe(((56_280 * TL - 6_566 * TL - 44_461) / 100).toLocaleString("tr-TR", { minimumFractionDigits: 2 }));
+    expect(a[2].deger).toBe("—");
+  });
+
+  it("tevkifat yokken tevkifat alanı 0,00 olur", () => {
+    const h = odemeHesabi(matrah, odeme({ tevkifatTuru: "yok" }), ornekAyarlar);
+    expect(kbsAlanlari(klima, h, ad, "x")[4].deger).toBe("0,00");
   });
 });

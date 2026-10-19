@@ -302,6 +302,15 @@ export function basamaklar(g: BasamakGirdisi): Basamak[] {
   });
 }
 
+// Kaldırılan tek sayfalık ekranların (piyasa araştırması, muayene ve kabul, ödeme) işlevi basamaklara taşındı;
+// eski ekranın karşılığı olan basamak: piyasa 7 (piyasa fiyat araştırma tutanağı),
+// muayene 10 (muayene raporu), ödeme 13 (ödeme emri belgesi).
+export function eskiEkranBasamagi(ekran: "piyasa" | "muayene" | "odeme"): number {
+  if (ekran === "piyasa") return 7;
+  if (ekran === "muayene") return 10;
+  return 13;
+}
+
 // Dosya açıldığında gidilecek basamak: süren basamak, hepsi bittiyse sonuncusu.
 export function acilisBasamagi(liste: Basamak[]): number {
   return liste.find((b) => b.durum === "suruyor")?.no ?? liste[liste.length - 1].no;

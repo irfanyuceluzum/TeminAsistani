@@ -155,6 +155,33 @@ function tl(kurus: number): string {
   return "₺" + (kurus / 100).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+function tutarMetni(kurus: number): string {
+  return (kurus / 100).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+export interface KbsAlani {
+  ad: string;
+  deger: string;
+}
+
+// KBS'de ödeme emri belgesi oluşturulurken kopyalanacak alanlar. Tutarlar "1.234,56" biçiminde, TL işaretsizdir.
+export function kbsAlanlari(alim: Alim, h: OdemeHesabi, yukleniciAdi: string, iban: string): KbsAlani[] {
+  const mahsup = h.vergiMahsubu + h.sgkMahsubu > 0 ? " Kamu borcu ödemeden mahsup edilmiştir." : "";
+  return [
+    { ad: "Ekonomik kod", deger: alim.ekonomikKod },
+    { ad: "Alacaklı", deger: yukleniciAdi },
+    { ad: "IBAN", deger: iban.trim() || "—" },
+    { ad: "Brüt tutar, KDV dahil", deger: tutarMetni(h.brut) },
+    { ad: "KDV tevkifatı", deger: tutarMetni(h.tevkifat) },
+    { ad: "Damga vergisi", deger: tutarMetni(h.damga.toplam) },
+    { ad: "Net ödeme", deger: tutarMetni(h.yukleniciye) },
+    {
+      ad: "Ödeme emri açıklaması",
+      deger: `${alim.id} dosyası, 4734 sayılı Kanun ${alim.bent} kapsamında doğrudan teminle alınan ${alim.konu.toLocaleLowerCase("tr-TR")} bedeli. ${yukleniciAdi}.${mahsup}`,
+    },
+  ];
+}
+
 export function odemeKontrolleri(o: Odeme, h: OdemeHesabi, ekler: { ad: string; tamam: boolean }[], ayarlar: Ayarlar, sozlesmeGerekli = false): Kontrol[] {
   const k: Kontrol[] = [];
   if (sozlesmeGerekli && !o.sozlesmeVar) {

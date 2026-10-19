@@ -43,6 +43,11 @@ function metinleriKur(a: Ayarlar): Metinler {
   };
 }
 
+// Bütçe kodlarının boş başlangıç değeri; üç girdiden biri değişince diğerleri korunur.
+function butceTaslagi(a: Ayarlar): NonNullable<Ayarlar["butce"]> {
+  return { kurumsal: "", fonksiyonel: "", finansman: "", ...a.butce };
+}
+
 // Metin alanlarını ayarlara çevirir; okunamayan alanlar için hata döner.
 function taslaktanAyar(taslak: Ayarlar, m: Metinler): { ayar: Ayarlar; hatalar: string[] } {
   const hatalar: string[] = [];
@@ -211,6 +216,18 @@ export function Parametreler() {
           <div className="alan">
             <label htmlFor="birim-adi">Birim (2. satır)</label>
             <input id="birim-adi" value={taslak.idare?.birim ?? ""} onChange={(e) => taslakDegistir({ idare: { ustIdare: taslak.idare?.ustIdare ?? "", birim: e.target.value } })} placeholder="Kırmızıdağ İlkokulu Müdürlüğü" />
+          </div>
+          <div className="alan">
+            <label htmlFor="kurumsal-kod">Kurumsal kod</label>
+            <input id="kurumsal-kod" value={taslak.butce?.kurumsal ?? ""} onChange={(e) => taslakDegistir({ butce: { ...butceTaslagi(taslak), kurumsal: e.target.value } })} placeholder="18.01.31.00" />
+          </div>
+          <div className="alan">
+            <label htmlFor="fonksiyonel-kod">Fonksiyonel kod</label>
+            <input id="fonksiyonel-kod" value={taslak.butce?.fonksiyonel ?? ""} onChange={(e) => taslakDegistir({ butce: { ...butceTaslagi(taslak), fonksiyonel: e.target.value } })} placeholder="09.1.2.00" />
+          </div>
+          <div className="alan">
+            <label htmlFor="finansman-tipi">Finansman tipi</label>
+            <input id="finansman-tipi" value={taslak.butce?.finansman ?? ""} onChange={(e) => taslakDegistir({ butce: { ...butceTaslagi(taslak), finansman: e.target.value } })} placeholder="1" />
           </div>
         </div>
         <div className="baslik-onizleme">

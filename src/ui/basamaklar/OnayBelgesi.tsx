@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { makamBasligi, onayBelgesiKontrolleri } from "../../domain/basamaklar";
+import { butceTertibi } from "../../domain/parametreler";
 import { engelVarMi } from "../../domain/sihirbaz";
 import { bugun, tl } from "../bicim";
 import { BelgeOnizleme } from "../BelgeOnizleme";
@@ -171,8 +172,8 @@ export function OnayBelgesiBasamagi({ b }: { b: BasamakBaglami }) {
               <span className="kalin">{dosya.odenek > 0 ? tl(dosya.odenek) : "Girilmemiş"}</span>
             </div>
             <div className="anahtar-deger">
-              <span>Bütçe tertibi (Ekonomik kod)</span>
-              <span>{alim.ekonomikKod || "Seçilmemiş"}</span>
+              <span>Bütçe tertibi</span>
+              <span>{alim.ekonomikKod ? butceTertibi(ayarlar, alim.ekonomikKod) : "Seçilmemiş"}</span>
             </div>
             <div className="anahtar-deger">
               <span>Alım usulü ve dayanak</span>

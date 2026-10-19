@@ -243,3 +243,20 @@ export function piyasaKontrolleri(
   }
   return k;
 }
+
+// Teklif tarihleri: fiyat girilmiş teklifte tarih zorunlu; son teklif tarihinden sonra gelen ya da yazıdan önceki tarih uyarılır.
+export function teklifTarihiKontrolleri(p: PiyasaArastirmasi, firmaAdi: (id: string) => string = (id) => id): Kontrol[] {
+  const k: Kontrol[] = [];
+  const son = p.yazi?.sonTeklifTarihi;
+  const yaziTarihi = p.yazi?.tarih;
+  for (const t of p.teklifler) {
+    const fiyatli = Object.values(t.fiyatlar).some((v) => v !== null && v !== undefined && v > 0);
+    if (!t.teklifTarihi) {
+      if (fiyatli) k.push({ durum: "yapilacak", baslik: `Teklif tarihi girilmedi (${firmaAdi(t.tedarikciId)})`, detay: "Fiyatı girilen firmanın teklif tarihini yazın." });
+      continue;
+    }
+    if (son && t.teklifTarihi > son) k.push({ durum: "uyari", baslik: `Geç gelen teklif (${firmaAdi(t.tedarikciId)})`, detay: `Teklif tarihi ${t.teklifTarihi}, son teklif tarihi ${son}.` });
+    if (yaziTarihi && t.teklifTarihi < yaziTarihi) k.push({ durum: "uyari", baslik: `Teklif tarihi yazıdan önce (${firmaAdi(t.tedarikciId)})`, detay: `Teklif tarihi ${t.teklifTarihi}, teklif isteme yazısı ${yaziTarihi} tarihli.` });
+  }
+  return k;
+}

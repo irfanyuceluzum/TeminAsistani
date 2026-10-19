@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
+import type { GorevAtamalari, Personel } from "./tipler";
+import { BOS_GOREVLER } from "./personel";
 import { ornekAlimlar, ornekPiyasa } from "../data/ornekVeri";
-import { kabulSonucu, muayeneKalemKontrolleri, muayeneKontrolleri, muayeneOlustur, muayeneOzeti, type Muayene } from "./muayene";
+import { dosyaKomisyonuKontrolleri, muayeneSonrasiDosya, kabulSonucu, muayeneKalemKontrolleri, muayeneKontrolleri, muayeneOlustur, muayeneOzeti, type Muayene } from "./muayene";
 
 const TL = 100;
 const klima = ornekAlimlar.find((a) => a.id === "DT-2026-040")!;
@@ -108,5 +110,54 @@ describe("teslim ve muayene tarihi", () => {
   it("kalem kontrolleri komisyonu denetlemez", () => {
     const m = muayeneOlustur(klima, klimaPiyasa, "2026-10-16");
     expect(muayeneKalemKontrolleri(m).map((x) => x.baslik)).not.toContain("Üye adı eksik");
+  });
+});
+
+describe("dosyaKomisyonuKontrolleri", () => {
+  const personel: Personel[] = [
+    { id: "p1", ad: "İlker Demir", unvan: "Müdür" },
+    { id: "p2", ad: "Ayşe Kaya", unvan: "Öğretmen" },
+    { id: "p3", ad: "Mehmet Tan", unvan: "Öğretmen" },
+  ];
+  const g: GorevAtamalari = { ...BOS_GOREVLER, harcamaYetkilisi: "p1", gerceklestirme: "p2", piyasaGorevlileri: ["p3"] };
+  const uye = (ad: string, rol: "baskan" | "uye" = "uye") => ({ ad, unvan: "", rol });
+  const uc = [uye("A Bir", "baskan"), uye("B İki"), uye("C Üç")];
+  const durumlar = (u: ReturnType<typeof uye>[], gg = g) => dosyaKomisyonuKontrolleri(u, personel, gg).map((x) => `${x.durum}:${x.baslik}`);
+
+  it("uygun komisyonda tek tamam", () => {
+    expect(durumlar(uc)).toEqual(["tamam:Muayene komisyonu uygun"]);
+  });
+  it("başkan sayısı 1 değilse engel", () => {
+    expect(durumlar([uye("A"), uye("B"), uye("C")])).toContain("engel:Komisyon başkanı");
+    expect(durumlar([uye("A", "baskan"), uye("B", "baskan"), uye("C")])).toContain("engel:Komisyon başkanı");
+  });
+  it("adı boş üye engel", () => {
+    expect(durumlar([uye("A", "baskan"), uye(" "), uye("C")])).toContain("engel:Üye adı eksik");
+  });
+  it("üye sayısı 3'ten az ya da çiftse uyarı", () => {
+    expect(durumlar([uye("A", "baskan"), uye("B")])).toContain("uyari:2 kişilik komisyon");
+    expect(durumlar([...uc, uye("D")])).toContain("uyari:4 kişilik komisyon");
+  });
+  it("harcama yetkilisi ya da gerçekleştirme görevlisi üyeyse engel (Türkçe büyük/küçük duyarsız)", () => {
+    expect(durumlar([uye("A", "baskan"), uye("B"), uye("İLKER DEMİR")])).toContain("engel:Yetkili muayene komisyonunda yer alamaz");
+    expect(durumlar([uye("A", "baskan"), uye("B"), uye("ayşe kaya")])).toContain("engel:Yetkili muayene komisyonunda yer alamaz");
+  });
+  it("piyasa görevlisi üyeyse görev çakışması uyarısı kişi adıyla", () => {
+    const r = dosyaKomisyonuKontrolleri([uye("A", "baskan"), uye("B"), uye("mehmet tan")], personel, g);
+    const c = r.find((x) => x.baslik === "Görev çakışması")!;
+    expect(c.durum).toBe("uyari");
+    expect(c.detay).toContain("Mehmet Tan");
+  });
+});
+
+describe("muayeneSonrasiDosya", () => {
+  it("ödeme aşaması, kabul tutarı ve açıklama", () => {
+    const m = dolu();
+    m.kalemler[0].kabulMiktari = m.kalemler[0].faturaMiktari - 1;
+    const r = muayeneSonrasiDosya(m);
+    expect(r.asama).toBe("odeme");
+    expect(r.tutar).toBe(muayeneOzeti(m).kabulToplami);
+    expect(r.aciklama).toContain(kabulSonucu(m).metin);
+    expect(r.aciklama).toContain("kabul tutarı");
   });
 });

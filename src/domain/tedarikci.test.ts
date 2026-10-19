@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ornekAlimlar, ornekPiyasa, ornekTedarikciler } from "../data/ornekVeri";
-import { bilgiEksik, firmaGecmisi, ibanBicimle, ibanGecerli, sorguYasi, tedarikciHatalari } from "./tedarikci";
+import { bilgiEksik, firmaGecmisi, ibanBicimle, ibanGecerli, sorguYasi, tedarikciHatalari, yeniTedarikci } from "./tedarikci";
 
 const TL = 100;
 
@@ -61,5 +61,25 @@ describe("doğrulama", () => {
 
   it("firmanın kendi kaydını çift saymaz", () => {
     expect(tedarikciHatalari(ornekTedarikciler[0], ornekTedarikciler)).toEqual([]);
+  });
+});
+
+describe("yeni tedarikçi", () => {
+  it("ad ve kategoriyi kırpar, adından kimlik türetir", () => {
+    expect(yeniTedarikci("  Çağrı Kırtasiye  ", " Kırtasiye ", [])).toEqual({ id: "cagri-kirtasiye", ad: "Çağrı Kırtasiye", kategori: "Kırtasiye" });
+  });
+
+  it("boş ad için hata verir", () => {
+    expect(() => yeniTedarikci("   ", "x", [])).toThrow("Firma adını yazın.");
+  });
+
+  it("aynı adı Türkçe büyük/küçük harf duyarsız reddeder", () => {
+    const mevcut = [{ id: "isik", ad: "Işık Ticaret", kategori: "" }];
+    expect(() => yeniTedarikci("IŞIK TİCARET", "", mevcut)).toThrow("Bu adla kayıtlı bir firma var.");
+  });
+
+  it("kimlik mevcut kimliklerle çakışmaz", () => {
+    const mevcut = [{ id: "ege", ad: "Ege Ltd", kategori: "" }];
+    expect(yeniTedarikci("Ege", "", mevcut).id).toBe("ege-2");
   });
 });

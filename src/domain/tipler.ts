@@ -80,6 +80,9 @@ export interface Ayarlar {
   // KDV dahil bedel bu tutarı aşarsa tevkifat uygulanır; kuruş. Tanımsızsa her tutara uygulanır.
   tevkifatSiniri?: number;
   idare?: IdareBilgisi;
+  // Analitik bütçe sınıflandırmasının idareye ait kodları; belgelerde ekonomik kodun önüne yazılır.
+  // Biçimler: kurumsal 18.01.31.00, fonksiyonel 09.1.2.00, finansman tipi 1 (uydurma örnekler).
+  butce?: { kurumsal: string; fonksiyonel: string; finansman: string };
   personel?: Personel[];
   gorevler?: GorevAtamalari;
 }

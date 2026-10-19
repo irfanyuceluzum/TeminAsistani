@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useOutletContext, useParams } from "react-router-dom";
+import { eskiEkranBasamagi } from "../../domain/basamaklar";
 import type { PiyasaArastirmasi } from "../../domain/piyasa";
 import {
   bilgiEksik,
@@ -322,7 +323,7 @@ export function Tedarikciler() {
                           <span className="blok">Yasaklı değil</span>
                           <span className="soluk kucuk">
                             <span className="mono">{uzunTarih(s.tarih)}</span> ·{" "}
-                            <Link to={`/piyasa/${s.alimId}`} className="mono">
+                            <Link to={`/dosyalar/${s.alimId}/basamak/${eskiEkranBasamagi("piyasa")}`} className="mono">
                               {s.alimId}
                             </Link>
                           </span>

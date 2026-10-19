@@ -115,3 +115,12 @@ export function firmaKimligi(ad: string, mevcut: string[]): string {
   for (let i = 2; mevcut.includes(id); i++) id = `${kok}-${i}`;
   return id;
 }
+
+// Rehbere yeni firma kaydı: ad ve kategori kırpılır, aynı ad (Türkçe harf duyarsız) ikinci kez eklenmez.
+export function yeniTedarikci(ad: string, kategori: string, mevcut: Tedarikci[]): Tedarikci {
+  const temizAd = ad.trim();
+  if (!temizAd) throw new Error("Firma adını yazın.");
+  const anahtar = temizAd.toLocaleLowerCase("tr-TR");
+  if (mevcut.some((x) => x.ad.trim().toLocaleLowerCase("tr-TR") === anahtar)) throw new Error("Bu adla kayıtlı bir firma var.");
+  return { id: firmaKimligi(temizAd, mevcut.map((x) => x.id)), ad: temizAd, kategori: kategori.trim() };
+}

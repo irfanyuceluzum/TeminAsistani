@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
 import type { FiyatIsteme, MaliyetFirmasi, YaklasikMaliyet } from "../../domain/basamaklar";
 import { tutarCoz } from "../../domain/sihirbaz";
 import { BelgeOnizleme } from "../BelgeOnizleme";
 import { miktarYazisi } from "../IhtiyacListesi";
 import type { BasamakBaglami } from "../sayfalar/DosyaCalismaAlani";
 import { fiyatIstemeSayfalari } from "./belgeler";
+import { YeniFirmaFormu } from "./YeniFirmaFormu";
 
 function fiyatYazisi(kurus: number | null | undefined): string {
   return kurus === null || kurus === undefined ? "" : (kurus / 100).toLocaleString("tr-TR", { maximumFractionDigits: 2 });
@@ -158,10 +158,17 @@ export function FiyatIstemeBasamagi({ b }: { b: BasamakBaglami }) {
           >
             Firma ekle
           </button>
-          <Link to="/tedarikciler" className="kucuk">
-            Rehberde olmayan firma
-          </Link>
         </div>
+        <YeniFirmaFormu
+          b={b}
+          kimlik="fi-yeni"
+          onEklendi={(id) =>
+            dosyaDegistir((x) => ({
+              ...x,
+              yaklasik: { ...x.yaklasik, firmalar: [...x.yaklasik.firmalar, { tedarikciId: id, belgeAlindi: false, fiyatlar: {} }], onaylandi: false },
+            }))
+          }
+        />
       </section>
 
       <section className="panel bosluksuz" aria-labelledby="teklif-giris-baslik">

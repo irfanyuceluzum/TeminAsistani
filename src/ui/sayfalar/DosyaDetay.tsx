@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import { Link, useOutletContext, useParams } from "react-router-dom";
 import { olayKaydet } from "../../data/olay";
 import { asamaIlerlemesi, asamaSirasi, evrakDurumlari, type EvrakKaydi, type Olay } from "../../domain/dosya";
+import { eskiEkranBasamagi } from "../../domain/basamaklar";
+import { butceTertibi } from "../../domain/parametreler";
 import type { PiyasaArastirmasi } from "../../domain/piyasa";
 import type { Asama } from "../../domain/tipler";
 import { ASAMA_ADI, asamaGrubu, bugun, tl, uzunTarih } from "../bicim";
@@ -162,18 +164,18 @@ export function DosyaDetay() {
             })}
           </ol>
           {!kapali && ilerleme.ekran === "piyasa" && (
-            <Link to={`/piyasa/${alim.id}`} className="dugme dugme-ana">
-              Piyasa araştırmasına git
+            <Link to={`/dosyalar/${alim.id}/basamak/${eskiEkranBasamagi("piyasa")}`} className="dugme dugme-ana">
+              {eskiEkranBasamagi("piyasa")}. basamağa git: piyasa fiyat araştırma tutanağı
             </Link>
           )}
           {!kapali && ilerleme.ekran === "muayene" && (
-            <Link to={`/muayene/${alim.id}`} className="dugme dugme-ana">
-              Muayene ve kabul tutanağını hazırla
+            <Link to={`/dosyalar/${alim.id}/basamak/${eskiEkranBasamagi("muayene")}`} className="dugme dugme-ana">
+              {eskiEkranBasamagi("muayene")}. basamağa git: muayene raporu ve kabul
             </Link>
           )}
           {!kapali && ilerleme.ekran === "odeme" && (
-            <Link to={`/odeme/${alim.id}`} className="dugme dugme-ana">
-              Ödeme ekranını aç
+            <Link to={`/dosyalar/${alim.id}/basamak/${eskiEkranBasamagi("odeme")}`} className="dugme dugme-ana">
+              {eskiEkranBasamagi("odeme")}. basamağa git: ödeme emri belgesi
             </Link>
           )}
           {!kapali && ilerleme.sonraki && ilerleme.ekran === null && (
@@ -231,17 +233,17 @@ export function DosyaDetay() {
                   </span>
                 </span>
                 {e.sistemden && e.kod !== "ekap-kaydi" && alim.bent === "22/d" && (
-                  <Link to={`/piyasa/${alim.id}`} className="kucuk">
+                  <Link to={`/dosyalar/${alim.id}/basamak/${eskiEkranBasamagi("piyasa")}`} className="kucuk">
                     Aç
                   </Link>
                 )}
                 {(e.kod === "borc-sorgusu" || e.kod === "odeme-emri") && (alim.asama === "odeme" || e.tamam) && (
-                  <Link to={`/odeme/${alim.id}`} className="kucuk">
+                  <Link to={`/dosyalar/${alim.id}/basamak/${eskiEkranBasamagi("odeme")}`} className="kucuk">
                     Aç
                   </Link>
                 )}
                 {e.kod === "muayene-tutanagi" && (alim.asama === "muayene" || e.tamam) && (
-                  <Link to={`/muayene/${alim.id}`} className="kucuk">
+                  <Link to={`/dosyalar/${alim.id}/basamak/${eskiEkranBasamagi("muayene")}`} className="kucuk">
                     Aç
                   </Link>
                 )}
@@ -259,7 +261,7 @@ export function DosyaDetay() {
             </div>
             <div className="anahtar-deger">
               <span>Bütçe tertibi</span>
-              <span className="mono">{alim.ekonomikKod}</span>
+              <span className="mono">{butceTertibi(ayarlar, alim.ekonomikKod)}</span>
             </div>
             <div className="anahtar-deger">
               <span>Kalem kodu</span>

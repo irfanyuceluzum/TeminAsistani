@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { SARTLAR, veriKontrolleri, type SartKodu } from "../../domain/basamaklar";
+import { butceTertibi } from "../../domain/parametreler";
 import { bentBilgisi, tutarCoz } from "../../domain/sihirbaz";
 import { tlKurus, uzunTarih } from "../bicim";
 import { IhtiyacListesiDuzenleyici } from "../IhtiyacListesi";
@@ -70,7 +71,7 @@ export function VeriGirisi({ b }: { b: BasamakBaglami }) {
               }}
             />
             <span id="odenek-not" className={`kucuk ${odenekGecersiz ? "hata-yazi" : "soluk"}`}>
-              {odenekGecersiz ? "Tutarı 85.000,00 biçiminde yazın." : dosya.odenek ? `${tlKurus(dosya.odenek)} · ${alim.ekonomikKod} tertibi` : "Bütçe tertibindeki kalan ödenek"}
+              {odenekGecersiz ? "Tutarı 85.000,00 biçiminde yazın." : dosya.odenek ? `${tlKurus(dosya.odenek)} · ${butceTertibi(b.veri.ayarlar, alim.ekonomikKod)} tertibi` : "Bütçe tertibindeki kalan ödenek"}
             </span>
           </div>
         </div>

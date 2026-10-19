@@ -17,7 +17,6 @@ import { bosArastirma, type PiyasaArastirmasi, type PiyasaKalemi } from "../../d
 import type { Alim } from "../../domain/tipler";
 import { olayKaydet } from "../../data/olay";
 import { bugun, tl } from "../bicim";
-import { BaglantiBasamagi, EvrakBasamagi } from "../basamaklar/EvrakBasamagi";
 import { FiyatIstemeBasamagi } from "../basamaklar/FiyatIsteme";
 import { IhtiyacOnayiBasamagi } from "../basamaklar/IhtiyacOnayi";
 import { OnayBelgesiBasamagi } from "../basamaklar/OnayBelgesi";
@@ -215,8 +214,7 @@ function CalismaAlani({ alimId }: { alimId: string }) {
   else if (secili.no === 9 || secili.no === 10 || secili.no === 11) icerik = <MuayeneBasamagi b={baglam} />;
   else if (secili.no === 12) icerik = <TasinirBasamagi b={baglam} />;
   else if (secili.no === 13) icerik = <OdemeBasamagi b={baglam} />;
-  else if (secili.evrakKodu) icerik = <EvrakBasamagi b={baglam} />;
-  else icerik = <BaglantiBasamagi b={baglam} />;
+  else icerik = null;
 
 
   return (

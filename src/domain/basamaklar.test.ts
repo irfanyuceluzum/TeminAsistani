@@ -5,6 +5,7 @@ import {
   basamaklar,
   basamaklariTamamla,
   bosBasamaklar,
+  eskiEkranBasamagi,
   evrakFormu,
   evrakKaydiYap,
   ilerleme,
@@ -274,5 +275,13 @@ describe("yaklaşık maliyet ve dosya tutarı", () => {
 
   it("tutanaktan sonra sipariş tutarını değiştirmez", () => {
     expect(yaklasikTutarYazilir({ ...temizlikPiyasa, tamamlandi: true }, 26_000 * TL, 25_380 * TL)).toBe(false);
+  });
+});
+
+describe("eskiEkranBasamagi", () => {
+  it("eski ekranları karşılığı olan basamağa eşler", () => {
+    expect(eskiEkranBasamagi("piyasa")).toBe(7);
+    expect(eskiEkranBasamagi("muayene")).toBe(10);
+    expect(eskiEkranBasamagi("odeme")).toBe(13);
   });
 });

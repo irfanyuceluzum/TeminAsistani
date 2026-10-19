@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ornekAlimlar, ornekAyarlar, ornekLimitDonemleri, ornekPiyasa, ornekTedarikciler } from "../data/ornekVeri";
-import { degerlendir, firmaToplami, piyasaKontrolleri, yaziEksikleri, type PiyasaArastirmasi } from "./piyasa";
+import { degerlendir, firmaToplami, piyasaKontrolleri, teklifTarihiKontrolleri, yaziEksikleri, type PiyasaArastirmasi } from "./piyasa";
 
 const TL = 100;
 const alim = ornekAlimlar.find((a) => a.id === "DT-2026-041")!;
@@ -136,5 +136,42 @@ describe("tutanaktaki seçilen fiyat sütunu", () => {
       expect(a.birimFiyat).toBe(Math.min(...fiyatlar));
     }
     expect(s.atamalar.reduce((t, a) => t + a.tutar, 0)).toBe(s.toplam);
+  });
+});
+
+describe("teklif tarihi kontrolleri", () => {
+  const yazi = { sayi: "1", tarih: "2026-10-10", sonTeklifTarihi: "2026-10-15", teslimYeri: "", teslimSuresi: "", aciklama: "" };
+  const teklif = (teklifTarihi: string | null, fiyat: number | null) => ({ tedarikciId: "x", teklifTarihi, yasaklilikSorgusu: null, fiyatlar: { k1: fiyat } });
+
+  it("fiyatı olup tarihi olmayan firma için yapılacak verir", () => {
+    const k = teklifTarihiKontrolleri(arastirma({ yazi, teklifler: [teklif(null, 100)] }));
+    expect(k).toHaveLength(1);
+    expect(k[0].durum).toBe("yapilacak");
+  });
+
+  it("fiyatı da tarihi de olmayan firmayı atlar", () => {
+    expect(teklifTarihiKontrolleri(arastirma({ yazi, teklifler: [teklif(null, null)] }))).toEqual([]);
+  });
+
+  it("son teklif tarihinden sonra gelen teklifi uyarır", () => {
+    const k = teklifTarihiKontrolleri(arastirma({ yazi, teklifler: [teklif("2026-10-16", 100)] }));
+    expect(k).toHaveLength(1);
+    expect(k[0].durum).toBe("uyari");
+    expect(k[0].baslik).toContain("x");
+  });
+
+  it("yazı tarihinden önceki teklifi uyarır", () => {
+    const k = teklifTarihiKontrolleri(arastirma({ yazi, teklifler: [teklif("2026-10-09", 100)] }));
+    expect(k.map((x) => x.durum)).toEqual(["uyari"]);
+  });
+
+  it("başlıkta firma adını kullanır", () => {
+    const k = teklifTarihiKontrolleri(arastirma({ yazi, teklifler: [teklif("2026-10-16", 100)] }), () => "Ece Ltd.");
+    expect(k[0].baslik).toContain("Ece Ltd.");
+    expect(k[0].baslik).not.toContain("(x)");
+  });
+
+  it("aralık içindeki tarih sorunsuzdur", () => {
+    expect(teklifTarihiKontrolleri(arastirma({ yazi, teklifler: [teklif("2026-10-12", 100)] }))).toEqual([]);
   });
 });

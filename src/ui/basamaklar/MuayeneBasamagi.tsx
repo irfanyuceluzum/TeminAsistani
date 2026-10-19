@@ -8,8 +8,8 @@ import { muayeneTalebiSayfalari, muayeneKabulTutanagiSayfalari } from "./belgele
 import type { Kontrol } from "../../domain/sihirbaz";
 import { evrakFormu, evrakKaydiYap } from "../../domain/basamaklar";
 import { bugun } from "../bicim";
-import { BOS_GOREVLER, belgeGorevlileri, muayeneKomisyonuKontrolleri } from "../../domain/personel";
-import { kabulSonucu, muayeneKalemKontrolleri, muayeneOlustur, type Muayene } from "../../domain/muayene";
+import { BOS_GOREVLER, belgeGorevlileri } from "../../domain/personel";
+import { dosyaKomisyonuKontrolleri, kabulSonucu, muayeneKalemKontrolleri, muayeneOlustur, muayeneSonrasiDosya, type KomisyonUyesi, type Muayene } from "../../domain/muayene";
 
 export function MuayeneBasamagi({ b }: { b: BasamakBaglami }) {
   const navigate = useNavigate();
@@ -41,6 +41,15 @@ export function MuayeneBasamagi({ b }: { b: BasamakBaglami }) {
   const kabulDegistir = (kalemId: string, miktar: number) =>
     setTaslak((m) => ({ ...m, kalemler: m.kalemler.map((x) => (x.kalemId === kalemId ? { ...x, kabulMiktari: Math.max(0, miktar) } : x)) }));
 
+  const faturaDegistir = (kalemId: string, miktar: number) =>
+    setTaslak((m) => ({ ...m, kalemler: m.kalemler.map((x) => (x.kalemId === kalemId ? { ...x, faturaMiktari: Math.max(0, miktar) } : x)) }));
+  const uyeDegistir = (i: number, d: Partial<KomisyonUyesi>) =>
+    setTaslak((m) => ({
+      ...m,
+      uyeler: m.uyeler.map((u, j) => (j === i ? { ...u, ...d } : d.rol === "baskan" ? { ...u, rol: "uye" } : u)),
+    }));
+  const uyeleriYenidenDoldur = () => setTaslak((m) => ({ ...m, uyeler: belgeGorevlileri(ayarlar).komisyon.map((u) => ({ ...u })) }));
+
   const kontroller = useMemo((): Kontrol[] => {
     const k: Kontrol[] = [];
     const g = ayarlar.gorevler;
@@ -58,7 +67,7 @@ export function MuayeneBasamagi({ b }: { b: BasamakBaglami }) {
         k.push({ durum: "tamam", baslik: "Talep yazısı hazır", detay: "Muayene komisyonuna sevk yazısı düzenlendi." });
       }
     } else {
-      k.push(...muayeneKomisyonuKontrolleri(ayarlar.personel ?? [], g ?? BOS_GOREVLER));
+      k.push(...dosyaKomisyonuKontrolleri(aktifMuayene.uyeler, ayarlar.personel ?? [], g ?? BOS_GOREVLER));
 
       k.push(...muayeneKalemKontrolleri(aktifMuayene));
       const siparis = b.evraklar["siparis-yazisi"]?.tarih?.slice(0, 10);
@@ -110,6 +119,8 @@ export function MuayeneBasamagi({ b }: { b: BasamakBaglami }) {
         // Evrak kontrol listesindeki karşılıkları: fatura ve muayene ve kabul tutanağı
         await b.evrakDegistir("fatura", "Fatura", fatura);
         await b.evrakDegistir("muayene-tutanagi", "Muayene ve kabul tutanağı", { ...fatura, not: "" });
+        const sonraki = muayeneSonrasiDosya(aktifMuayene);
+        await b.alimDegistir({ asama: sonraki.asama, tutar: sonraki.tutar }, sonraki.aciklama);
         navigate(`/dosyalar/${alim.id}/basamak/12`);
       }
     } finally {
@@ -186,6 +197,10 @@ export function MuayeneBasamagi({ b }: { b: BasamakBaglami }) {
                 <input id="muayene-tarihi" type="date" value={muayeneTarihi} onChange={(e) => setMuayeneTarihi(e.target.value)} />
               </div>
               <div className="alan tam">
+                <label htmlFor="muayene-yeri">Muayene yeri</label>
+                <input id="muayene-yeri" type="text" value={taslak.yer} onChange={(e) => setTaslak((m) => ({ ...m, yer: e.target.value }))} placeholder="Örn: Okul depo odası" />
+              </div>
+              <div className="alan tam">
                 <span className="etiket-yazi">Kabul sonucu</span>
                 <div className="salt kalin" style={{ color: sonuc.sonuc === "tam" ? "var(--basari)" : sonuc.sonuc === "kismi" ? "var(--uyari)" : "var(--tehlike)" }}>
                   {sonuc.metin}
@@ -197,6 +212,9 @@ export function MuayeneBasamagi({ b }: { b: BasamakBaglami }) {
                     <th scope="col">Kalem</th>
                     <th scope="col" className="sag">
                       Sipariş
+                    </th>
+                    <th scope="col" className="sag">
+                      Fatura
                     </th>
                     <th scope="col" className="sag">
                       Kabul
@@ -215,6 +233,17 @@ export function MuayeneBasamagi({ b }: { b: BasamakBaglami }) {
                           className="girdi mono fiyat-girdi"
                           type="number"
                           min={0}
+                          max={x.siparisMiktari}
+                          value={x.faturaMiktari}
+                          aria-label={`${x.ad} fatura miktarı`}
+                          onChange={(e) => faturaDegistir(x.kalemId, Number(e.target.value) || 0)}
+                        />
+                      </td>
+                      <td className="sag">
+                        <input
+                          className="girdi mono fiyat-girdi"
+                          type="number"
+                          min={0}
                           max={x.faturaMiktari}
                           value={x.kabulMiktari}
                           aria-label={`${x.ad} kabul miktarı`}
@@ -225,6 +254,43 @@ export function MuayeneBasamagi({ b }: { b: BasamakBaglami }) {
                   ))}
                 </tbody>
               </table>
+              <div className="alan tam">
+                <div className="panel-baslik-satiri">
+                  <span className="etiket-yazi">Muayene ve kabul komisyonu</span>
+                  <div className="dugme-grubu">
+                    <button type="button" className="dugme kucuk-dugme" onClick={uyeleriYenidenDoldur}>
+                      Görevlendirmeden yeniden doldur
+                    </button>
+                    <button type="button" className="dugme kucuk-dugme" onClick={() => setTaslak((m) => ({ ...m, uyeler: [...m.uyeler, { ad: "", unvan: "", rol: "uye" }] }))}>
+                      Üye ekle
+                    </button>
+                  </div>
+                </div>
+                {taslak.uyeler.map((u, i) => (
+                  <div key={i} className="kalem-satiri">
+                    <label className="onay-kutusu baskan-secimi">
+                      <input type="radio" name="baskan" checked={u.rol === "baskan"} onChange={() => uyeDegistir(i, { rol: "baskan" })} />
+                      Başkan
+                    </label>
+                    <label className="gizli" htmlFor={`uye-ad-${i}`}>
+                      {i + 1}. üyenin adı
+                    </label>
+                    <input id={`uye-ad-${i}`} className="girdi genis-girdi" value={u.ad} onChange={(e) => uyeDegistir(i, { ad: e.target.value })} placeholder="Ad Soyad" />
+                    <label className="gizli" htmlFor={`uye-unvan-${i}`}>
+                      {i + 1}. üyenin unvanı
+                    </label>
+                    <input id={`uye-unvan-${i}`} className="girdi unvan-girdi" value={u.unvan} onChange={(e) => uyeDegistir(i, { unvan: e.target.value })} placeholder="Unvan" />
+                    <button
+                      type="button"
+                      className="dugme kucuk-dugme"
+                      aria-label={`${u.ad || `${i + 1}. üyeyi`} çıkar`}
+                      onClick={() => setTaslak((m) => ({ ...m, uyeler: m.uyeler.filter((_, j) => j !== i) }))}
+                    >
+                      Çıkar
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 

@@ -40,6 +40,13 @@ export function limitDonemiHatalari(yeni: LimitDonemi, mevcut: LimitDonemi[]): s
   return h;
 }
 
+// Bütçe tertibi: "kurumsal · fonksiyonel · finansman · ekonomik"; boş parçalar atlanır, hiçbiri yoksa "—".
+export function butceTertibi(ayarlar: Ayarlar, ekonomikKod: string): string {
+  const b = ayarlar.butce;
+  const parcalar = [b?.kurumsal, b?.fonksiyonel, b?.finansman, ekonomikKod].map((p) => (p ?? "").trim()).filter((p) => p !== "");
+  return parcalar.length > 0 ? parcalar.join(" · ") : "—";
+}
+
 export function ayarHatalari(a: Ayarlar): string[] {
   const h: string[] = [];
   const p = a.bolme.pencereGun;
@@ -55,6 +62,14 @@ export function ayarHatalari(a: Ayarlar): string[] {
   }
   for (const [yil, odenek] of Object.entries(a.odenekler)) {
     if (!Number.isInteger(odenek) || odenek < 0) h.push(`${yil} ödeneği geçerli bir tutar olmalı.`);
+  }
+  const butce: [string, string | undefined, RegExp, string][] = [
+    ["Kurumsal kod", a.butce?.kurumsal, /^\d{2}(\.\d{2}){3}$/, "18.01.31.00"],
+    ["Fonksiyonel kod", a.butce?.fonksiyonel, /^\d{2}(\.\d){2}\.\d{2}$/, "09.1.2.00"],
+    ["Finansman tipi", a.butce?.finansman, /^\d$/, "1"],
+  ];
+  for (const [ad, deger, desen, ornek] of butce) {
+    if (deger && deger.trim() !== "" && !desen.test(deger.trim())) h.push(`${ad} ${ornek} biçiminde yazılmalı.`);
   }
   return h;
 }

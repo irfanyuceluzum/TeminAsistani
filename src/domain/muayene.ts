@@ -1,6 +1,7 @@
 import { degerlendir, kalemTutari, type PiyasaArastirmasi } from "./piyasa";
 import type { Kontrol } from "./sihirbaz";
-import type { Alim } from "./tipler";
+import { kisi } from "./personel";
+import type { Alim, GorevAtamalari, Personel } from "./tipler";
 
 export interface MuayeneKalemi {
   kalemId: string;
@@ -142,4 +143,46 @@ export function kabulSonucu(m: Muayene): { sonuc: KabulSonucu; metin: string } {
   if (ozet.kabulToplami === 0) return { sonuc: "ret", metin: "KABUL EDİLMEDİ (Ret)" };
   if (ozet.kismi) return { sonuc: "kismi", metin: `KISMEN KABUL EDİLDİ (${tl(ozet.fark)} + KDV eksik)` };
   return { sonuc: "tam", metin: "UYGUNDUR (Eksiksiz kabul edildi)" };
+}
+
+const buyuk = (s: string) => s.trim().toLocaleUpperCase("tr-TR");
+
+// Dosyaya özel komisyon (Muayene.uyeler) kontrolleri; görevlendirme kimlikleri personel listesinden ada çevrilip üye adlarıyla karşılaştırılır.
+export function dosyaKomisyonuKontrolleri(uyeler: KomisyonUyesi[], personel: Personel[], g: GorevAtamalari): Kontrol[] {
+  const k: Kontrol[] = [];
+  const baskanlar = uyeler.filter((u) => u.rol === "baskan");
+  const adsiz = uyeler.filter((u) => !u.ad.trim()).length;
+  if (baskanlar.length !== 1) k.push({ durum: "engel", baslik: "Komisyon başkanı", detay: "Üyelerden birini başkan seçin." });
+  if (adsiz) k.push({ durum: "engel", baslik: "Üye adı eksik", detay: `${adsiz} üyenin adı yazılmamış.` });
+  if (uyeler.length < 3 || uyeler.length % 2 === 0) {
+    k.push({ durum: "uyari", baslik: `${uyeler.length} kişilik komisyon`, detay: "Komisyonun en az üç kişiden ve tek sayıda üyeden oluşması önerilir." });
+  }
+
+  const uyeAdlari = new Set(uyeler.map((u) => buyuk(u.ad)).filter(Boolean));
+  const adlar = (idler: (string | null | undefined)[]) =>
+    idler.map((id) => (id ? kisi(personel, id)?.ad : undefined)).filter((a): a is string => !!a && uyeAdlari.has(buyuk(a)));
+  const yetkili = adlar([g.harcamaYetkilisi, g.gerceklestirme]);
+  if (yetkili.length) {
+    k.push({
+      durum: "engel",
+      baslik: "Yetkili muayene komisyonunda yer alamaz",
+      detay: `${yetkili.join(", ")} harcama yetkilisi ya da gerçekleştirme görevlisi; muayene ve kabul komisyonunda yer alamaz.`,
+    });
+  }
+  const ortak = adlar(g.piyasaGorevlileri);
+  if (ortak.length) {
+    k.push({
+      durum: "uyari",
+      baslik: "Görev çakışması",
+      detay: `${ortak.join(", ")} hem piyasa fiyat araştırmasında hem muayene komisyonunda. Fiyatı araştıranın malı kabul etmemesi önerilir.`,
+    });
+  }
+  if (!k.length) k.push({ durum: "tamam", baslik: "Muayene komisyonu uygun", detay: `${uyeler.length} kişilik komisyon; yetkililer ve piyasa görevlileri yer almıyor.` });
+  return k;
+}
+
+// Muayene tamamlanınca dosya ödeme aşamasına geçer; ödeme tutarı kabul edilen tutardır.
+export function muayeneSonrasiDosya(m: Muayene): { asama: "odeme"; tutar: number; aciklama: string } {
+  const tutarKurus = muayeneOzeti(m).kabulToplami;
+  return { asama: "odeme", tutar: tutarKurus, aciklama: `Muayene tamamlandı: ${kabulSonucu(m).metin}; kabul tutarı ${tl(tutarKurus)} + KDV. Dosya ödeme aşamasına geçti.` };
 }

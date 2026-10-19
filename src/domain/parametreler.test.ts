@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ornekAyarlar, ornekLimitDonemleri } from "../data/ornekVeri";
-import { ayarHatalari, limitDonemiHatalari, onerilenDonem } from "./parametreler";
+import { ayarHatalari, butceTertibi, limitDonemiHatalari, onerilenDonem } from "./parametreler";
 import type { LimitDonemi } from "./tipler";
 
 const TL = 100;
@@ -51,5 +51,35 @@ describe("ayar doğrulama", () => {
       damga: { ...ornekAyarlar.damga, makbuzOrani: -1 },
     });
     expect(h).toHaveLength(3);
+  });
+});
+
+describe("butceTertibi", () => {
+  const butce = { kurumsal: "18.01.31.00", fonksiyonel: "09.1.2.00", finansman: "1" };
+  it("tam kodu sırayla birleştirir", () => {
+    expect(butceTertibi({ ...ornekAyarlar, butce }, "03.2.5.01")).toBe("18.01.31.00 · 09.1.2.00 · 1 · 03.2.5.01");
+  });
+  it("kısmi kodda boş parçaları atlar", () => {
+    expect(butceTertibi({ ...ornekAyarlar, butce: { ...butce, fonksiyonel: "" } }, "03.2.5.01")).toBe("18.01.31.00 · 1 · 03.2.5.01");
+  });
+  it("idare kodu yoksa yalnız ekonomik kodu döner", () => {
+    expect(butceTertibi({ ...ornekAyarlar, butce: undefined }, "03.2.5.01")).toBe("03.2.5.01");
+  });
+  it("hiçbir kod yoksa tire döner", () => {
+    expect(butceTertibi({ ...ornekAyarlar, butce: undefined }, "")).toBe("—");
+  });
+});
+
+describe("ayarHatalari bütçe biçimi", () => {
+  it("geçerli ve boş kodları kabul eder", () => {
+    expect(ayarHatalari({ ...ornekAyarlar, butce: { kurumsal: "18.01.31.00", fonksiyonel: "09.1.2.00", finansman: "1" } })).toEqual([]);
+    expect(ayarHatalari({ ...ornekAyarlar, butce: { kurumsal: "", fonksiyonel: "", finansman: "" } })).toEqual([]);
+  });
+  it("bozuk kodlarda alanı söyleyen hata verir", () => {
+    const h = ayarHatalari({ ...ornekAyarlar, butce: { kurumsal: "18.01", fonksiyonel: "09.12.0.00", finansman: "12" } });
+    expect(h).toHaveLength(3);
+    expect(h[0]).toContain("Kurumsal kod");
+    expect(h[1]).toContain("Fonksiyonel kod");
+    expect(h[2]).toContain("Finansman tipi");
   });
 });

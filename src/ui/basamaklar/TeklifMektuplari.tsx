@@ -6,7 +6,8 @@ import { BelgeOnizleme } from "../BelgeOnizleme";
 import { KontrolSatiri } from "../KontrolSatiri";
 import { KucukA4 } from "./KucukA4";
 import { teklifIstemeMektubuSayfalari } from "./belgeler";
-import { bosYazi, type FirmaTeklifi, type TeklifYazisi } from "../../domain/piyasa";
+import { YeniFirmaFormu } from "./YeniFirmaFormu";
+import { bosYazi, teklifTarihiKontrolleri, type FirmaTeklifi, type TeklifYazisi } from "../../domain/piyasa";
 import type { Kontrol } from "../../domain/sihirbaz";
 
 function hucreKey(firmaId: string, kalemId: string): string {
@@ -157,20 +158,25 @@ export function TeklifMektuplariBasamagi({ b }: { b: BasamakBaglami }) {
   };
 
   // Yeni Firma Ekleme
-  const firmaEkle = () => {
-    if (!yeniFirmaId) return;
-    if (teklifler.some((t) => t.tedarikciId === yeniFirmaId)) return;
+  const firmaEkleId = (id: string) => {
+    if (!id) return;
     const yeniTeklif: FirmaTeklifi = {
-      tedarikciId: yeniFirmaId,
+      tedarikciId: id,
       teklifTarihi: null,
       yasaklilikSorgusu: null,
       fiyatlar: {},
       belgeAlindi: false,
     };
-    setTeklifler((prev) => [...prev, yeniTeklif]);
-    setAktifFirmaId(yeniFirmaId);
+    setTeklifler((prev) => (prev.some((t) => t.tedarikciId === id) ? prev : [...prev, yeniTeklif]));
+    setAktifFirmaId(id);
+  };
+  const firmaEkle = () => {
+    firmaEkleId(yeniFirmaId);
     setYeniFirmaId("");
   };
+
+  const teklifTarihiDegistir = (firmaId: string, tarih: string) =>
+    setTeklifler((prev) => prev.map((t) => (t.tedarikciId === firmaId ? { ...t, teklifTarihi: tarih || null } : t)));
 
   // Kontroller
   const kontroller = useMemo((): Kontrol[] => {
@@ -220,16 +226,18 @@ export function TeklifMektuplariBasamagi({ b }: { b: BasamakBaglami }) {
       });
     }
 
+    k.push(...teklifTarihiKontrolleri({ ...piyasa, teklifler, yazi }, firmaAdi));
+
     return k;
-  }, [teklifler, b.kalemler]);
+  }, [teklifler, b.kalemler, piyasa, yazi, tedarikciler]);
 
   const belgeSayfalari = useMemo(() => {
     return teklifIstemeMektubuSayfalari(
       { alim, ayarlar: veri.ayarlar, dosya, kalemler: b.kalemler },
       aktifTedarikci,
-      { sayi: yazi.sayi, tarih: yazi.tarih, sonTarih: yazi.sonTeklifTarihi }
+      { sayi: yazi.sayi, tarih: yazi.tarih, sonTarih: yazi.sonTeklifTarihi, teslimYeri: yazi.teslimYeri, teslimSuresi: yazi.teslimSuresi, aciklama: yazi.aciklama }
     );
-  }, [alim, veri.ayarlar, dosya, b.kalemler, aktifTedarikci]);
+  }, [alim, veri.ayarlar, dosya, b.kalemler, aktifTedarikci, yazi]);
 
   const onaylaVeIlerle = async () => {
     setKaydediliyor(true);
@@ -322,6 +330,23 @@ export function TeklifMektuplariBasamagi({ b }: { b: BasamakBaglami }) {
             </div>
           </div>
 
+          <div className="form-izgara" style={{ marginTop: "12px" }}>
+            <div className="alan">
+              <label htmlFor="teklif-teslim-yeri">Teslim yeri</label>
+              <input id="teklif-teslim-yeri" value={yazi.teslimYeri} onChange={(e) => yaziDegistir({ teslimYeri: e.target.value })} placeholder={dosya.teslimYeri} />
+            </div>
+            <div className="alan">
+              <label htmlFor="teklif-teslim-suresi">Teslim süresi</label>
+              <input id="teklif-teslim-suresi" value={yazi.teslimSuresi} onChange={(e) => yaziDegistir({ teslimSuresi: e.target.value })} placeholder={dosya.sartlar.teslimSuresi} />
+            </div>
+            <div className="alan">
+              <label htmlFor="teklif-aciklama">Açıklama</label>
+              <input id="teklif-aciklama" value={yazi.aciklama} onChange={(e) => yaziDegistir({ aciklama: e.target.value })} />
+            </div>
+          </div>
+
+          <YeniFirmaFormu b={b} kimlik="tm-yeni" onEklendi={firmaEkleId} />
+
           {bilgiMesaji && (
             <div className="bant bant-bilgi" role="status" style={{ margin: "10px 0" }}>
               {bilgiMesaji}
@@ -356,6 +381,15 @@ export function TeklifMektuplariBasamagi({ b }: { b: BasamakBaglami }) {
                     style={{ width: "18px", height: "18px" }}
                   />
                   <span>Bu firmaya ait kaşeli ve imzalı teklif mektubu idaremize ulaştı</span>
+                </label>
+                <label style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <span>Teklif tarihi</span>
+                  <input
+                    type="date"
+                    aria-label={`${firmaAdi(aktifFirmaTeklifi.tedarikciId)} teklif tarihi`}
+                    value={aktifFirmaTeklifi.teklifTarihi ?? ""}
+                    onChange={(e) => teklifTarihiDegistir(aktifFirmaTeklifi.tedarikciId, e.target.value)}
+                  />
                 </label>
                 <span className="mono kalin" style={{ fontSize: "14px" }}>
                   Toplam: {(aktifFirmaToplam / 100).toLocaleString("tr-TR", { minimumFractionDigits: 2 })} TL + KDV

@@ -79,6 +79,8 @@ export const ornekAyarlar: Ayarlar = {
   // 2026 için KDV dahil 12.000 TL (fatura düzenleme sınırı); ikincil kaynaktan, docs/mevzuat-varsayimlari.md
   tevkifatSiniri: 12_000 * TL,
   idare: { ustIdare: "Karataş Kaymakamlığı", birim: "Kırmızıdağ İlkokulu Müdürlüğü" },
+  // Uydurma ama biçime uygun kodlar; gerçek kurum kodu değil
+  butce: { kurumsal: "18.01.31.00", fonksiyonel: "09.1.2.00", finansman: "1" },
   personel: [
     { id: "p1", ad: "Mehmet Arslan", unvan: "Okul Müdürü" },
     { id: "p2", ad: "Ayşe Demir", unvan: "Müdür Yardımcısı" },

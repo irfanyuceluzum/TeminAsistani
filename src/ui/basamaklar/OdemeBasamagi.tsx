@@ -9,6 +9,7 @@ import { evrakFormu, evrakKaydiYap } from "../../domain/basamaklar";
 import { evrakDurumlari, kapanisEksikleri, type EvrakKaydi } from "../../domain/dosya";
 import {
   ekListesi,
+  kbsAlanlari,
   odemeHesabi,
   odemeKontrolleri,
   odemeMatrahi,
@@ -38,6 +39,8 @@ export function OdemeBasamagi({ b }: { b: BasamakBaglami }) {
   const [kaydediliyor, setKaydediliyor] = useState(false);
   const [onizle, setOnizle] = useState(false);
   const [mesaj, setMesaj] = useState("");
+  const [kopyalanan, setKopyalanan] = useState("");
+  const [kopyaHata, setKopyaHata] = useState("");
 
   const [o, setO] = useState<Odeme>(() => odeme ?? odemeOlustur(alim));
   const [oeb, setOeb] = useState(() => evrakFormu(evraklar["odeme-emri"], bugun(), o.oebNo));
@@ -94,6 +97,19 @@ export function OdemeBasamagi({ b }: { b: BasamakBaglami }) {
 
   const sorguDegistir = (hangi: "vergiSorgusu" | "sgkSorgusu", d: Partial<BorcSorgusu>) =>
     setO((x) => ({ ...x, [hangi]: { ...x[hangi], ...d } }));
+
+  const kopyala = async (ad: string, deger: string) => {
+    setKopyaHata("");
+    try {
+      await navigator.clipboard.writeText(deger);
+      setKopyalanan(ad);
+    } catch {
+      setKopyalanan("");
+      setKopyaHata("Panoya kopyalanamadı. Değeri elle seçip kopyalayın.");
+    }
+  };
+
+  const kbs = kbsAlanlari(alim, h, yuklenici?.ad || "Bilinmeyen Firma", yuklenici?.iban ?? "");
 
   const kaydet = async () => {
     setMesaj("");
@@ -166,7 +182,18 @@ export function OdemeBasamagi({ b }: { b: BasamakBaglami }) {
                 ))}
               </select>
             </div>
+            <label className="onay-kutusu">
+              <input type="checkbox" checked={o.sozlesmeVar} onChange={(e) => setO((x) => ({ ...x, sozlesmeVar: e.target.checked }))} />
+              Yazılı sözleşme imzalandı
+            </label>
+            <label className="onay-kutusu">
+              <input type="checkbox" checked={o.komisyonKarariVar} onChange={(e) => setO((x) => ({ ...x, komisyonKarariVar: e.target.checked }))} />
+              Komisyon kararı alındı
+            </label>
           </div>
+          {sozlesmeZorunlu(alim) && (
+            <p className="soluk kucuk">Bu alımda sözleşme zorunludur (22/c ve süreye yayılan işler); kutu varsayılan işaretlidir. Sözleşme damga vergisi hesaba girer.</p>
+          )}
 
           <fieldset className="secim-grubu">
             <legend>Vergi ve SGK borç sorgusu</legend>
@@ -192,6 +219,8 @@ export function OdemeBasamagi({ b }: { b: BasamakBaglami }) {
                         {ad} sorgu tarihi
                       </label>
                       <input id={`${kisa}-tarih`} type="date" value={o[alan].tarih} onChange={(e) => sorguDegistir(alan, { tarih: e.target.value })} />
+                      <label htmlFor={`${kisa}-no`}>{ad} sorgu belge numarası</label>
+                      <input id={`${kisa}-no`} className="mono" placeholder="Belge numarası" value={o[alan].belgeNo} onChange={(e) => sorguDegistir(alan, { belgeNo: e.target.value })} />
                     </>
                   )}
                   {o[alan].durum === "borclu" && (
@@ -262,6 +291,34 @@ export function OdemeBasamagi({ b }: { b: BasamakBaglami }) {
               {mesaj}
             </div>
           )}
+
+          <section className="sutun" style={{ gap: "6px" }} aria-labelledby="kbs-baslik">
+            <h3 id="kbs-baslik">KBS'ye aktarım</h3>
+            <p className="soluk kucuk">Ödeme emri belgesini KBS'de oluştururken bu alanları kopyalayın.</p>
+            <div className="kbs-alanlari">
+              {kbs.map((a) => (
+                <div key={a.ad} className="kbs-alani">
+                  <span className="kbs-metin">
+                    <span className="soluk kucuk">{a.ad}</span>
+                    <span className="mono">{a.deger}</span>
+                  </span>
+                  <button type="button" className="dugme kucuk-dugme" aria-label={`${a.ad} değerini kopyala`} onClick={() => void kopyala(a.ad, a.deger)}>
+                    {kopyalanan === a.ad ? "Kopyalandı" : "Kopyala"}
+                  </button>
+                </div>
+              ))}
+            </div>
+            <div className="dugme-grubu">
+              <button type="button" className="dugme" onClick={() => void kopyala("tumu", kbs.map((a) => `${a.ad}\t${a.deger}`).join("\n"))}>
+                {kopyalanan === "tumu" ? "Kopyalandı" : "Tümünü kopyala"}
+              </button>
+            </div>
+            {kopyaHata && (
+              <div className="bant bant-uyari" role="alert">
+                {kopyaHata}
+              </div>
+            )}
+          </section>
 
           <div className="dugme-grubu">
             <button type="button" className="dugme dugme-ana" disabled={kaydediliyor || engelVar} onClick={() => void kaydet()}>

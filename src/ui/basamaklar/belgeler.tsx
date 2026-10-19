@@ -1,5 +1,6 @@
 import { Fragment, type ReactNode } from "react";
 import { SARTLAR, type DosyaBasamaklari, type MaliyetSonucu, isinTuruBul, makamBasligi } from "../../domain/basamaklar";
+import { butceTertibi } from "../../domain/parametreler";
 import { kisi } from "../../domain/personel";
 import type { PiyasaKalemi } from "../../domain/piyasa";
 import type { PiyasaArastirmasi } from "../../domain/piyasa";
@@ -97,7 +98,7 @@ export function ihtiyacOnayiSayfalari(b: BelgeBilgisi): ReactNode[] {
       <p className="girintili">
         Bu nedenle ekli listede cinsi ve miktarı belirtilen {b.kalemler.length} kalem ihtiyacın ("{b.alim.konu}") 4734 sayılı Kamu İhale Kanununun 22 nci
         maddesinin ({bentBilgisi(b.alim.bent).harf}) bendi uyarınca doğrudan temin usulüyle
-        {b.alim.ekonomikKod ? `, ${b.alim.ekonomikKod} tertibindeki ödenekten karşılanmak üzere` : ""} satın alınmasını olurlarınıza arz ederim.
+        {b.alim.ekonomikKod ? `, ${butceTertibi(b.ayarlar, b.alim.ekonomikKod)} tertibindeki ödenekten karşılanmak üzere` : ""} satın alınmasını olurlarınıza arz ederim.
       </p>
       <div className="belge-imzalar">
         <div />
@@ -478,7 +479,7 @@ export function dogrudanTeminOnaySayfalari(
           </tr>
           <tr>
             <th className="onay-th-etiket">BÜTÇE TERTİBİ (Varsa)</th>
-            <td className="onay-td-deger">{b.alim.ekonomikKod || "—"}</td>
+            <td className="onay-td-deger">{butceTertibi(b.ayarlar, b.alim.ekonomikKod)}</td>
           </tr>
           <tr>
             <th className="onay-th-etiket">FİYAT FARKI VERİLECEKSE ŞARTLARI</th>
@@ -577,10 +578,13 @@ export function dogrudanTeminOnaySayfalari(
 export function teklifIstemeMektubuSayfalari(
   b: BelgeBilgisi,
   firma: Tedarikci | null,
-  yazi?: { sayi?: string; tarih?: string; sonTarih?: string },
+  yazi?: { sayi?: string; tarih?: string; sonTarih?: string; teslimYeri?: string; teslimSuresi?: string; aciklama?: string },
 ): ReactNode[] {
   const ustIdare = (b.ayarlar.idare?.ustIdare || "T.C. İDARE MÜDÜRLÜĞÜ").toLocaleUpperCase("tr-TR");
   const birim = b.ayarlar.idare?.birim || "";
+  const teslimYeri = yazi?.teslimYeri?.trim() || b.dosya.teslimYeri;
+  const teslimSuresi = yazi?.teslimSuresi?.trim() || b.dosya.sartlar.teslimSuresi;
+  const aciklama = yazi?.aciklama?.trim() ?? "";
   const sayi = yazi?.sayi || b.dosya.fiyatIsteme?.sayi || "…";
   const tarih = yazi?.tarih || b.dosya.fiyatIsteme?.tarih || "";
   const sonTarih = yazi?.sonTarih || b.dosya.fiyatIsteme?.sonTarih || "";
@@ -610,6 +614,21 @@ export function teklifIstemeMektubuSayfalari(
         doldurarak kaşeli ve imzalı şekilde en geç <strong>{tarihYazisi(sonTarih)}</strong> günü mesai bitimine kadar
         idaremize ulaştırmanızı rica ederim.
       </p>
+      {teslimYeri && (
+        <p style={{ margin: "4pt 0" }}>
+          <strong>Teslim yeri:</strong> {teslimYeri}
+        </p>
+      )}
+      {teslimSuresi && (
+        <p style={{ margin: "4pt 0" }}>
+          <strong>Teslim süresi:</strong> {teslimSuresi}
+        </p>
+      )}
+      {aciklama && (
+        <p style={{ margin: "4pt 0" }}>
+          <strong>Açıklama:</strong> {aciklama}
+        </p>
+      )}
       <div className="belge-imzalar" style={{ marginTop: "24pt" }}>
         <div />
         <div style={{ textAlign: "center" }}>
@@ -940,7 +959,11 @@ export function muayeneKabulTutanagiSayfalari(
     .filter((id) => !yetkiliIdler.has(id))
     .map((id) => imzaci(b.ayarlar, id));
 
-  const komisyon = [baskan, ...uyeler];
+  // Dosyaya özel üyeler (adı dolu olanlar) varsa onlar; yoksa görevlendirmeden kurulan komisyon.
+  const dosyaUyeleri = (muayene?.uyeler ?? []).filter((u) => u.ad.trim());
+  const komisyon: { ad: string; unvan: string; baskan: boolean }[] = dosyaUyeleri.length
+    ? [...dosyaUyeleri.filter((u) => u.rol === "baskan"), ...dosyaUyeleri.filter((u) => u.rol !== "baskan")].map((u) => ({ ad: u.ad, unvan: u.unvan, baskan: u.rol === "baskan" }))
+    : [baskan, ...uyeler].map((u, i) => ({ ...u, baskan: i === 0 }));
   const yukleniciAdi = b.alim.tedarikciId ? firmaAdi(b.alim.tedarikciId) : "—";
   const faturaNo = muayene?.faturaNo || "—";
   const faturaTarih = muayene?.faturaTarihi ? uzunTarih(muayene.faturaTarihi) : "—";
@@ -976,6 +999,12 @@ export function muayeneKabulTutanagiSayfalari(
             <th className="onay-th-etiket">KABUL SONUCU</th>
             <td className="onay-td-deger kalin">{sonuc?.metin ?? "—"}</td>
           </tr>
+          {muayene?.yer?.trim() && (
+            <tr>
+              <th className="onay-th-etiket">MUAYENE YERİ</th>
+              <td className="onay-td-deger" colSpan={3}>{muayene.yer.trim()}</td>
+            </tr>
+          )}
         </tbody>
       </table>
 
@@ -1027,7 +1056,7 @@ export function muayeneKabulTutanagiSayfalari(
             <div key={i} className="onay-imza-kutu" style={{ minWidth: "140px" }}>
               <span className="kalin">{imzaAdi(u.ad)}</span>
               <span>{u.unvan || "Görevli"}</span>
-              <span style={{ fontSize: "7pt", color: "#333" }}>{i === 0 ? "Komisyon Başkanı" : "Üye"}</span>
+              <span style={{ fontSize: "7pt", color: "#333" }}>{u.baskan ? "Komisyon Başkanı" : "Üye"}</span>
               <span className="imza-cizgi" />
             </div>
           ))}
@@ -1163,7 +1192,7 @@ export function odemeEmriBelgesiSayfalari(
           </tr>
           <tr>
             <th className="onay-th-etiket">BÜTÇE TERTİBİ</th>
-            <td className="onay-td-deger">{b.alim.ekonomikKod || "—"}</td>
+            <td className="onay-td-deger">{butceTertibi(b.ayarlar, b.alim.ekonomikKod)}</td>
             <th className="onay-th-etiket">ÖDEME TÜRÜ</th>
             <td className="onay-td-deger">Doğrudan temin, 4734 md. 22/{bentBilgisi(b.alim.bent).harf}</td>
           </tr>
