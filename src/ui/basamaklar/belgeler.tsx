@@ -1,7 +1,7 @@
 import { Fragment, type ReactNode } from "react";
 import { SARTLAR, type DosyaBasamaklari, type MaliyetSonucu, isinTuruBul, makamBasligi } from "../../domain/basamaklar";
 import { butceTertibi } from "../../domain/parametreler";
-import { kisi } from "../../domain/personel";
+import { belgeGorevlileri, kisi } from "../../domain/personel";
 import type { PiyasaKalemi } from "../../domain/piyasa";
 import type { PiyasaArastirmasi } from "../../domain/piyasa";
 import { degerlendir, firmaToplami, kalemTutari } from "../../domain/piyasa";
@@ -938,6 +938,21 @@ export function muayeneTalebiSayfalari(
   ];
 }
 
+// Tutanaktaki komisyon imzaları: dosyaya özel üyeler (adı dolu olanlar) varsa onlar, yoksa görevlendirmeden
+// domain kuralıyla kurulan komisyon (yetkililer hariç, başkan başta, kişi bir kez). Kimse yoksa tek boş imza yeri.
+export function muayeneKomisyonuImzalari(ayarlar: Ayarlar, muayene: Muayene | null): { ad: string; unvan: string; baskan: boolean }[] {
+  const dosyaUyeleri = (muayene?.uyeler ?? []).filter((u) => u.ad.trim());
+  if (dosyaUyeleri.length) {
+    return [...dosyaUyeleri.filter((u) => u.rol === "baskan"), ...dosyaUyeleri.filter((u) => u.rol !== "baskan")].map((u) => ({
+      ad: u.ad,
+      unvan: u.unvan,
+      baskan: u.rol === "baskan",
+    }));
+  }
+  const kom = belgeGorevlileri(ayarlar).komisyon.map((u) => ({ ad: u.ad, unvan: u.unvan, baskan: u.rol === "baskan" }));
+  return kom.length ? kom : [{ ...imzaci(ayarlar, null), baskan: true }];
+}
+
 // 10 & 11. Basamak: Muayene ve Kabul Tutanağı
 export function muayeneKabulTutanagiSayfalari(
   b: BelgeBilgisi,
@@ -946,19 +961,7 @@ export function muayeneKabulTutanagiSayfalari(
 ): ReactNode[] {
   const ustIdare = (b.ayarlar.idare?.ustIdare || "T.C. İDARE MÜDÜRLÜĞÜ").toLocaleUpperCase("tr-TR");
   const birim = b.ayarlar.idare?.birim || "";
-  const g = b.ayarlar.gorevler;
-  const yetkiliIdler = new Set([g?.harcamaYetkilisi, g?.gerceklestirme].filter(Boolean));
-  // Muayene komisyonunda Harcama Yetkilisi ve Gerçekleştirme Görevlisi KESİNLİKLE yer alamaz.
-  const baskan = imzaci(b.ayarlar, !yetkiliIdler.has(g?.muayeneBaskani) ? g?.muayeneBaskani : null);
-  const uyeler = (g?.muayeneUyeleri ?? [])
-    .filter((id) => !yetkiliIdler.has(id))
-    .map((id) => imzaci(b.ayarlar, id));
-
-  // Dosyaya özel üyeler (adı dolu olanlar) varsa onlar; yoksa görevlendirmeden kurulan komisyon.
-  const dosyaUyeleri = (muayene?.uyeler ?? []).filter((u) => u.ad.trim());
-  const komisyon: { ad: string; unvan: string; baskan: boolean }[] = dosyaUyeleri.length
-    ? [...dosyaUyeleri.filter((u) => u.rol === "baskan"), ...dosyaUyeleri.filter((u) => u.rol !== "baskan")].map((u) => ({ ad: u.ad, unvan: u.unvan, baskan: u.rol === "baskan" }))
-    : [baskan, ...uyeler].map((u, i) => ({ ...u, baskan: i === 0 }));
+  const komisyon = muayeneKomisyonuImzalari(b.ayarlar, muayene);
   const yukleniciAdi = b.alim.tedarikciId ? firmaAdi(b.alim.tedarikciId) : "—";
   const faturaNo = muayene?.faturaNo || "—";
   const faturaTarih = muayene?.faturaTarihi ? uzunTarih(muayene.faturaTarihi) : "—";
