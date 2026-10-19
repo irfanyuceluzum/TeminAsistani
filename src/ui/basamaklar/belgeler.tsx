@@ -4,7 +4,7 @@ import { butceTertibi } from "../../domain/parametreler";
 import { kisi } from "../../domain/personel";
 import type { PiyasaKalemi } from "../../domain/piyasa";
 import type { PiyasaArastirmasi } from "../../domain/piyasa";
-import { degerlendir, firmaToplami } from "../../domain/piyasa";
+import { degerlendir, firmaToplami, kalemTutari } from "../../domain/piyasa";
 import { kabulSonucu, type Muayene } from "../../domain/muayene";
 import type { Odeme, OebSatiri } from "../../domain/odeme";
 import { bentBilgisi } from "../../domain/sihirbaz";
@@ -22,6 +22,22 @@ export interface BelgeBilgisi {
   ayarlar: Ayarlar;
   dosya: DosyaBasamaklari;
   kalemler: PiyasaKalemi[];
+}
+
+// Bir firmanın kalem fiyatlarından toplamı (kuruş). Fiyatı olmayan ya da 0 TL olan kalem varsa null döner;
+// kısmi toplam üretilmez. Kural domain'deki firmaToplami ile aynıdır.
+export function firmaFiyatToplami(kalemler: PiyasaKalemi[], fiyatlar: Record<string, number | null>): number | null {
+  return firmaToplami(
+    {
+      alimId: "",
+      kalemler,
+      teklifler: [{ tedarikciId: "f", teklifTarihi: null, yasaklilikSorgusu: null, fiyatlar }],
+      degerlendirme: "toplam",
+      gorevliler: "",
+      tamamlandi: false,
+    },
+    "f",
+  );
 }
 
 function imzaci(ayarlar: Ayarlar, id: string | null | undefined): { ad: string; unvan: string } {
@@ -216,13 +232,8 @@ export function yaklasikMaliyetSayfalari(b: BelgeBilgisi, sonuc: MaliyetSonucu, 
     };
   });
 
-  const firmaToplamlari = firmaSlotlari.map((slot) => {
-    if (!slot.id) return 0;
-    return b.kalemler.reduce((toplam, k) => {
-      const bf = slot.fiyatlar[k.id];
-      return toplam + (bf ? Math.round(k.miktar * bf) : 0);
-    }, 0);
-  });
+  // Eksik fiyatlı firmanın toplamı null'dır ve belgede "—" basılır; boş sütun 0,00 kalır
+  const firmaToplamlari = firmaSlotlari.map((slot) => (slot.id ? firmaFiyatToplami(b.kalemler, slot.fiyatlar) : 0));
 
   // Harcama yetkilisi ve gerçekleştirme görevlisi yaklaşık maliyet komisyonunda kesinlikle yer alamaz.
   const yetkiliIdler = new Set([g?.harcamaYetkilisi, g?.gerceklestirme].filter(Boolean));
@@ -326,7 +337,7 @@ export function yaklasikMaliyetSayfalari(b: BelgeBilgisi, sonuc: MaliyetSonucu, 
                 <td className="merkez">{kalem.birim.toLocaleUpperCase("tr-TR")}</td>
                 {firmaSlotlari.map((slot) => {
                   const bf = slot.id ? slot.fiyatlar[kalem.id] : null;
-                  const tf = bf ? Math.round(kalem.miktar * bf) : 0;
+                  const tf = bf && bf > 0 ? kalemTutari(kalem, bf) : 0;
                   return (
                     <Fragment key={slot.no}>
                       <td className="sag">{para(bf)}</td>
@@ -348,7 +359,7 @@ export function yaklasikMaliyetSayfalari(b: BelgeBilgisi, sonuc: MaliyetSonucu, 
             {firmaSlotlari.map((slot, i) => (
               <Fragment key={slot.no}>
                 <td className="merkez kalin kucuk">TOPLAM</td>
-                <td className="sag kalin">{para(firmaToplamlari[i])}</td>
+                <td className="sag kalin">{firmaToplamlari[i] === null ? "—" : para(firmaToplamlari[i])}</td>
               </Fragment>
             ))}
             <td className="merkez kalin kucuk">TOPLAM</td>

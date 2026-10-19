@@ -52,6 +52,20 @@ describe("değerlendirme", () => {
     expect(degerlendir(p)!.kazananlar).toEqual(["ece"]);
   });
 
+  it("0 TL fiyatı verilmemiş sayar: toplam bazlıda firma kazanamaz", () => {
+    const p = arastirma();
+    p.teklifler[1].fiyatlar.k1 = 0;
+    expect(firmaToplami(p, "toros")).toBeNull();
+    expect(degerlendir(p)!.kazananlar).toEqual(["ece"]);
+  });
+
+  it("0 TL fiyatı verilmemiş sayar: kalem bazlıda o kalemi kazanmaz", () => {
+    const p = arastirma({ degerlendirme: "kalem" });
+    p.teklifler[1].fiyatlar.k1 = 0;
+    const s = degerlendir(p)!;
+    expect(s.atamalar[0].tedarikciId).toBe("ece");
+  });
+
   it("ondalık miktarda kuruşa yuvarlar", () => {
     const p = arastirma({ kalemler: [{ id: "k1", ad: "Deterjan", miktar: 2.5, birim: "kg" }] });
     p.teklifler = [{ tedarikciId: "ece", teklifTarihi: null, yasaklilikSorgusu: "2026-10-16", fiyatlar: { k1: 3_333 } }];

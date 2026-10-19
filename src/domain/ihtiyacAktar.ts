@@ -1,6 +1,8 @@
 // Excel/LibreOffice yapıştırması ya da CSV dosyasından ihtiyaç listesi kalemi çıkarır.
 // Saf işlevler; kalem kimliği üretmez (arayüz yeniKalem() ile verir).
 
+import { turkceSayi } from "./sayi";
+
 export interface AktarilanKalem {
   ad: string;
   ozellik: string;
@@ -101,25 +103,8 @@ export function miktarOku(metin: string): { miktar: number | null; birim: string
   const m = /^([+-]?\d[\d.,]*)\s*(.*)$/s.exec(metin.trim());
   if (!m) return bos;
   const sayiMetni = m[1].replace(/[.,]+$/, "");
-  const nokta = sayiMetni.indexOf(".") >= 0;
-  const virgul = sayiMetni.indexOf(",") >= 0;
-  let duz: string;
-  if (nokta && virgul) {
-    const ondalik = Math.max(sayiMetni.lastIndexOf("."), sayiMetni.lastIndexOf(","));
-    const tam = sayiMetni.slice(0, ondalik).replace(/[.,]/g, "");
-    duz = `${tam}.${sayiMetni.slice(ondalik + 1).replace(/[.,]/g, "")}`;
-  } else if (virgul) {
-    const parcalar = sayiMetni.split(",");
-    duz = parcalar.length > 2 ? parcalar.join("") : sayiMetni.replace(",", ".");
-  } else if (nokta) {
-    if (/^[+-]?\d{1,3}(\.\d{3})+$/.test(sayiMetni)) duz = sayiMetni.replace(/\./g, "");
-    else if (sayiMetni.split(".").length > 2) return bos;
-    else duz = sayiMetni;
-  } else {
-    duz = sayiMetni;
-  }
-  const sayi = Number(duz);
-  if (!Number.isFinite(sayi) || sayi <= 0) return bos;
+  const sayi = turkceSayi(sayiMetni.replace(/^\+/, ""));
+  if (sayi === null || sayi <= 0) return bos;
   const birimEslesmesi = /^[\p{L}][\p{L}\p{N}./²³]*/u.exec(m[2]);
   return { miktar: sayi, birim: birimEslesmesi ? birimEslesmesi[0] : null };
 }

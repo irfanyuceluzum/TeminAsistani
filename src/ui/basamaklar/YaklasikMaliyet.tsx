@@ -6,7 +6,7 @@ import { BelgeOnizleme } from "../BelgeOnizleme";
 import { miktarYazisi } from "../IhtiyacListesi";
 import { KontrolSatiri } from "../KontrolSatiri";
 import type { BasamakBaglami } from "../sayfalar/DosyaCalismaAlani";
-import { yaklasikMaliyetSayfalari } from "./belgeler";
+import { firmaFiyatToplami, yaklasikMaliyetSayfalari } from "./belgeler";
 
 export function YaklasikMaliyetBasamagi({ b }: { b: BasamakBaglami }) {
   const { alim, piyasa, dosya, dosyaDegistir } = b;
@@ -48,12 +48,8 @@ export function YaklasikMaliyetBasamagi({ b }: { b: BasamakBaglami }) {
   }
 
   // Her firmanın toplam teklif tutarı (KDV hariç)
-  const firmaToplamlari = y.firmalar.map((fi) => {
-    return kalemler.reduce((s, k) => {
-      const bf = fi.fiyatlar[k.id];
-      return s + (bf ? Math.round(k.miktar * bf) : 0);
-    }, 0);
-  });
+  // Eksik fiyatlı firmada null (kısmi toplam gösterilmez)
+  const firmaToplamlari = y.firmalar.map((fi) => firmaFiyatToplami(kalemler, fi.fiyatlar));
 
   return (
     <>
@@ -152,7 +148,7 @@ export function YaklasikMaliyetBasamagi({ b }: { b: BasamakBaglami }) {
                   </th>
                   {y.firmalar.map((fi, i) => (
                     <td key={fi.tedarikciId} className="sag mono kalin">
-                      {tlKurus(firmaToplamlari[i])}
+                      {firmaToplamlari[i] === null ? "Eksik fiyat" : tlKurus(firmaToplamlari[i] as number)}
                     </td>
                   ))}
                   <th scope="row" className="sag">

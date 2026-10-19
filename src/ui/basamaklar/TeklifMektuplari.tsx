@@ -7,8 +7,8 @@ import { KontrolSatiri } from "../KontrolSatiri";
 import { KucukA4 } from "./KucukA4";
 import { teklifIstemeMektubuSayfalari } from "./belgeler";
 import { YeniFirmaFormu } from "./YeniFirmaFormu";
-import { bosYazi, teklifTarihiKontrolleri, type FirmaTeklifi, type TeklifYazisi } from "../../domain/piyasa";
-import type { Kontrol } from "../../domain/sihirbaz";
+import { bosYazi, firmaToplami, kalemTutari, teklifTarihiKontrolleri, type FirmaTeklifi, type TeklifYazisi } from "../../domain/piyasa";
+import { tutarCoz, type Kontrol } from "../../domain/sihirbaz";
 import { teklifFirmaKontrolleri } from "../../domain/tedarikci";
 
 function hucreKey(firmaId: string, kalemId: string): string {
@@ -129,9 +129,8 @@ export function TeklifMektuplariBasamagi({ b }: { b: BasamakBaglami }) {
     setMetinler((prev) => ({ ...prev, [key]: metin }));
 
     // Sayısal değeri hesapla
-    const temiz = metin.replace(/\./g, "").replace(",", ".");
-    const sayi = parseFloat(temiz);
-    const kurus = isNaN(sayi) || sayi < 0 ? null : Math.round(sayi * 100);
+    // Boş ya da geçersiz metin fiyat verilmedi sayılır (geçersizlik hücrede işaretlenir)
+    const kurus = metin.trim() === "" ? null : tutarCoz(metin);
 
     setTeklifler((prev) =>
       prev.map((t) => {
@@ -257,12 +256,10 @@ export function TeklifMektuplariBasamagi({ b }: { b: BasamakBaglami }) {
     }
   };
 
+  // Eksik fiyatlı firmanın toplamı yoktur (null); kısmi toplam gösterilmez
   const aktifFirmaToplam = aktifFirmaTeklifi
-    ? b.kalemler.reduce((toplam, k) => {
-        const bf = aktifFirmaTeklifi.fiyatlar[k.id];
-        return toplam + (bf ? Math.round(k.miktar * bf) : 0);
-      }, 0)
-    : 0;
+    ? firmaToplami({ ...piyasa, kalemler: b.kalemler, teklifler }, aktifFirmaTeklifi.tedarikciId)
+    : null;
 
   return (
     <>
@@ -394,7 +391,9 @@ export function TeklifMektuplariBasamagi({ b }: { b: BasamakBaglami }) {
                   />
                 </label>
                 <span className="mono kalin" style={{ fontSize: "14px" }}>
-                  Toplam: {(aktifFirmaToplam / 100).toLocaleString("tr-TR", { minimumFractionDigits: 2 })} TL + KDV
+                  {aktifFirmaToplam === null
+                    ? "Toplam: Eksik fiyat"
+                    : `Toplam: ${(aktifFirmaToplam / 100).toLocaleString("tr-TR", { minimumFractionDigits: 2 })} TL + KDV`}
                 </span>
               </div>
 
@@ -414,7 +413,8 @@ export function TeklifMektuplariBasamagi({ b }: { b: BasamakBaglami }) {
                       const key = hucreKey(aktifFirmaTeklifi.tedarikciId, kalem.id);
                       const degerMetin = metinler[key] ?? "";
                       const kurus = aktifFirmaTeklifi.fiyatlar[kalem.id];
-                      const satirTutar = kurus ? Math.round(kalem.miktar * kurus) : 0;
+                      const satirTutar = kurus && kurus > 0 ? kalemTutari(kalem, kurus) : 0;
+                      const gecersiz = degerMetin.trim() !== "" && tutarCoz(degerMetin) === null;
 
                       return (
                         <tr key={kalem.id}>
@@ -432,9 +432,13 @@ export function TeklifMektuplariBasamagi({ b }: { b: BasamakBaglami }) {
                               value={degerMetin}
                               onChange={(e) => hucreMetinDegistir(aktifFirmaTeklifi.tedarikciId, kalem.id, e.target.value)}
                               placeholder="0,00"
-                              className="mono sag"
+                              className={`mono sag ${gecersiz ? "fiyat-gecersiz" : ""}`}
+                              aria-invalid={gecersiz}
+                              aria-label={`${kalem.ad} birim fiyatı`}
+                              title={gecersiz ? "Geçersiz tutar" : undefined}
                               style={{ width: "120px", padding: "6px 8px", height: "34px", borderRadius: "6px" }}
                             />
+                            {gecersiz && <div className="soluk kucuk" role="alert">Geçersiz tutar</div>}
                           </td>
                           <td style={{ textAlign: "right", fontWeight: 500 }} className="mono">
                             {satirTutar > 0 ? (satirTutar / 100).toLocaleString("tr-TR", { minimumFractionDigits: 2 }) : "—"}

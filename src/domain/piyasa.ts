@@ -85,7 +85,7 @@ export function kalemTutari(k: PiyasaKalemi, birimFiyat: number): number {
 
 function fiyat(t: FirmaTeklifi, kalemId: string): number | null {
   const f = t.fiyatlar[kalemId];
-  return f === undefined ? null : f;
+  return f === undefined || f === null || f <= 0 ? null : f;
 }
 
 // Bir kalemine bile fiyat vermeyen firmanın toplamı yoktur, toplam bazlı değerlendirmeye girmez.

@@ -61,6 +61,21 @@ describe("tutar girişi", () => {
     expect(tutarCoz("")).toBeNull();
     expect(tutarCoz("abc")).toBeNull();
     expect(tutarCoz("12,345")).toBeNull();
+    expect(tutarCoz("12abc")).toBeNull();
+    expect(tutarCoz("1.2345")).toBeNull();
+    expect(tutarCoz("-5")).toBeNull();
+  });
+
+  it("noktayı ondalık ya da binlik olarak doğru okur", () => {
+    expect(tutarCoz("2.5")).toBe(250);
+    expect(tutarCoz("2.50")).toBe(250);
+    expect(tutarCoz("1.250")).toBe(125_000);
+    expect(tutarCoz("1.250,50")).toBe(125_050);
+    expect(tutarCoz("38.500")).toBe(3_850_000);
+    expect(tutarCoz("12 TL")).toBe(1200);
+    expect(tutarCoz("12 tl")).toBe(1200);
+    expect(tutarCoz("1,234.5")).toBe(123_450);
+    expect(tutarCoz("0")).toBe(0);
   });
 });
 

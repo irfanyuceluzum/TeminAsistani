@@ -389,3 +389,36 @@ test("sayfalar konsol hatası vermeden açılır", async ({ page }) => {
 
   expect(hatalar).toEqual([]);
 });
+
+test("eksik fiyatlı firmanın toplamı gösterilmez", async ({ page }) => {
+  const hatalar = konsolHatalariniTopla(page);
+
+  await page.goto("/#/dosyalar/DT-2026-041/basamak/6");
+  await expect(page.getByRole("heading", { name: /6\. Teklif Mektupları/ })).toBeVisible();
+  await page.getByRole("button", { name: /^Toros AŞ/ }).click();
+  const kutular = page.getByPlaceholder("0,00");
+  for (let i = 0; i < 3; i++) await kutular.nth(i).fill(fiyatMetni(100));
+  await expect(page.getByText(/^Toplam: [\d.,]+ TL \+ KDV$/)).toBeVisible();
+
+  // Bir kalemin fiyatı silinince toplam yerine "Eksik fiyat" yazılır
+  await kutular.nth(1).fill("");
+  await expect(page.getByText("Toplam: Eksik fiyat")).toBeVisible();
+  await expect(page.getByText(/Toplam: [\d.,]+ TL/)).toHaveCount(0);
+
+  // "2.5" 2,50 TL okunur: kalem tutarı miktar x 2,50
+  await kutular.nth(0).fill("2.5");
+  const satir = page.getByRole("row").filter({ has: kutular.nth(0) });
+  const hucreler = satir.getByRole("cell");
+  const miktar = Number((await hucreler.nth(2).innerText()).split(" ")[0].replace(/\./g, "").replace(",", "."));
+  const beklenen = (miktar * 2.5).toLocaleString("tr-TR", { minimumFractionDigits: 2 });
+  await expect(hucreler.nth(4)).toHaveText(beklenen);
+  await expect(kutular.nth(0)).toHaveAttribute("aria-invalid", "false");
+
+  // Geçersiz metin işaretlenir, fiyat verilmemiş sayılır
+  await kutular.nth(0).fill("12abc");
+  await expect(kutular.nth(0)).toHaveAttribute("aria-invalid", "true");
+  await expect(hucreler.nth(4)).toHaveText("—");
+  await expect(page.getByText("Toplam: Eksik fiyat")).toBeVisible();
+
+  expect(hatalar).toEqual([]);
+});

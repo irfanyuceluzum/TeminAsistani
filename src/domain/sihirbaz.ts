@@ -1,4 +1,5 @@
 import { benzerAlimlar, ddLimitKontrolu, yuzdeOnDurumu } from "./kurallar";
+import { turkceSayi } from "./sayi";
 import type { Alim, Ayarlar, Bent, LimitDonemi } from "./tipler";
 
 export interface BentBilgisi {
@@ -136,7 +137,10 @@ export function yeniDosyaNo(alimlar: Alim[], yil: number): string {
 
 // "38.500,00", "38500", "₺ 38.500" → kuruş. Geçersiz girişte null.
 export function tutarCoz(metin: string): number | null {
-  const temiz = metin.replace(/[₺\s]/g, "").replace(/\./g, "").replace(",", ".");
-  if (!/^\d+(\.\d{1,2})?$/.test(temiz)) return null;
-  return Math.round(Number(temiz) * 100);
+  const temiz = metin.replace(/TL/gi, "").replace(/[₺\s]/g, "");
+  const sayi = turkceSayi(temiz);
+  if (sayi === null || sayi < 0) return null;
+  const kurus = sayi * 100;
+  if (Math.abs(kurus - Math.round(kurus)) > 1e-6) return null;
+  return Math.round(kurus);
 }
