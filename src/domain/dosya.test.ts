@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ornekAlimlar, ornekPiyasa } from "../data/ornekVeri";
-import { asamaIlerlemesi, asamaSirasi, evrakDurumlari, evrakListesi, kapanisEksikleri } from "./dosya";
+import { asamaIlerlemesi, asamaSirasi, asamaTarihleri, evrakDurumlari, evrakListesi, kapanisEksikleri } from "./dosya";
 import type { Alim } from "./tipler";
 
 const alim = (id: string, d: Partial<Alim> = {}): Alim => ({ ...ornekAlimlar.find((a) => a.id === id)!, ...d });
@@ -144,5 +144,57 @@ describe("EKAP kaydı ve sözleşme", () => {
     expect(ad(alim("DT-2026-039"))).toBe("Sipariş yazısı veya sözleşme");
     expect(ad(alim("DT-2026-039", { sureliIs: true }))).toBe("Sözleşme");
     expect(ad(alim("DT-2026-038"))).toBe("Sözleşme");
+  });
+});
+
+describe("aşama tarihleri", () => {
+  const kayit = (tarih: string) => ({ tamam: true, tarih, not: "" });
+  const tum = {
+    "ihtiyac-yazisi": kayit("2026-09-01"),
+    "onay-belgesi": kayit("2026-09-03"),
+    "piyasa-tutanagi": kayit("2026-09-05"),
+    "siparis-yazisi": kayit("2026-09-08"),
+    "muayene-tutanagi": kayit("2026-09-12"),
+    "odeme-emri": kayit("2026-09-15"),
+    "kik-bildirimi": kayit("2026-09-20"),
+  };
+
+  it("22/d dosyada bütün aşamaları evrak tarihlerinden eşler", () => {
+    const a = alim("DT-2026-040", { onayTarihi: "2026-08-30", asama: "tamamlandi" });
+    expect(asamaTarihleri(a, tum)).toEqual({
+      ihtiyac: "2026-09-01",
+      dayanak: "2026-08-30",
+      onay: "2026-09-03",
+      piyasa: "2026-09-05",
+      siparis: "2026-09-08",
+      muayene: "2026-09-12",
+      odeme: "2026-09-15",
+      tamamlandi: "2026-09-20",
+    });
+  });
+
+  it("22/b dosyada piyasa anahtarı üretilmez", () => {
+    const t = asamaTarihleri(alim("DT-2026-035"), tum);
+    expect("piyasa" in t).toBe(false);
+  });
+
+  it("ihtiyaç yazısı yokken açılış gününe düşer", () => {
+    const a = alim("DT-2026-040", { onayTarihi: "2026-08-30" });
+    expect(asamaTarihleri(a, {}).ihtiyac).toBe("2026-08-30");
+  });
+
+  it("tamamlanmamış dosyada tamamlandi anahtarı yoktur", () => {
+    const a = alim("DT-2026-040", { asama: "odeme" });
+    expect("tamamlandi" in asamaTarihleri(a, tum)).toBe(false);
+  });
+
+  it("ISO zaman damgalı evrak tarihini güne indirger", () => {
+    const a = alim("DT-2026-040");
+    expect(asamaTarihleri(a, { "onay-belgesi": kayit("2026-09-03T14:25:00.000Z") }).onay).toBe("2026-09-03");
+  });
+
+  it("tarihi boş evrakı dikkate almaz", () => {
+    const a = alim("DT-2026-040");
+    expect("onay" in asamaTarihleri(a, { "onay-belgesi": kayit("") })).toBe(false);
   });
 });

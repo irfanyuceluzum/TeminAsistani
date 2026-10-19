@@ -5,7 +5,7 @@ import { BelgeOnizleme } from "../BelgeOnizleme";
 import { KontrolSatiri } from "../KontrolSatiri";
 import { KucukA4 } from "./KucukA4";
 import { piyasaTutanagiSayfalari } from "./belgeler";
-import { degerlendir, yasaklilikEksikleri, type Degerlendirme } from "../../domain/piyasa";
+import { cokluKazananKontrolu, degerlendir, yasaklilikEksikleri, type Degerlendirme } from "../../domain/piyasa";
 import { evrakFormu, evrakKaydiYap } from "../../domain/basamaklar";
 import { bugun } from "../bicim";
 import type { Kontrol } from "../../domain/sihirbaz";
@@ -97,8 +97,11 @@ export function PiyasaTutanagiBasamagi({ b }: { b: BasamakBaglami }) {
       });
     }
 
+    const coklu = cokluKazananKontrolu(piyasa, firmaAdi);
+    if (coklu) k.push(coklu);
+
     return k;
-  }, [sonuc, ayarlar.gorevler, tedarikciler, dd, sorgusuz.join(), form.tarih, piyasa.yazi?.sonTeklifTarihi]);
+  }, [sonuc, piyasa, ayarlar.gorevler, tedarikciler, dd, sorgusuz.join(), form.tarih, piyasa.yazi?.sonTeklifTarihi]);
 
   const engelVar = kontroller.some((k) => k.durum === "engel");
 

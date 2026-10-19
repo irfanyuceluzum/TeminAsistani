@@ -15,6 +15,7 @@ import {
   isinTuruBul,
   onayBelgesiKontrolleri,
   oncekiSonraki,
+  tarihSirasiKontrolleri,
   veriKontrolleri,
   yaklasikHesapla,
   yaklasikKontrolleri,
@@ -283,5 +284,77 @@ describe("eskiEkranBasamagi", () => {
     expect(eskiEkranBasamagi("piyasa")).toBe(7);
     expect(eskiEkranBasamagi("muayene")).toBe(10);
     expect(eskiEkranBasamagi("odeme")).toBe(13);
+  });
+});
+
+describe("tarih sırası zinciri", () => {
+  const ev = (tarih: string) => ({ tamam: true, tarih, not: "" });
+  const duzenliGirdi = (): BasamakGirdisi => {
+    const dosya = bosBasamaklar(temizlik.id, "2026-10-01");
+    dosya.fiyatIsteme.tarih = "2026-10-02";
+    return {
+      ...girdi({ dosya }),
+      piyasa: { ...temizlikPiyasa, yazi: { sayi: "", tarih: "2026-10-04", sonTeklifTarihi: "2026-10-08", teslimYeri: "", teslimSuresi: "", aciklama: "" } },
+      evraklar: {
+        "onay-belgesi": ev("2026-10-03"),
+        "piyasa-tutanagi": ev("2026-10-09"),
+        "siparis-yazisi": ev("2026-10-10"),
+        "muayene-talebi": ev("2026-10-12"),
+        "tasinir-fisi": ev("2026-10-14"),
+        "odeme-emri": ev("2026-10-15"),
+        "kik-bildirimi": ev("2026-10-20"),
+      },
+      muayene: { ...({} as NonNullable<BasamakGirdisi["muayene"]>), teslimTarihi: "2026-10-11", muayeneTarihi: "2026-10-13" },
+    };
+  };
+
+  it("ihlal yoksa boş dizi döner", () => {
+    expect(tarihSirasiKontrolleri(duzenliGirdi())).toEqual([]);
+  });
+
+  it("birden çok çiftin ihlalini başlıkta belge adı ve basamak numarasıyla bildirir", () => {
+    const g = duzenliGirdi();
+    g.dosya.ihtiyacOnayi.tarih = "2026-10-05"; // 2 > 3
+    g.piyasa!.yazi!.sonTeklifTarihi = "2026-10-20"; // 6 > 7
+    g.evraklar["odeme-emri"] = ev("2026-10-12"); // 10 > 13
+    const k = tarihSirasiKontrolleri(g);
+    expect(k.every((x) => x.durum === "uyari")).toBe(true);
+    expect(k).toHaveLength(3);
+    expect(k[0].baslik).toContain("İhtiyaç onayı (2. basamak)");
+    expect(k[0].baslik).toContain("Fiyat isteme yazısı (3. basamak)");
+    expect(k[0].detay).toContain("05.10.2026");
+    expect(k[0].detay).toContain("02.10.2026");
+    expect(k[1].baslik).toContain("Son teklif günü (6. basamak)");
+    expect(k[1].baslik).toContain("Piyasa tutanağı (7. basamak)");
+    expect(k[2].baslik).toContain("Muayene (10. basamak)");
+    expect(k[2].baslik).toContain("Ödeme emri (13. basamak)");
+  });
+
+  it("tarihi boş olan çifti atlar", () => {
+    const g = duzenliGirdi();
+    g.dosya.fiyatIsteme.tarih = "";
+    g.dosya.ihtiyacOnayi.tarih = "2026-10-30";
+    expect(tarihSirasiKontrolleri(g)).toEqual([]);
+  });
+
+  it("zaman damgalı evrak tarihini günle karşılaştırır", () => {
+    const g = duzenliGirdi();
+    g.evraklar["onay-belgesi"] = ev("2026-10-04T23:30:00.000Z"); // gün 04, teklif yazısı da 04: ihlal değil
+    expect(tarihSirasiKontrolleri(g)).toEqual([]);
+    g.evraklar["onay-belgesi"] = ev("2026-10-05T00:10:00.000Z");
+    const k = tarihSirasiKontrolleri(g);
+    expect(k).toHaveLength(1);
+    expect(k[0].baslik).toContain("Onay belgesi (5. basamak)");
+    expect(k[0].detay).toContain("05.10.2026");
+  });
+
+  it("KİK bildirimi son günden sonraysa ayrıca uyarır", () => {
+    const g = duzenliGirdi();
+    g.evraklar["kik-bildirimi"] = ev("2026-11-11");
+    const k = tarihSirasiKontrolleri(g);
+    expect(k).toHaveLength(1);
+    expect(k[0].baslik).toBe("KİK bildirimi süresinde yapılmadı");
+    expect(k[0].detay).toContain("10.11.2026");
+    expect(k[0].detay).toContain("11.11.2026");
   });
 });

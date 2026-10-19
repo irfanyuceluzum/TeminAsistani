@@ -1,6 +1,7 @@
 import type { EvrakKaydi } from "./dosya";
 import { ddLimitKontrolu } from "./kurallar";
 import type { Muayene } from "./muayene";
+import { kikSonGunu } from "./raporlar";
 import type { Odeme } from "./odeme";
 import { kalemTutari, type PiyasaArastirmasi, type PiyasaKalemi } from "./piyasa";
 import { sozlesmeZorunlu, type Kontrol } from "./sihirbaz";
@@ -543,4 +544,67 @@ export function makamBasligi(birim: string): string {
 // Tutanak onaylandıktan sonra dosya tutarı sipariş tutarıdır; yaklaşık maliyetin sonradan onaylanması onu değiştirmez.
 export function yaklasikTutarYazilir(piyasa: PiyasaArastirmasi | null, toplam: number, mevcut: number): boolean {
   return !piyasa?.tamamlandi && toplam > 0 && toplam !== mevcut;
+}
+
+// ---- Tarih sırası zinciri ----
+
+const gunYaz = (t: string) => t.slice(0, 10).split("-").reverse().join(".");
+
+// Dosyadaki belge tarihlerini basamak sırasına göre denetler; her çift "önce ≤ sonra" olmalıdır.
+// Tarihlerden biri boşsa çift atlanır; evrak tarihlerinde zaman damgası varsa yalnız gün (ilk 10 karakter) karşılaştırılır.
+export function tarihSirasiKontrolleri(g: BasamakGirdisi): Kontrol[] {
+  const { dosya, piyasa, evraklar, muayene, alim } = g;
+  const evrakTarihi = (kod: string) => (evraklar[kod]?.tarih ?? "").slice(0, 10);
+  type Nokta = { ad: string; no: number; tarih: string };
+  const n = (ad: string, no: number, tarih: string | undefined | null): Nokta => ({ ad, no, tarih: (tarih ?? "").slice(0, 10) });
+
+  const ihtiyac = n("İhtiyaç onayı", 2, dosya.ihtiyacOnayi.tarih);
+  const fiyat = n("Fiyat isteme yazısı", 3, dosya.fiyatIsteme.tarih);
+  const onay = n("Onay belgesi", 5, evrakTarihi("onay-belgesi"));
+  const teklifYazi = n("Teklif isteme yazısı", 6, piyasa?.yazi?.tarih);
+  const sonTeklif = n("Son teklif günü", 6, piyasa?.yazi?.sonTeklifTarihi);
+  const tutanak = n("Piyasa tutanağı", 7, evrakTarihi("piyasa-tutanagi"));
+  const siparis = n("Sipariş yazısı", 8, evrakTarihi("siparis-yazisi"));
+  const teslim = n("Teslim", 10, muayene?.teslimTarihi);
+  const talep = n("Muayene talep yazısı", 9, evrakTarihi("muayene-talebi"));
+  const muayeneGunu = n("Muayene", 10, muayene?.muayeneTarihi);
+  const fis = n("Taşınır işlem fişi", 12, evrakTarihi("tasinir-fisi"));
+  const odemeEmri = n("Ödeme emri", 13, evrakTarihi("odeme-emri"));
+  const kik = n("KİK bildirimi", 13, evrakTarihi("kik-bildirimi"));
+
+  const ciftler: [Nokta, Nokta][] = [
+    [ihtiyac, fiyat],
+    [fiyat, onay],
+    [onay, teklifYazi],
+    [sonTeklif, tutanak],
+    [tutanak, siparis],
+    [siparis, teslim],
+    [teslim, talep],
+    [teslim, muayeneGunu],
+    [muayeneGunu, fis],
+    [muayeneGunu, odemeEmri],
+    [siparis, kik],
+  ];
+
+  const k: Kontrol[] = [];
+  for (const [once, sonra] of ciftler) {
+    if (!once.tarih || !sonra.tarih || once.tarih <= sonra.tarih) continue;
+    k.push({
+      durum: "uyari",
+      baslik: `${once.ad} (${once.no}. basamak), ${sonra.ad} (${sonra.no}. basamak) tarihinden sonra`,
+      detay: `${once.ad} ${gunYaz(once.tarih)}, ${sonra.ad} ${gunYaz(sonra.tarih)}; ${once.ad} tarihi ${sonra.ad} tarihinden önce ya da aynı gün olmalıdır.`,
+    });
+  }
+
+  if (kik.tarih) {
+    const sonGun = kikSonGunu(alim, evraklar);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(sonGun) && kik.tarih > sonGun) {
+      k.push({
+        durum: "uyari",
+        baslik: "KİK bildirimi süresinde yapılmadı",
+        detay: `Son gün ${gunYaz(sonGun)}, bildirim tarihi ${gunYaz(kik.tarih)} (Doğrudan Temin Tebliği m.4/9).`,
+      });
+    }
+  }
+  return k;
 }

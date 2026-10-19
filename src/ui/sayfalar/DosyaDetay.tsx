@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useOutletContext, useParams } from "react-router-dom";
 import { olayKaydet } from "../../data/olay";
-import { asamaIlerlemesi, asamaSirasi, evrakDurumlari, type EvrakKaydi, type Olay } from "../../domain/dosya";
+import { asamaIlerlemesi, asamaSirasi, asamaTarihleri, evrakDurumlari, type EvrakKaydi, type Olay } from "../../domain/dosya";
 import { eskiEkranBasamagi } from "../../domain/basamaklar";
 import { butceTertibi } from "../../domain/parametreler";
 import type { PiyasaArastirmasi } from "../../domain/piyasa";
@@ -65,7 +65,11 @@ export function DosyaDetay() {
   const tamamSayisi = evraklar.filter((e) => e.tamam).length;
   const tedarikci = tedarikciler.find((t) => t.id === alim.tedarikciId)?.ad;
 
+  const evrakTarihleri = asamaTarihleri(alim, detay.evraklar);
   const asamaTarihi = (a: Asama): string | null => {
+    const t = evrakTarihleri[a];
+    if (t) return t;
+    // Eski dosyalar için yedek: olay kayıtları.
     if (a === "ihtiyac" || a === "dayanak" || a === "onay") return alim.onayTarihi;
     const olay = [...detay.olaylar].reverse().find((o) => olayAsamasi(o.tur) === a);
     return olay ? olay.zaman.slice(0, 10) : null;

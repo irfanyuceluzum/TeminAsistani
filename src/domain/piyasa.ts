@@ -157,6 +157,17 @@ export function degerlendir(p: PiyasaArastirmasi): Sonuc | null {
   return p.degerlendirme === "toplam" ? toplamBazli(p) : kalemBazli(p);
 }
 
+// Kalem bazında birden fazla firma kazanırsa her firma için ayrı dosya açılmalıdır; bu dosya ilk firmayla sürer.
+export function cokluKazananKontrolu(p: PiyasaArastirmasi, firmaAdi: (id: string) => string = (id) => id): Kontrol | null {
+  const kazananlar = degerlendir(p)?.kazananlar ?? [];
+  if (kazananlar.length <= 1) return null;
+  return {
+    durum: "uyari",
+    baslik: `${kazananlar.length} firma kazandı`,
+    detay: `${kazananlar.map(firmaAdi).join(", ")}. Kalem bazında birden fazla firma kazandığında her firma için ayrı dosya açın; bu dosya yalnız ${firmaAdi(kazananlar[0])} için sürer.`,
+  };
+}
+
 function tl(kurus: number): string {
   return "₺" + (kurus / 100).toLocaleString("tr-TR", { maximumFractionDigits: 2 });
 }

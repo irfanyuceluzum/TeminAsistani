@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ornekAlimlar, ornekAyarlar, ornekLimitDonemleri, ornekPiyasa, ornekTedarikciler } from "../data/ornekVeri";
-import { degerlendir, firmaToplami, piyasaKontrolleri, teklifTarihiKontrolleri, yaziEksikleri, type PiyasaArastirmasi } from "./piyasa";
+import { cokluKazananKontrolu, degerlendir, firmaToplami, piyasaKontrolleri, teklifTarihiKontrolleri, yaziEksikleri, type PiyasaArastirmasi } from "./piyasa";
 
 const TL = 100;
 const alim = ornekAlimlar.find((a) => a.id === "DT-2026-041")!;
@@ -173,5 +173,21 @@ describe("teklif tarihi kontrolleri", () => {
 
   it("aralık içindeki tarih sorunsuzdur", () => {
     expect(teklifTarihiKontrolleri(arastirma({ yazi, teklifler: [teklif("2026-10-12", 100)] }))).toEqual([]);
+  });
+});
+
+describe("çoklu kazanan", () => {
+  it("kalem bazında birden fazla firma kazanırsa uyarır", () => {
+    const k = cokluKazananKontrolu(arastirma({ degerlendirme: "kalem" }), (id) => id.toUpperCase());
+    expect(k).toMatchObject({ durum: "uyari", baslik: "3 firma kazandı" });
+    expect(k!.detay).toContain("her firma için ayrı dosya açın");
+    expect(k!.detay).toContain("yalnız TOROS için sürer");
+  });
+
+  it("tek kazananda null döner", () => {
+    expect(cokluKazananKontrolu(arastirma())).toBeNull();
+    const p = arastirma({ degerlendirme: "kalem" });
+    p.teklifler[0].fiyatlar = { k1: 1 * TL, k2: 1 * TL, k3: 1 * TL };
+    expect(cokluKazananKontrolu(p)).toBeNull();
   });
 });

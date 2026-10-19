@@ -40,6 +40,34 @@ export function asamaSirasi(bent: Bent): Asama[] {
     : [...ortak, "siparis", "muayene", "odeme", "tamamlandi"];
 }
 
+// Süreç çizelgesinin aşama tarihleri; basamaklı dosyanın evrak tarihlerinden türetilir (YYYY-AA-GG).
+export function asamaTarihleri(alim: Alim, evraklar: Record<string, EvrakKaydi>): Partial<Record<Asama, string>> {
+  const gun = (kod: string): string | undefined => {
+    const t = evraklar[kod]?.tarih;
+    return t ? t.slice(0, 10) : undefined;
+  };
+  const sira = asamaSirasi(alim.bent);
+  const aday: Partial<Record<Asama, string | undefined>> = {
+    ihtiyac: gun("ihtiyac-yazisi") ?? alim.onayTarihi,
+    dayanak: alim.onayTarihi,
+    onay: gun("onay-belgesi"),
+    piyasa: gun("piyasa-tutanagi"),
+    siparis: gun("siparis-yazisi"),
+    muayene: gun("muayene-tutanagi"),
+    odeme: gun("odeme-emri"),
+  };
+  if (alim.asama === "tamamlandi") {
+    const kapanis = [gun("odeme-emri"), gun("kik-bildirimi")].filter((t): t is string => !!t);
+    if (kapanis.length) aday.tamamlandi = kapanis.reduce((a, b) => (b > a ? b : a));
+  }
+  const sonuc: Partial<Record<Asama, string>> = {};
+  for (const a of sira) {
+    const t = aday[a];
+    if (t) sonuc[a] = t;
+  }
+  return sonuc;
+}
+
 export function evrakListesi(alim: Alim): EvrakTanimi[] {
   const e = (kod: string, ad: string, asama: Asama, sistemden = false): EvrakTanimi => ({ kod, ad, asama, sistemden });
   const liste: EvrakTanimi[] = [

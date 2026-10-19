@@ -4,6 +4,7 @@ import {
   acilisBasamagi,
   basamaklar,
   basamaklariTamamla,
+  tarihSirasiKontrolleri,
   GRUPLAR,
   ilerleme,
   oncekiSonraki,
@@ -17,6 +18,7 @@ import { bosArastirma, type PiyasaArastirmasi, type PiyasaKalemi } from "../../d
 import type { Alim } from "../../domain/tipler";
 import { olayKaydet } from "../../data/olay";
 import { bugun, tl } from "../bicim";
+import { KontrolSatiri } from "../KontrolSatiri";
 import { FiyatIstemeBasamagi } from "../basamaklar/FiyatIsteme";
 import { IhtiyacOnayiBasamagi } from "../basamaklar/IhtiyacOnayi";
 import { OnayBelgesiBasamagi } from "../basamaklar/OnayBelgesi";
@@ -149,6 +151,11 @@ function CalismaAlani({ alimId }: { alimId: string }) {
     [alim, piyasa, dosya, yuk],
   );
 
+  const tarihSirasi = useMemo(
+    () => (alim && piyasa && dosya && yuk ? tarihSirasiKontrolleri({ alim, piyasa, dosya, ...yuk }) : []),
+    [alim, piyasa, dosya, yuk],
+  );
+
   if (!alim) {
     return (
       <div className="sayfa">
@@ -246,6 +253,15 @@ function CalismaAlani({ alimId }: { alimId: string }) {
         <div className="bant bant-hata" role="alert">
           {hata}
         </div>
+      )}
+
+      {tarihSirasi.length > 0 && (
+        <section className="bant" aria-label="Tarih sırası">
+          <h3 style={{ fontSize: "14px", marginBottom: "8px" }}>Tarih sırası</h3>
+          {tarihSirasi.map((k, i) => (
+            <KontrolSatiri key={i} k={k} />
+          ))}
+        </section>
       )}
 
       <div className="calisma">
