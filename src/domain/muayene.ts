@@ -1,3 +1,4 @@
+import { tlKurus } from "./bicim";
 import { degerlendir, kalemTutari, type PiyasaArastirmasi } from "./piyasa";
 import type { Kontrol } from "./sihirbaz";
 import { kisi } from "./personel";
@@ -85,10 +86,6 @@ export function muayeneOzeti(m: Muayene): MuayeneOzeti {
   return { faturaToplami, kabulToplami, fark: faturaToplami - kabulToplami, kismi: m.kalemler.some((k) => k.kabulMiktari < k.faturaMiktari) };
 }
 
-function tl(kurus: number): string {
-  return "₺" + (kurus / 100).toLocaleString("tr-TR", { maximumFractionDigits: 2 });
-}
-
 export function muayeneKontrolleri(m: Muayene): Kontrol[] {
   const k: Kontrol[] = [];
 
@@ -124,10 +121,10 @@ export function muayeneKalemKontrolleri(m: Muayene): Kontrol[] {
     k.push({
       durum: "uyari",
       baslik: "Kısmi kabul",
-      detay: `Faturadan ${tl(ozet.fark)} eksik kabul ediliyor. İade faturası istenmeli ya da eksik iş tamamlatılıp ek tutanak düzenlenmeli.`,
+      detay: `Faturadan ${tlKurus(ozet.fark)} eksik kabul ediliyor. İade faturası istenmeli ya da eksik iş tamamlatılıp ek tutanak düzenlenmeli.`,
     });
   } else {
-    k.push({ durum: "tamam", baslik: "Tamamı kabul", detay: `${tl(ozet.kabulToplami)} + KDV kabul ediliyor.` });
+    k.push({ durum: "tamam", baslik: "Tamamı kabul", detay: `${tlKurus(ozet.kabulToplami)} + KDV kabul ediliyor.` });
   }
   if (m.teslimTarihi && m.muayeneTarihi && m.muayeneTarihi < m.teslimTarihi) {
     k.push({ durum: "engel", baslik: "Muayene teslimden önce", detay: "Muayene tarihi teslim tarihinden önce olamaz." });
@@ -141,7 +138,7 @@ export type KabulSonucu = "tam" | "kismi" | "ret";
 export function kabulSonucu(m: Muayene): { sonuc: KabulSonucu; metin: string } {
   const ozet = muayeneOzeti(m);
   if (ozet.kabulToplami === 0) return { sonuc: "ret", metin: "KABUL EDİLMEDİ (Ret)" };
-  if (ozet.kismi) return { sonuc: "kismi", metin: `KISMEN KABUL EDİLDİ (${tl(ozet.fark)} + KDV eksik)` };
+  if (ozet.kismi) return { sonuc: "kismi", metin: `KISMEN KABUL EDİLDİ (${tlKurus(ozet.fark)} + KDV eksik)` };
   return { sonuc: "tam", metin: "UYGUNDUR (Eksiksiz kabul edildi)" };
 }
 
@@ -184,5 +181,5 @@ export function dosyaKomisyonuKontrolleri(uyeler: KomisyonUyesi[], personel: Per
 // Muayene tamamlanınca dosya ödeme aşamasına geçer; ödeme tutarı kabul edilen tutardır.
 export function muayeneSonrasiDosya(m: Muayene): { asama: "odeme"; tutar: number; aciklama: string } {
   const tutarKurus = muayeneOzeti(m).kabulToplami;
-  return { asama: "odeme", tutar: tutarKurus, aciklama: `Muayene tamamlandı: ${kabulSonucu(m).metin}; kabul tutarı ${tl(tutarKurus)} + KDV. Dosya ödeme aşamasına geçti.` };
+  return { asama: "odeme", tutar: tutarKurus, aciklama: `Muayene tamamlandı: ${kabulSonucu(m).metin}; kabul tutarı ${tlKurus(tutarKurus)} + KDV. Dosya ödeme aşamasına geçti.` };
 }

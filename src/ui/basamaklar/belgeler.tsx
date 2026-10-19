@@ -9,7 +9,7 @@ import { kabulSonucu, type Muayene } from "../../domain/muayene";
 import type { Odeme, OebSatiri } from "../../domain/odeme";
 import { bentBilgisi } from "../../domain/sihirbaz";
 import type { Alim, Ayarlar, Tedarikci } from "../../domain/tipler";
-import { uzunTarih } from "../bicim";
+import { belgeTutari, BOS_DEGER, bosIse, tutarMetni, uzunTarih } from "../bicim";
 import { IdareBasligi } from "../IdareBasligi";
 import { IhtiyacTablosu, miktarYazisi } from "../IhtiyacListesi";
 
@@ -215,11 +215,6 @@ export function yaklasikMaliyetSayfalari(b: BelgeBilgisi, sonuc: MaliyetSonucu, 
       ? b.alim.onayTarihi.split("-").reverse().join("/")
       : "…/…/……";
 
-  const para = (k: number | null | undefined): string => {
-    if (k === null || k === undefined || k === 0) return "0,00";
-    return (k / 100).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  };
-
   // En az 4 firma sütun alanı oluşturulur
   const firmaSlotSayisi = Math.max(y.firmalar.length, 4);
   const firmaSlotlari = Array.from({ length: firmaSlotSayisi }, (_, i) => {
@@ -340,13 +335,13 @@ export function yaklasikMaliyetSayfalari(b: BelgeBilgisi, sonuc: MaliyetSonucu, 
                   const tf = bf && bf > 0 ? kalemTutari(kalem, bf) : 0;
                   return (
                     <Fragment key={slot.no}>
-                      <td className="sag">{para(bf)}</td>
-                      <td className="sag">{para(tf)}</td>
+                      <td className="sag">{bosIse(bf || null, tutarMetni)}</td>
+                      <td className="sag">{bosIse(tf || null, tutarMetni)}</td>
                     </Fragment>
                   );
                 })}
-                <td className="sag kalin">{satir?.birimFiyat ? para(satir.birimFiyat) : "0,00"}</td>
-                <td className="sag kalin">{satir?.tutar ? para(satir.tutar) : "0,00"}</td>
+                <td className="sag kalin">{bosIse(satir?.birimFiyat || null, tutarMetni)}</td>
+                <td className="sag kalin">{bosIse(satir?.tutar || null, tutarMetni)}</td>
               </tr>
             );
           })}
@@ -359,11 +354,11 @@ export function yaklasikMaliyetSayfalari(b: BelgeBilgisi, sonuc: MaliyetSonucu, 
             {firmaSlotlari.map((slot, i) => (
               <Fragment key={slot.no}>
                 <td className="merkez kalin kucuk">TOPLAM</td>
-                <td className="sag kalin">{firmaToplamlari[i] === null ? "—" : para(firmaToplamlari[i])}</td>
+                <td className="sag kalin">{bosIse(firmaToplamlari[i], tutarMetni)}</td>
               </Fragment>
             ))}
             <td className="merkez kalin kucuk">TOPLAM</td>
-            <td className="sag kalin">{para(sonuc.toplam)}</td>
+            <td className="sag kalin">{tutarMetni(sonuc.toplam)}</td>
           </tr>
         </tfoot>
       </table>
@@ -415,11 +410,6 @@ export function dogrudanTeminOnaySayfalari(
     .filter((u) => u.ad && u.ad !== "…")
     .map((u) => `${imzaAdi(u.ad)} (${u.unvan || "Görevli"})`)
     .join(", ");
-
-  const para = (k: number | null | undefined): string => {
-    if (k === null || k === undefined || k === 0) return "0,00";
-    return (k / 100).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  };
 
   const ilgiYazisi = b.dosya.ihtiyacOnayi.sayi
     ? `${b.dosya.ihtiyacOnayi.tarih ? uzunTarih(b.dosya.ihtiyacOnayi.tarih) : ""} tarihli ve ${b.dosya.ihtiyacOnayi.sayi} sayılı İhtiyaç Belgesi`
@@ -477,12 +467,12 @@ export function dogrudanTeminOnaySayfalari(
             <td className="onay-td-deger kalin">
               {b.dosya.yaklasik.hesaplanmayacak
                 ? "Hesaplanmamıştır (Doğrudan Temin Tebliği m.4/4)"
-                : `${para(b.alim.tutar)} TL (KDV Hariç)`}
+                : `${belgeTutari(b.alim.tutar)} (KDV Hariç)`}
             </td>
           </tr>
           <tr>
             <th className="onay-th-etiket">KULLANILABİLİR ÖDENEK TUTARI</th>
-            <td className="onay-td-deger">{b.dosya.odenek > 0 ? `${para(b.dosya.odenek)} TL` : "—"}</td>
+            <td className="onay-td-deger">{b.dosya.odenek > 0 ? belgeTutari(b.dosya.odenek) : BOS_DEGER}</td>
           </tr>
           <tr>
             <th className="onay-th-etiket">YATIRIM PROJE NUMARASI (Varsa)</th>
@@ -690,11 +680,6 @@ export function piyasaTutanagiSayfalari(
   const ustIdare = (b.ayarlar.idare?.ustIdare || "T.C. İDARE MÜDÜRLÜĞÜ").toLocaleUpperCase("tr-TR");
   const birim = b.ayarlar.idare?.birim || "";
   const sonuc = degerlendir(piyasa);
-  const para = (k: number | null | undefined): string => {
-    if (k === null || k === undefined) return "—";
-    return (k / 100).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  };
-
   const g = b.ayarlar.gorevler;
   const yetkiliIdler = new Set([g?.harcamaYetkilisi, g?.gerceklestirme].filter(Boolean));
   // Piyasa görevlileri (Harcama Yetkilisi ve Gerçekleştirme Görevlisi OLMAMAK üzere)
@@ -770,12 +755,12 @@ export function piyasaTutanagiSayfalari(
                   const uygunMu = atama?.tedarikciId === t.tedarikciId;
                   return (
                     <td key={t.tedarikciId} style={{ textAlign: "right", fontWeight: uygunMu ? "bold" : "normal" }}>
-                      {f ? `${para(f)} TL` : "—"}
+                      {f ? belgeTutari(f) : BOS_DEGER}
                     </td>
                   );
                 })}
                 <td style={{ textAlign: "right", fontWeight: "bold" }}>
-                  {enUygun ? `${para(enUygun)} TL` : "—"}
+                  {enUygun ? belgeTutari(enUygun) : BOS_DEGER}
                 </td>
               </tr>
             );
@@ -791,19 +776,19 @@ export function piyasaTutanagiSayfalari(
               const enUygunToplam = sonuc?.toplam === top;
               return (
                 <td key={t.tedarikciId} style={{ textAlign: "right", fontWeight: "bold", background: enUygunToplam ? "#f5f5f5" : "#fff" }}>
-                  {top !== null ? `${para(top)} TL` : "—"}
+                  {bosIse(top, belgeTutari)}
                 </td>
               );
             })}
             <td style={{ textAlign: "right", fontWeight: "bold" }}>
-              {sonuc ? `${para(sonuc.toplam)} TL` : "—"}
+              {sonuc ? belgeTutari(sonuc.toplam) : BOS_DEGER}
             </td>
           </tr>
         </tfoot>
       </table>
 
       <div style={{ marginTop: "6pt", padding: "6pt", border: "1px solid #000", fontSize: "8pt", lineHeight: 1.35, textAlign: "justify" }}>
-        <strong>KARAR:</strong> İdaremizce 4734 sayılı Kamu İhale Kanunu’nun 22 nci maddesinin ({bentBilgisi(b.alim.bent).harf}) bendi uyarınca yapılan piyasa fiyat araştırması neticesinde; teklif veren firmaların fiyat teklifleri ve şartları incelenmiş olup, en uygun ve avantajlı teklifin KDV hariç <strong>{para(toplamKurus)} TL</strong> ile <strong>{kazanan}</strong> tarafından verildiği tespit edilmiştir.{" "}
+        <strong>KARAR:</strong> İdaremizce 4734 sayılı Kamu İhale Kanunu’nun 22 nci maddesinin ({bentBilgisi(b.alim.bent).harf}) bendi uyarınca yapılan piyasa fiyat araştırması neticesinde; teklif veren firmaların fiyat teklifleri ve şartları incelenmiş olup, en uygun ve avantajlı teklifin KDV hariç <strong>{belgeTutari(toplamKurus)}</strong> ile <strong>{kazanan}</strong> tarafından verildiği tespit edilmiştir.{" "}
         {sonuc?.kazananlar
           .map((id) => ({ id, tarih: piyasa.teklifler.find((t) => t.tedarikciId === id)?.yasaklilikSorgusu }))
           .filter((x) => x.tarih)
@@ -844,7 +829,6 @@ export function siparisYazisiSayfalari(
   const tarih = siparis?.tarih || "";
   const g = b.ayarlar.gorevler;
   const hy = imzaci(b.ayarlar, g?.harcamaYetkilisi);
-  const para = (k: number): string => (k / 100).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   return [
     <div key="siparis-yazisi" className="onay-sablon-kapsayici">
@@ -860,7 +844,7 @@ export function siparisYazisiSayfalari(
         {yuklenici ? yuklenici.ad.toLocaleUpperCase("tr-TR") : "YÜKLENİCİ FİRMA"}
       </div>
       <p style={{ textIndent: "24pt", lineHeight: 1.5, textAlign: "justify" }}>
-        İdaremizce 4734 sayılı Kamu İhale Kanunu’nun 22 nci maddesinin ({bentBilgisi(b.alim.bent).harf}) bendi kapsamında doğrudan temin usulüyle alımı kararlaştırılan "<strong>{b.alim.konu}</strong>" işi, vermiş olduğunuz teklif mektubu doğrultusunda KDV hariç <strong>{para(tutar)} TL</strong> bedelle firmanız uhdesinde kalmıştır.
+        İdaremizce 4734 sayılı Kamu İhale Kanunu’nun 22 nci maddesinin ({bentBilgisi(b.alim.bent).harf}) bendi kapsamında doğrudan temin usulüyle alımı kararlaştırılan "<strong>{b.alim.konu}</strong>" işi, vermiş olduğunuz teklif mektubu doğrultusunda KDV hariç <strong>{belgeTutari(tutar)}</strong> bedelle firmanız uhdesinde kalmıştır.
       </p>
       <p style={{ textIndent: "24pt", lineHeight: 1.5, textAlign: "justify" }}>
         Söz konusu malzemelerin/hizmetin ekte belirtilen şartlar dahilinde ve süresi içerisinde idaremize teslim edilmesi hususunda gereğini rica ederim.
@@ -878,7 +862,7 @@ export function siparisYazisiSayfalari(
           </tr>
           <tr>
             <th className="onay-th-etiket">Sipariş Bedeli (KDV Hariç)</th>
-            <td className="onay-td-deger kalin">{para(tutar)} TL</td>
+            <td className="onay-td-deger kalin">{belgeTutari(tutar)}</td>
           </tr>
         </tbody>
       </table>
@@ -1087,7 +1071,6 @@ export function tasinirIslemFisiSayfalari(
   const satirlar = muayene
     ? muayene.kalemler.filter((k) => k.kabulMiktari > 0).map((k) => ({ ad: k.ad, birim: k.birim, miktar: k.kabulMiktari, birimFiyat: k.birimFiyat as number | null }))
     : b.kalemler.map((k) => ({ ad: k.ad, birim: k.birim, miktar: k.miktar, birimFiyat: null as number | null }));
-  const para = (k: number) => (k / 100).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const toplam = satirlar.reduce((t, x) => t + (x.birimFiyat === null ? 0 : Math.round(x.miktar * x.birimFiyat)), 0);
   return [
     <div key="tif-belgesi" className="onay-sablon-kapsayici">
@@ -1133,8 +1116,8 @@ export function tasinirIslemFisiSayfalari(
               <td>{x.ad}</td>
               <td>{miktarYazisi(x.miktar)}</td>
               <td>{x.birim}</td>
-              <td style={{ textAlign: "right" }}>{x.birimFiyat === null ? "—" : para(x.birimFiyat)}</td>
-              <td style={{ textAlign: "right" }}>{x.birimFiyat === null ? "—" : para(Math.round(x.miktar * x.birimFiyat))}</td>
+              <td style={{ textAlign: "right" }}>{bosIse(x.birimFiyat, tutarMetni)}</td>
+              <td style={{ textAlign: "right" }}>{bosIse(x.birimFiyat, (f) => tutarMetni(Math.round(x.miktar * f)))}</td>
             </tr>
           ))}
           {muayene && (
@@ -1142,7 +1125,7 @@ export function tasinirIslemFisiSayfalari(
               <th scope="row" colSpan={5} style={{ textAlign: "right" }}>
                 Toplam (KDV hariç)
               </th>
-              <td style={{ textAlign: "right", fontWeight: "bold" }}>{para(toplam)}</td>
+              <td style={{ textAlign: "right", fontWeight: "bold" }}>{tutarMetni(toplam)}</td>
             </tr>
           )}
         </tbody>
@@ -1168,10 +1151,6 @@ export function odemeEmriBelgesiSayfalari(
   const g = b.ayarlar.gorevler;
   const gg = imzaci(b.ayarlar, g?.gerceklestirme);
   const hy = imzaci(b.ayarlar, g?.harcamaYetkilisi);
-  const para = (k: number | null | undefined): string => {
-    if (k === null || k === undefined) return "—";
-    return (k / 100).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL";
-  };
   const borcToplami = satirlar.reduce((t, x) => t + (x.borc ?? 0), 0);
   const alacakToplami = satirlar.reduce((t, x) => t + (x.alacak ?? 0), 0);
   // "Kırtasiye malzemesi alımı" gibi konular zaten "alımı" ile biter; ikinci kez eklenmez.
@@ -1226,14 +1205,14 @@ export function odemeEmriBelgesiSayfalari(
           {satirlar.map((x) => (
             <tr key={x.aciklama} style={x.aciklama.startsWith("Yükleniciye") ? { fontWeight: "bold" } : undefined}>
               <td>{x.aciklama}</td>
-              <td style={{ textAlign: "right" }}>{para(x.borc)}</td>
-              <td style={{ textAlign: "right" }}>{para(x.alacak)}</td>
+              <td style={{ textAlign: "right" }}>{bosIse(x.borc, tutarMetni)}</td>
+              <td style={{ textAlign: "right" }}>{bosIse(x.alacak, tutarMetni)}</td>
             </tr>
           ))}
           <tr style={{ fontWeight: "bold" }}>
             <td>TOPLAM</td>
-            <td style={{ textAlign: "right" }}>{para(borcToplami)}</td>
-            <td style={{ textAlign: "right" }}>{para(alacakToplami)}</td>
+            <td style={{ textAlign: "right" }}>{tutarMetni(borcToplami)}</td>
+            <td style={{ textAlign: "right" }}>{tutarMetni(alacakToplami)}</td>
           </tr>
         </tbody>
       </table>

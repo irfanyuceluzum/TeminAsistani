@@ -1,15 +1,12 @@
 import { useState } from "react";
 import type { FiyatIsteme, MaliyetFirmasi, YaklasikMaliyet } from "../../domain/basamaklar";
 import { tutarCoz } from "../../domain/sihirbaz";
+import { bosIse, tutarGirdisi } from "../bicim";
 import { BelgeOnizleme } from "../BelgeOnizleme";
 import { miktarYazisi } from "../IhtiyacListesi";
 import type { BasamakBaglami } from "../sayfalar/DosyaCalismaAlani";
 import { fiyatIstemeSayfalari } from "./belgeler";
 import { YeniFirmaFormu } from "./YeniFirmaFormu";
-
-function fiyatYazisi(kurus: number | null | undefined): string {
-  return kurus === null || kurus === undefined ? "" : (kurus / 100).toLocaleString("tr-TR", { maximumFractionDigits: 2 });
-}
 
 const hucre = (firma: string, kalem: string) => `${firma}|${kalem}`;
 
@@ -22,7 +19,7 @@ export function FiyatIstemeBasamagi({ b }: { b: BasamakBaglami }) {
 
   const [metinler, setMetinler] = useState<Record<string, string>>(() => {
     const m: Record<string, string> = {};
-    for (const firma of y.firmalar) for (const k of kalemler) m[hucre(firma.tedarikciId, k.id)] = fiyatYazisi(firma.fiyatlar[k.id]);
+    for (const firma of y.firmalar) for (const k of kalemler) m[hucre(firma.tedarikciId, k.id)] = bosIse(firma.fiyatlar[k.id], tutarGirdisi, "");
     return m;
   });
   const [eklenecek, setEklenecek] = useState("");

@@ -1,16 +1,6 @@
 import type { Asama } from "../domain/tipler";
 
-export function tl(kurus: number): string {
-  return "₺" + Math.round(kurus / 100).toLocaleString("tr-TR");
-}
-
-export function tlKurus(kurus: number): string {
-  return "₺" + (kurus / 100).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
-export function yuzde(oran: number): string {
-  return "%" + (oran * 100).toLocaleString("tr-TR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-}
+export { tl, tlKurus, yuzde, tutarMetni, belgeTutari, tutarGirdisi, bosIse, BOS_DEGER, binde } from "../domain/bicim";
 
 const AYLAR = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"];
 

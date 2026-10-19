@@ -1,3 +1,4 @@
+import { tlKurus, yuzde } from "./bicim";
 import { benzerAlimlar, ddLimitKontrolu, yuzdeOnDurumu } from "./kurallar";
 import { turkceSayi } from "./sayi";
 import type { Alim, Ayarlar, Bent, LimitDonemi } from "./tipler";
@@ -52,14 +53,6 @@ export interface Aday {
   sureliIs?: boolean;
 }
 
-function tl(kurus: number): string {
-  return "₺" + Math.round(kurus / 100).toLocaleString("tr-TR");
-}
-
-function yuzde(oran: number): string {
-  return "%" + (oran * 100).toLocaleString("tr-TR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-}
-
 // 22/d canlı kontrolleri. "engel" olan bir kontrol varken onay belgesine geçilmez.
 export function dayanakKontrolleri(
   aday: Aday,
@@ -75,10 +68,10 @@ export function dayanakKontrolleri(
     sonuc.push({
       durum: "engel",
       baslik: "22/d limiti aşılıyor",
-      detay: `${tl(aday.tutar)}, limit ${tl(limit.limit)}'nin üzerinde. Bu alım 22/d ile yapılamaz.`,
+      detay: `${tlKurus(aday.tutar)}, limit ${tlKurus(limit.limit)}'nin üzerinde. Bu alım 22/d ile yapılamaz.`,
     });
   } else {
-    sonuc.push({ durum: "tamam", baslik: "22/d limiti içinde", detay: `${tl(aday.tutar)}, limit ${tl(limit.limit)}'nin altında.` });
+    sonuc.push({ durum: "tamam", baslik: "22/d limiti içinde", detay: `${tlKurus(aday.tutar)}, limit ${tlKurus(limit.limit)}'nin altında.` });
   }
 
   const yil = Number(aday.onayTarihi.slice(0, 4));
@@ -112,7 +105,7 @@ export function dayanakKontrolleri(
     sonuc.push({
       durum: "uyari",
       baslik: `${benzer.length} benzer alım var`,
-      detay: `Son ${ayarlar.bolme.pencereGun} günde ${benzer.map((a) => a.id).join(", ")} (toplam ${tl(toplam)}). Bölme sayılmaması için gerekçe ekleyin.`,
+      detay: `Son ${ayarlar.bolme.pencereGun} günde ${benzer.map((a) => a.id).join(", ")} (toplam ${tlKurus(toplam)}). Bölme sayılmaması için gerekçe ekleyin.`,
     });
   }
   if (sozlesmeZorunlu({ bent: "22/d", sureliIs: aday.sureliIs })) {

@@ -1,3 +1,4 @@
+import { binde, tlKurus, tutarMetni } from "./bicim";
 import { damgaVergisi, malAlimiMi, type DamgaSonucu } from "./kurallar";
 import type { EvrakDurumu } from "./dosya";
 import { muayeneOzeti, type Muayene } from "./muayene";
@@ -128,10 +129,6 @@ export interface OebSatiri {
   alacak: number | null;
 }
 
-function binde(yuzBinde: number): string {
-  return (yuzBinde / 100).toLocaleString("tr-TR", { maximumFractionDigits: 2 });
-}
-
 // Ödeme emri belgesinin hesap satırları. Borç: KDV dahil fatura bedeli; alacak: kesintiler ve yükleniciye net ödeme.
 export function oebSatirlari(h: OdemeHesabi, o: Odeme, ayarlar: Ayarlar): OebSatiri[] {
   const s: OebSatiri[] = [
@@ -180,14 +177,6 @@ export function ekListesi(evraklar: EvrakDurumu[], o: Odeme, brut: number, ayarl
   return liste;
 }
 
-function tl(kurus: number): string {
-  return "₺" + (kurus / 100).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
-function tutarMetni(kurus: number): string {
-  return (kurus / 100).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
 export interface KbsAlani {
   ad: string;
   deger: string;
@@ -232,16 +221,16 @@ export function odemeKontrolleri(o: Odeme, h: OdemeHesabi, ekler: { ad: string; 
   const gerekli = borcSorgusuGerekli(h.brut, ayarlar);
   if (gerekli.vergi && o.vergiSorgusu.durum === "gerekmiyor") {
     const esik = vergiSorguEsigi(ayarlar);
-    k.push({ durum: "engel", baslik: "Vergi borcu sorgusu gerekli", detay: `Ödeme ${tl(h.brut)}; ${tl(esik)} eşiğini aştığı için vergi borcu sorgulanmalı.` });
+    k.push({ durum: "engel", baslik: "Vergi borcu sorgusu gerekli", detay: `Ödeme ${tlKurus(h.brut)}; ${tlKurus(esik)} eşiğini aştığı için vergi borcu sorgulanmalı.` });
   }
   if (o.sgkSorgusu.durum === "gerekmiyor") {
     k.push({ durum: "uyari", baslik: "SGK borç sorgusunda tutar sınırı yok", detay: "SGK borç sorgusu ödeme tutarına bakılmadan yapılır; \"gerekmiyor\" yerine sonucu işaretleyin." });
   }
   const borcToplami = (o.vergiSorgusu.durum === "borclu" ? o.vergiSorgusu.borc : 0) + (o.sgkSorgusu.durum === "borclu" ? o.sgkSorgusu.borc : 0);
   if (borcToplami > h.vergiMahsubu + h.sgkMahsubu) {
-    k.push({ durum: "uyari", baslik: "Borç ödemeyi aşıyor", detay: `Borcun ${tl(borcToplami - h.vergiMahsubu - h.sgkMahsubu)} kadarı bu ödemeden karşılanamıyor.` });
+    k.push({ durum: "uyari", baslik: "Borç ödemeyi aşıyor", detay: `Borcun ${tlKurus(borcToplami - h.vergiMahsubu - h.sgkMahsubu)} kadarı bu ödemeden karşılanamıyor.` });
   } else if (borcToplami > 0) {
-    k.push({ durum: "uyari", baslik: "Borç mahsubu", detay: `${tl(borcToplami)} ödemeden kesilip ilgili kuruma aktarılacak.` });
+    k.push({ durum: "uyari", baslik: "Borç mahsubu", detay: `${tlKurus(borcToplami)} ödemeden kesilip ilgili kuruma aktarılacak.` });
   }
   const t = tevkifatTuru(o.tevkifatTuru);
   if (t.pay > 0 && !ayarlar.tevkifatSiniri) {

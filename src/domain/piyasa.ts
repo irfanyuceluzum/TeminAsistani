@@ -1,3 +1,4 @@
+import { tlKurus } from "./bicim";
 import { ddLimitKontrolu } from "./kurallar";
 import type { Kontrol } from "./sihirbaz";
 import type { Alim, Ayarlar, LimitDonemi, Tedarikci } from "./tipler";
@@ -168,10 +169,6 @@ export function cokluKazananKontrolu(p: PiyasaArastirmasi, firmaAdi: (id: string
   };
 }
 
-function tl(kurus: number): string {
-  return "₺" + (kurus / 100).toLocaleString("tr-TR", { maximumFractionDigits: 2 });
-}
-
 export function piyasaKontrolleri(
   p: PiyasaArastirmasi,
   sonuc: Sonuc | null,
@@ -232,14 +229,14 @@ export function piyasaKontrolleri(
 
   const limit = ddLimitKontrolu(sonuc.toplam, alim.onayTarihi, ayarlar.konum, donemler);
   if (limit.durum === "asiyor") {
-    k.push({ durum: "engel", baslik: "22/d limiti aşılıyor", detay: `Sonuç ${tl(sonuc.toplam)}, limit ${tl(limit.limit)}.` });
+    k.push({ durum: "engel", baslik: "22/d limiti aşılıyor", detay: `Sonuç ${tlKurus(sonuc.toplam)}, limit ${tlKurus(limit.limit)}.` });
   }
 
   if (sonuc.toplam > alim.tutar) {
     k.push({
       durum: "uyari",
       baslik: "Onay tutarı aşılıyor",
-      detay: `Sonuç ${tl(sonuc.toplam)}, onay belgesindeki tutar ${tl(alim.tutar)}. Onayı ve ödeneği gözden geçirin.`,
+      detay: `Sonuç ${tlKurus(sonuc.toplam)}, onay belgesindeki tutar ${tlKurus(alim.tutar)}. Onayı ve ödeneği gözden geçirin.`,
     });
   }
 

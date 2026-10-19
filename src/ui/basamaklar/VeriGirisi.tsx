@@ -2,18 +2,14 @@ import { useState } from "react";
 import { SARTLAR, veriKontrolleri, type SartKodu } from "../../domain/basamaklar";
 import { butceTertibi } from "../../domain/parametreler";
 import { tutarCoz } from "../../domain/sihirbaz";
-import { tlKurus, uzunTarih } from "../bicim";
+import { tlKurus, tutarGirdisi, uzunTarih } from "../bicim";
 import { IhtiyacListesiDuzenleyici } from "../IhtiyacListesi";
 import { KontrolSatiri } from "../KontrolSatiri";
 import type { BasamakBaglami } from "../sayfalar/DosyaCalismaAlani";
 
-function odenekYazisi(kurus: number): string {
-  return kurus ? (kurus / 100).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "";
-}
-
 export function VeriGirisi({ b }: { b: BasamakBaglami }) {
   const { alim, piyasa, dosya, dosyaDegistir } = b;
-  const [odenekMetni, setOdenekMetni] = useState(odenekYazisi(dosya.odenek));
+  const [odenekMetni, setOdenekMetni] = useState(dosya.odenek ? tutarGirdisi(dosya.odenek) : "");
   const odenekGecersiz = odenekMetni.trim() !== "" && tutarCoz(odenekMetni) === null;
   const kontroller = veriKontrolleri(piyasa.kalemler, dosya, alim);
 

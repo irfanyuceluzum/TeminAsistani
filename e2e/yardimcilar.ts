@@ -60,14 +60,8 @@ export async function degisikliktenSonraKaydiBekle(page: Page): Promise<void> {
   await kaydiBekle(page);
 }
 
-// Kuruşu uygulamanın gösterdiği "1.234,56" biçimine çevirir (TL işaretsiz).
-export function tutarMetni(kurus: number): string {
-  return (kurus / 100).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
-export function tlKurus(kurus: number): string {
-  return "₺" + tutarMetni(kurus);
-}
+// Uygulamanın gösterdiği tutar biçimleri ortak biçimleyiciden gelir.
+export { belgeTutari, tlKurus, tutarGirdisi, tutarMetni } from "../src/domain/bicim";
 
 export function sayiyaCevir(metin: string | null): number {
   return Number((metin ?? "").replace(/\D/g, ""));

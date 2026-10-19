@@ -1,3 +1,4 @@
+import { tlKurus } from "./bicim";
 import type { EvrakKaydi } from "./dosya";
 import { ddLimitKontrolu, malAlimiMi } from "./kurallar";
 import type { Muayene } from "./muayene";
@@ -156,10 +157,6 @@ export function yaklasikHesapla(kalemler: PiyasaKalemi[], y: YaklasikMaliyet): M
   return { satirlar, toplam, kdv, kdvDahil: toplam + kdv, hesaplanabilir: kalemler.length > 0 && satirlar.every((r) => r.birimFiyat !== null) };
 }
 
-function tl(kurus: number): string {
-  return "₺" + (kurus / 100).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
 export function yaklasikKontrolleri(
   d: DosyaBasamaklari,
   sonuc: MaliyetSonucu,
@@ -199,7 +196,7 @@ export function yaklasikKontrolleri(
 
   if (sonuc.toplam > 0) {
     const limit = ddLimitKontrolu(sonuc.toplam, alim.onayTarihi, ayarlar.konum, donemler);
-    if (limit.durum === "asiyor") k.push({ durum: "engel", baslik: "22/d limiti aşılıyor", detay: `Yaklaşık maliyet ${tl(sonuc.toplam)}, limit ${tl(limit.limit)}.` });
+    if (limit.durum === "asiyor") k.push({ durum: "engel", baslik: "22/d limiti aşılıyor", detay: `Yaklaşık maliyet ${tlKurus(sonuc.toplam)}, limit ${tlKurus(limit.limit)}.` });
     else if (limit.durum === "icinde") k.push({ durum: "tamam", baslik: "22/d limiti içinde", detay: `Limitin %${((sonuc.toplam / limit.limit) * 100).toLocaleString("tr-TR", { maximumFractionDigits: 1 })} kullanılıyor.` });
     else k.push({ durum: "uyari", baslik: "Limit dönemi yok", detay: "Onay tarihini kapsayan limit dönemini Parametreler'den ekleyin." });
   }
@@ -403,7 +400,7 @@ export function onayBelgesiKontrolleri(
       k.push({
         durum: "tamam",
         baslik: "Yaklaşık maliyet hazır",
-        detay: `Yaklaşık maliyet ${tl(alim.tutar)} (KDV Hariç) olarak onaylandı.`,
+        detay: `Yaklaşık maliyet ${tlKurus(alim.tutar)} (KDV Hariç) olarak onaylandı.`,
       });
     }
   }
@@ -423,12 +420,12 @@ export function onayBelgesiKontrolleri(
         ? {
             durum: "engel",
             baslik: "Ödenek yetersiz",
-            detay: `KDV dahil ${tl(kdvDahil)}, kullanılabilir ödenek ${tl(dosya.odenek)}; ${tl(kdvDahil - dosya.odenek)} eksik (5018 md. 20/(d); Doğrudan Temin Tebliği m.3/1-g).`,
+            detay: `KDV dahil ${tlKurus(kdvDahil)}, kullanılabilir ödenek ${tlKurus(dosya.odenek)}; ${tlKurus(kdvDahil - dosya.odenek)} eksik (5018 md. 20/(d); Doğrudan Temin Tebliği m.3/1-g).`,
           }
         : {
             durum: "tamam",
             baslik: "Ödenek yeterli",
-            detay: `KDV dahil ${tl(kdvDahil)}; ödenekten ${tl(dosya.odenek - kdvDahil)} kalır.`,
+            detay: `KDV dahil ${tlKurus(kdvDahil)}; ödenekten ${tlKurus(dosya.odenek - kdvDahil)} kalır.`,
           },
     );
   }

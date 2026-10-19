@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { bugun } from "../bicim";
+import { belgeTutari, BOS_DEGER, bugun, tutarMetni, tutarGirdisi } from "../bicim";
 import { useNavigate } from "react-router-dom";
 import type { BasamakBaglami } from "../sayfalar/DosyaCalismaAlani";
 import { BelgeOnizleme } from "../BelgeOnizleme";
@@ -13,11 +13,6 @@ import { teklifFirmaKontrolleri } from "../../domain/tedarikci";
 
 function hucreKey(firmaId: string, kalemId: string): string {
   return `${firmaId}__${kalemId}`;
-}
-
-function kurusFormat(kurus: number | null | undefined): string {
-  if (kurus === null || kurus === undefined || kurus === 0) return "";
-  return (kurus / 100).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 export function TeklifMektuplariBasamagi({ b }: { b: BasamakBaglami }) {
@@ -54,7 +49,7 @@ export function TeklifMektuplariBasamagi({ b }: { b: BasamakBaglami }) {
       for (const k of b.kalemler) {
         const fiyat = t.fiyatlar[k.id];
         if (fiyat !== null && fiyat !== undefined && fiyat > 0) {
-          ilkMetinler[hucreKey(t.tedarikciId, k.id)] = kurusFormat(fiyat);
+          ilkMetinler[hucreKey(t.tedarikciId, k.id)] = fiyat ? tutarGirdisi(fiyat) : "";
         }
       }
     }
@@ -109,7 +104,7 @@ export function TeklifMektuplariBasamagi({ b }: { b: BasamakBaglami }) {
       for (const k of b.kalemler) {
         const fiyat = f.fiyatlar[k.id];
         if (fiyat !== null && fiyat !== undefined && fiyat > 0) {
-          yeniMetinler[hucreKey(f.tedarikciId, k.id)] = kurusFormat(fiyat);
+          yeniMetinler[hucreKey(f.tedarikciId, k.id)] = fiyat ? tutarGirdisi(fiyat) : "";
         }
       }
     }
@@ -393,7 +388,7 @@ export function TeklifMektuplariBasamagi({ b }: { b: BasamakBaglami }) {
                 <span className="mono kalin" style={{ fontSize: "14px" }}>
                   {aktifFirmaToplam === null
                     ? "Toplam: Eksik fiyat"
-                    : `Toplam: ${(aktifFirmaToplam / 100).toLocaleString("tr-TR", { minimumFractionDigits: 2 })} TL + KDV`}
+                    : `Toplam: ${belgeTutari(aktifFirmaToplam)} + KDV`}
                 </span>
               </div>
 
@@ -441,7 +436,7 @@ export function TeklifMektuplariBasamagi({ b }: { b: BasamakBaglami }) {
                             {gecersiz && <div className="soluk kucuk" role="alert">Geçersiz tutar</div>}
                           </td>
                           <td style={{ textAlign: "right", fontWeight: 500 }} className="mono">
-                            {satirTutar > 0 ? (satirTutar / 100).toLocaleString("tr-TR", { minimumFractionDigits: 2 }) : "—"}
+                            {satirTutar > 0 ? tutarMetni(satirTutar) : BOS_DEGER}
                           </td>
                         </tr>
                       );

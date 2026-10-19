@@ -13,7 +13,7 @@ import {
   type TeklifSonucu,
 } from "../../domain/tedarikci";
 import type { Tedarikci } from "../../domain/tipler";
-import { bugun, tl, uzunTarih } from "../bicim";
+import { BOS_DEGER, bosIse, bugun, tl, uzunTarih, yuzde } from "../bicim";
 import type { Veri } from "../useVeri";
 
 type Filtre = "Tümü" | "Sorgu gerekli" | "Bilgi eksik";
@@ -252,7 +252,7 @@ export function Tedarikciler() {
                 <div className="kart">
                   <span className="kart-etiket">Kazanma oranı</span>
                   <span className="kart-deger">
-                    {gecmis.teklifSayisi ? `%${Math.round((gecmis.kazanilan / gecmis.teklifSayisi) * 100)}` : "—"}
+                    {gecmis.teklifSayisi ? yuzde(gecmis.kazanilan / gecmis.teklifSayisi) : BOS_DEGER}
                   </span>
                 </div>
                 <div className="kart">
@@ -298,7 +298,7 @@ export function Tedarikciler() {
                               <span className={SONUC[t.sonuc][1]}>{SONUC[t.sonuc][0]}</span>
                             </td>
                             <td className="mono sag soluk">
-                              {t.fark === null ? "—" : `+%${(t.fark * 100).toLocaleString("tr-TR", { maximumFractionDigits: 1 })}`}
+                              {bosIse(t.fark, (f) => `+${yuzde(f)}`)}
                             </td>
                           </tr>
                         ))}

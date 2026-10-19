@@ -5,7 +5,7 @@ import { olayKaydet } from "../../data/olay";
 import type { EvrakKaydi } from "../../domain/dosya";
 import type { PiyasaArastirmasi } from "../../domain/piyasa";
 import { csvOlustur, kikBildirimleri, yilAlimlari, yillar, yillikOzet } from "../../domain/raporlar";
-import { ASAMA_ADI, asamaGrubu, bugun, tl, uzunTarih, yuzde } from "../bicim";
+import { ASAMA_ADI, asamaGrubu, BOS_DEGER, bosIse, bugun, tl, uzunTarih, yuzde } from "../bicim";
 import type { Veri } from "../useVeri";
 
 const AYLAR = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"];
@@ -135,7 +135,7 @@ export function Raporlar() {
         </div>
         <div className="kart">
           <span className="kart-etiket">Alım başına teklif</span>
-          <span className="kart-deger">{ozet.ortalamaTeklif === null ? "—" : ozet.ortalamaTeklif.toLocaleString("tr-TR", { maximumFractionDigits: 1 })}</span>
+          <span className="kart-deger">{bosIse(ozet.ortalamaTeklif, (n) => n.toLocaleString("tr-TR", { maximumFractionDigits: 1 }))}</span>
           <span className="kart-not">Tamamlanan 22/d araştırmalarında</span>
         </div>
       </section>
@@ -298,7 +298,7 @@ export function Raporlar() {
                   </td>
                   <td className="mono soluk">{uzunTarih(a.onayTarihi)}</td>
                   <td>{a.konu}</td>
-                  <td className="soluk">{firmaAdi(a.tedarikciId) || "—"}</td>
+                  <td className="soluk">{firmaAdi(a.tedarikciId) || BOS_DEGER}</td>
                   <td className="mono sag">{tl(a.tutar)}</td>
                   <td>
                     <span className={`etiket etiket-${asamaGrubu(a.asama)}`}>{ASAMA_ADI[a.asama]}</span>

@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { yaklasikHesapla, yaklasikKontrolleri, yaklasikTutarYazilir, type YaklasikMaliyet } from "../../domain/basamaklar";
-import { tlKurus } from "../bicim";
+import { bosIse, tlKurus } from "../bicim";
 import { BelgeOnizleme } from "../BelgeOnizleme";
 import { miktarYazisi } from "../IhtiyacListesi";
 import { KontrolSatiri } from "../KontrolSatiri";
@@ -132,11 +132,11 @@ export function YaklasikMaliyetBasamagi({ b }: { b: BasamakBaglami }) {
                       const durum = r.aykirilar.includes(i) ? "aykiri" : kurus !== null && kurus === r.enDusuk ? "dusuk" : kurus === null ? "bos" : "";
                       return (
                         <td key={fi.tedarikciId} className={`sag mono fiyat-${durum}`}>
-                          {kurus === null || kurus === undefined ? "0,00" : tlKurus(kurus)}
+                          {bosIse(kurus, tlKurus)}
                         </td>
                       );
                     })}
-                    <td className="sag mono">{r.birimFiyat === null ? "0,00" : tlKurus(r.birimFiyat)}</td>
+                    <td className="sag mono">{bosIse(r.birimFiyat, tlKurus)}</td>
                     <td className="sag mono kalin">{tlKurus(r.tutar)}</td>
                   </tr>
                 ))}

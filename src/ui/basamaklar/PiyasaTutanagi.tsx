@@ -7,7 +7,7 @@ import { KucukA4 } from "./KucukA4";
 import { piyasaTutanagiSayfalari } from "./belgeler";
 import { degerlendir, piyasaKontrolleri, type Degerlendirme } from "../../domain/piyasa";
 import { evrakFormu, evrakKaydiYap } from "../../domain/basamaklar";
-import { bugun } from "../bicim";
+import { bugun, tlKurus } from "../bicim";
 import type { Kontrol } from "../../domain/sihirbaz";
 import { yetkiliMi } from "../../domain/personel";
 
@@ -38,7 +38,7 @@ export function PiyasaTutanagiBasamagi({ b }: { b: BasamakBaglami }) {
       k.push({
         durum: "tamam",
         baslik: "En avantajlı teklif tespit edildi",
-        detay: `${kazananAd} tarafından verilen ${(sonuc.toplam / 100).toLocaleString("tr-TR", { minimumFractionDigits: 2 })} TL + KDV tutarındaki teklif en uygundur.`,
+        detay: `${kazananAd} tarafından verilen ${tlKurus(sonuc.toplam)} + KDV tutarındaki teklif en uygundur.`,
       });
     }
 
@@ -112,7 +112,7 @@ export function PiyasaTutanagiBasamagi({ b }: { b: BasamakBaglami }) {
           tutar: toplamTutar,
           asama: "siparis",
         },
-        `Piyasa fiyat araştırma tutanağı onaylandı: ${firmaAdi(kazananId ?? "")}, ${(toplamTutar / 100).toLocaleString("tr-TR", { minimumFractionDigits: 2 })} TL + KDV${toplamTutar !== alim.tutar ? ` (dosya tutarı ${(alim.tutar / 100).toLocaleString("tr-TR", { minimumFractionDigits: 2 })} TL idi)` : ""}`
+        `Piyasa fiyat araştırma tutanağı onaylandı: ${firmaAdi(kazananId ?? "")}, ${tlKurus(toplamTutar)} + KDV${toplamTutar !== alim.tutar ? ` (dosya tutarı ${tlKurus(alim.tutar)} idi)` : ""}`
       );
 
       piyasaDegistir((p) => ({ ...p, tamamlandi: true }));
@@ -170,7 +170,7 @@ export function PiyasaTutanagiBasamagi({ b }: { b: BasamakBaglami }) {
               <div style={{ textAlign: "right" }}>
                 <span className="soluk kucuk">Teklif Bedeli (KDV Hariç):</span>
                 <div className="mono kalin" style={{ fontSize: "18px", color: "var(--vurgu)" }}>
-                  {(sonuc.toplam / 100).toLocaleString("tr-TR", { minimumFractionDigits: 2 })} TL
+                  {tlKurus(sonuc.toplam)}
                 </div>
               </div>
             </div>

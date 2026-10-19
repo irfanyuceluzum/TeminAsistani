@@ -24,7 +24,7 @@ import {
   type SorguDurumu,
 } from "../../domain/odeme";
 import { sozlesmeZorunlu, tutarCoz, type Kontrol } from "../../domain/sihirbaz";
-import { bugun, tlKurus } from "../bicim";
+import { bugun, tlKurus, tutarGirdisi } from "../bicim";
 
 const SORGU_DURUMLARI: [SorguDurumu, string][] = [
   ["yapilmadi", "Sorgu yapılmadı"],
@@ -47,8 +47,8 @@ export function OdemeBasamagi({ b }: { b: BasamakBaglami }) {
   const [oeb, setOeb] = useState(() => evrakFormu(evraklar["odeme-emri"], bugun(), o.oebNo));
   const [kikTarihi, setKikTarihi] = useState(evraklar["kik-bildirimi"]?.tamam ? evraklar["kik-bildirimi"].tarih.slice(0, 10) : "");
   const [borcMetni, setBorcMetni] = useState<Record<"vergi" | "sgk", string>>({
-    vergi: o.vergiSorgusu.borc ? String(o.vergiSorgusu.borc / 100).replace(".", ",") : "",
-    sgk: o.sgkSorgusu.borc ? String(o.sgkSorgusu.borc / 100).replace(".", ",") : "",
+    vergi: o.vergiSorgusu.borc ? tutarGirdisi(o.vergiSorgusu.borc) : "",
+    sgk: o.sgkSorgusu.borc ? tutarGirdisi(o.sgkSorgusu.borc) : "",
   });
 
   const yuklenici = tedarikciler.find((t) => t.id === alim.tedarikciId) ?? null;

@@ -7,7 +7,7 @@ import { KucukA4 } from "./KucukA4";
 import { siparisYazisiSayfalari } from "./belgeler";
 import type { Kontrol } from "../../domain/sihirbaz";
 import { evrakFormu, evrakKaydiYap } from "../../domain/basamaklar";
-import { bugun } from "../bicim";
+import { bugun, tlKurus } from "../bicim";
 
 export function SiparisBasamagi({ b }: { b: BasamakBaglami }) {
   const navigate = useNavigate();
@@ -136,7 +136,7 @@ export function SiparisBasamagi({ b }: { b: BasamakBaglami }) {
             <div className="alan">
               <span className="etiket-yazi">Sipariş Tutarı (KDV Hariç)</span>
               <div className="salt mono kalin">
-                {(alim.tutar / 100).toLocaleString("tr-TR", { minimumFractionDigits: 2 })} TL
+                {tlKurus(alim.tutar)}
               </div>
             </div>
           </div>

@@ -6,7 +6,7 @@ import { tutarCoz } from "../../domain/sihirbaz";
 import type { Ayarlar, KararPulu, Konum } from "../../domain/tipler";
 import type { Depo } from "../../data/depo";
 import { elleYedekAl, yedegiDenetle, yedekSec, yedektenGeriYukle } from "../../data/yedek";
-import { bugun, tl, uzunTarih, yedekOzeti, yolDosyaAdi } from "../bicim";
+import { binde, bugun, tl, tutarGirdisi, uzunTarih, yedekOzeti, yolDosyaAdi } from "../bicim";
 import { IdareBasligi } from "../IdareBasligi";
 import type { Veri } from "../useVeri";
 
@@ -15,15 +15,6 @@ const KARAR_PULU: [KararPulu, string, string][] = [
   ["onay-karar-sayilir", "Onay belgesi karar sayılır", "Onay belgesi veya \"rayice uygundur\" şerhi karar kabul edilir."],
   ["yalnizca-komisyon", "Yalnızca komisyon kararı varsa", "İdare ayrıca komisyon kurup karar aldıysa uygulanır."],
 ];
-
-// Oranlar yüz binde tutulur; ekranda binde gösterilir. tutarCoz "9,48" → 948 verir.
-function bindeYazisi(yuzBinde: number): string {
-  return (yuzBinde / 100).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
-function tlYazisi(kurus: number): string {
-  return (kurus / 100).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
 
 interface Metinler {
   odenekler: Record<string, string>;
@@ -37,13 +28,14 @@ interface Metinler {
 
 function metinleriKur(a: Ayarlar): Metinler {
   return {
-    odenekler: Object.fromEntries(Object.entries(a.odenekler).map(([y, k]) => [y, tlYazisi(k)])),
-    tevkifatSiniri: a.tevkifatSiniri ? tlYazisi(a.tevkifatSiniri) : "",
-    vergiBorcuSorguEsigi: a.vergiBorcuSorguEsigi ? tlYazisi(a.vergiBorcuSorguEsigi) : "",
+    odenekler: Object.fromEntries(Object.entries(a.odenekler).map(([y, k]) => [y, tutarGirdisi(k)])),
+    tevkifatSiniri: a.tevkifatSiniri ? tutarGirdisi(a.tevkifatSiniri) : "",
+    vergiBorcuSorguEsigi: a.vergiBorcuSorguEsigi ? tutarGirdisi(a.vergiBorcuSorguEsigi) : "",
     pencere: String(a.bolme.pencereGun),
-    makbuz: bindeYazisi(a.damga.makbuzOrani),
-    sozlesme: bindeYazisi(a.damga.sozlesmeOrani),
-    karar: bindeYazisi(a.damga.kararOrani),
+    // Oranlar yüz binde tutulur; ekranda binde gösterilir. tutarCoz "9,48" → 948 verir.
+    makbuz: binde(a.damga.makbuzOrani),
+    sozlesme: binde(a.damga.sozlesmeOrani),
+    karar: binde(a.damga.kararOrani),
   };
 }
 

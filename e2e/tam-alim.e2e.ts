@@ -10,6 +10,8 @@ import {
   rayBagi,
   sayiyaCevir,
   tlKurus,
+  belgeTutari,
+  tutarGirdisi,
   tutarMetni,
 } from "./yardimcilar";
 
@@ -32,7 +34,7 @@ const FIRMALAR = [
 ];
 
 function fiyatMetni(tl: number): string {
-  return tl.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return tutarGirdisi(Math.round(tl * 100));
 }
 
 function teklifToplami(f: (typeof FIRMALAR)[number]): number {
@@ -211,7 +213,7 @@ test("yeni alım baştan sona", async ({ page }) => {
         .getByPlaceholder("0,00")
         .fill(fiyatMetni(f.teklif[i]));
     }
-    await expect(page.getByText(`Toplam: ${tutarMetni(teklifToplami(f))} TL + KDV`)).toBeVisible();
+    await expect(page.getByText(`Toplam: ${belgeTutari(teklifToplami(f))} + KDV`)).toBeVisible();
   }
   await engelYok(page);
   await page.getByRole("button", { name: /Teklifleri Onayla ve Sonraki Adıma Geç/ }).click();
@@ -220,7 +222,7 @@ test("yeni alım baştan sona", async ({ page }) => {
   // ---- 7. basamak: piyasa fiyat araştırma tutanağı ----
   // (b) En düşük toplamı veren firma tutanakta kazanan olarak çıkar
   await expect(page.getByText("Tespit Edilen En Uygun Teklif:").locator("xpath=following-sibling::div[1]")).toHaveText(KAZANAN.ad);
-  await expect(page.getByText(`${tutarMetni(SIPARIS_TUTARI)} TL`, { exact: true }).first()).toBeVisible();
+  await expect(page.getByText(tlKurus(SIPARIS_TUTARI), { exact: true }).first()).toBeVisible();
   await page.getByLabel("Tutanak tarihi", { exact: true }).fill(TARIH.tutanak);
   await page.getByLabel(`${KAZANAN.ad} · sorgu tarihi (yasaklı değil)`, { exact: true }).fill(TARIH.yasaklilik);
   await expect(page.getByText("Seçilen firmaların sorgusu yapıldı.")).toBeVisible();
@@ -230,11 +232,11 @@ test("yeni alım baştan sona", async ({ page }) => {
 
   // ---- 8. basamak: sipariş yazısı ----
   await expect(page.getByText("Yüklenici Firma", { exact: true }).locator("xpath=following-sibling::div[1]")).toHaveText(KAZANAN.ad);
-  await expect(page.getByText(`${tutarMetni(SIPARIS_TUTARI)} TL`, { exact: true }).first()).toBeVisible();
+  await expect(page.getByText(tlKurus(SIPARIS_TUTARI), { exact: true }).first()).toBeVisible();
   // Belge şablonu alıcı firma adını büyük harfle yazar
   const mektup = page.getByRole("region", { name: "A4 görünüşü" });
   await expect(mektup).toContainText(KAZANAN.ad.toLocaleUpperCase("tr-TR"));
-  await expect(mektup).toContainText(`${tutarMetni(SIPARIS_TUTARI)} TL`);
+  await expect(mektup).toContainText(belgeTutari(SIPARIS_TUTARI));
   await page.getByLabel("Sipariş Yazısı Sayısı", { exact: true }).fill("E-1005-01");
   await page.getByLabel("Yazı Tarihi", { exact: true }).fill(TARIH.siparis);
   await engelYok(page);

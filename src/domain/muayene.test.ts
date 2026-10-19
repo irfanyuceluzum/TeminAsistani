@@ -90,7 +90,7 @@ describe("kabul sonucu", () => {
   it("eksik kabulde eksik tutarı yazar", () => {
     const m = dolu();
     m.kalemler[0].kabulMiktari = 22;
-    expect(kabulSonucu(m)).toEqual({ sonuc: "kismi", metin: "KISMEN KABUL EDİLDİ (₺2.500 + KDV eksik)" });
+    expect(kabulSonucu(m)).toEqual({ sonuc: "kismi", metin: "KISMEN KABUL EDİLDİ (₺2.500,00 + KDV eksik)" });
   });
 
   it("hiçbir kalem kabul edilmezse ret der", () => {
