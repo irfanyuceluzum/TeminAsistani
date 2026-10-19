@@ -5,7 +5,7 @@ import { BelgeOnizleme } from "../BelgeOnizleme";
 import { KontrolSatiri } from "../KontrolSatiri";
 import { KucukA4 } from "./KucukA4";
 import { piyasaTutanagiSayfalari } from "./belgeler";
-import { cokluKazananKontrolu, degerlendir, yasaklilikEksikleri, type Degerlendirme } from "../../domain/piyasa";
+import { degerlendir, piyasaKontrolleri, type Degerlendirme } from "../../domain/piyasa";
 import { evrakFormu, evrakKaydiYap } from "../../domain/basamaklar";
 import { bugun } from "../bicim";
 import type { Kontrol } from "../../domain/sihirbaz";
@@ -19,7 +19,6 @@ export function PiyasaTutanagiBasamagi({ b }: { b: BasamakBaglami }) {
   const [onizle, setOnizle] = useState(false);
   const [mesaj, setMesaj] = useState("");
   const [form, setForm] = useState(() => evrakFormu(b.evraklar["piyasa-tutanagi"], bugun()));
-  const sorgusuz = yasaklilikEksikleri(piyasa);
 
   const firmaAdi = (id: string) => tedarikciler.find((t) => t.id === id)?.ad || "Bilinmeyen Firma";
 
@@ -30,16 +29,11 @@ export function PiyasaTutanagiBasamagi({ b }: { b: BasamakBaglami }) {
     piyasaDegistir((p) => ({ ...p, teklifler: p.teklifler.map((t) => (t.tedarikciId === tedarikciId ? { ...t, yasaklilikSorgusu: tarih || null } : t)) }));
 
   const kontroller = useMemo((): Kontrol[] => {
-    const k: Kontrol[] = [];
+    // Teklif yok/eksik fiyat, belge, yasaklılık ve 22/d limiti kontrolleri alan işlevindedir.
+    const k: Kontrol[] = [...piyasaKontrolleri(piyasa, sonuc, alim, ayarlar, veri.limitDonemleri, tedarikciler)];
     const g = ayarlar.gorevler;
 
-    if (!sonuc || sonuc.kazananlar.length === 0 || !(sonuc.toplam > 0)) {
-      k.push({
-        durum: "engel",
-        baslik: "En uygun teklif belirlenemedi",
-        detay: "6. basamakta firmalardan gelen fiyat tekliflerini eksiksiz girmelisiniz.",
-      });
-    } else {
+    if (sonuc && sonuc.kazananlar.length > 0 && sonuc.toplam > 0) {
       const kazananAd = firmaAdi(sonuc.kazananlar[0]);
       k.push({
         durum: "tamam",
@@ -66,18 +60,6 @@ export function PiyasaTutanagiBasamagi({ b }: { b: BasamakBaglami }) {
       });
     }
 
-    // Doğrudan Temin Tebliği m.4/8: 22/d'de seçilen firmanın yasaklı olmadığı EKAP'tan sorgulanır.
-    if (sonuc && sonuc.kazananlar.length > 0) {
-      k.push(
-        sorgusuz.length
-          ? {
-              durum: "engel",
-              baslik: "Yasaklılık sorgusu yapılmadı",
-              detay: `${sorgusuz.map(firmaAdi).join(", ")} için EKAP yasaklılık sorgusunu yapıp sorgu tarihini girin (Doğrudan Temin Tebliği m.4/8).`,
-            }
-          : { durum: "tamam", baslik: "Yasaklılık sorgusu yapıldı", detay: "Seçilen firmanın EKAP sorgu tarihi tutanağa yazılır." },
-      );
-    }
     const sonTeklif = piyasa.yazi?.sonTeklifTarihi ?? "";
     if (form.tarih && sonTeklif && form.tarih < sonTeklif) {
       k.push({
@@ -96,11 +78,8 @@ export function PiyasaTutanagiBasamagi({ b }: { b: BasamakBaglami }) {
       });
     }
 
-    const coklu = cokluKazananKontrolu(piyasa, firmaAdi);
-    if (coklu) k.push(coklu);
-
     return k;
-  }, [sonuc, piyasa, ayarlar.gorevler, tedarikciler, sorgusuz.join(), form.tarih, piyasa.yazi?.sonTeklifTarihi]);
+  }, [sonuc, piyasa, alim, ayarlar, veri.limitDonemleri, tedarikciler, form.tarih]);
 
   const engelVar = kontroller.some((k) => k.durum === "engel");
 

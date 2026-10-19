@@ -247,9 +247,9 @@ export function piyasaKontrolleri(
     k.push({ durum: "uyari", baslik: "Eşit teklif", detay: `${e}. İlk girilen firma seçildi, tutanağa gerekçe yazın.` });
   }
 
-  if (sonuc.kazananlar.length > 1) {
-    k.push({ durum: "yapilacak", baslik: `${sonuc.kazananlar.length} ayrı sipariş`, detay: "Kalem bazlı sonuçta her firma için ayrı sipariş, kabul ve ödeme yapılır." });
-  }
+  // Kalem bazında birden çok kazanan: her firma için ayrı dosya açılır (tek dosya tek yükleniciyle sürer).
+  const coklu = cokluKazananKontrolu(p, ad);
+  if (coklu) k.push(coklu);
   return k;
 }
 

@@ -223,7 +223,7 @@ test("yeni alım baştan sona", async ({ page }) => {
   await expect(page.getByText(`${tutarMetni(SIPARIS_TUTARI)} TL`, { exact: true }).first()).toBeVisible();
   await page.getByLabel("Tutanak tarihi", { exact: true }).fill(TARIH.tutanak);
   await page.getByLabel(`${KAZANAN.ad} · sorgu tarihi (yasaklı değil)`, { exact: true }).fill(TARIH.yasaklilik);
-  await expect(page.getByText("Yasaklılık sorgusu yapıldı")).toBeVisible();
+  await expect(page.getByText("Seçilen firmaların sorgusu yapıldı.")).toBeVisible();
   await engelYok(page);
   await page.getByRole("button", { name: /Tutanağı Onayla ve Sonraki Adıma Geç/ }).click();
   await expect(page).toHaveURL(new RegExp(`#/dosyalar/${no}/basamak/8$`));
@@ -319,6 +319,34 @@ test("yeni alım baştan sona", async ({ page }) => {
   expect(sonra.tutar - once.tutar).toBe(Math.round(SIPARIS_TUTARI / 100));
   await expect(page.getByRole("row").filter({ hasText: no })).toHaveCount(2); // yıllık liste ve KİK bildirimi tablosu
   await expect(page.getByRole("row").filter({ hasText: no }).last()).toContainText("Tamamlandı");
+
+  expect(hatalar).toEqual([]);
+});
+
+test("22/d limitini aşan teklif tutanağı durdurur", async ({ page }) => {
+  const hatalar = konsolHatalariniTopla(page);
+
+  // Örnek dosya DT-2026-041 (büyükşehir; limit 1.021.827 TL). Üç firmanın üç kalemi de pahalı girilir, en düşük toplam yine limiti aşar.
+  await page.goto("/#/dosyalar/DT-2026-041/basamak/6");
+  await expect(page.getByRole("heading", { name: /6\. Teklif Mektupları/ })).toBeVisible();
+  const FIYATLAR = [
+    { ad: "Toros AŞ", tl: 5000 },
+    { ad: "Ece Ltd. Şti.", tl: 5100 },
+    { ad: "Kaya Ticaret", tl: 5200 },
+  ];
+  for (const f of FIYATLAR) {
+    await page.getByRole("button", { name: new RegExp(`^${kacir(f.ad)}`) }).click();
+    await page.getByRole("checkbox", { name: /kaşeli ve imzalı teklif mektubu idaremize ulaştı/ }).setChecked(true);
+    const kutular = page.getByPlaceholder("0,00");
+    for (let i = 0; i < 3; i++) await kutular.nth(i).fill(fiyatMetni(f.tl));
+  }
+
+  // 7. basamağa istemci yönlendirmesiyle geçilir (sayfa yenilenirse örnek veri sıfırlanır)
+  await basamagaGit(page, 7);
+  await expect(page.getByText("Tespit Edilen En Uygun Teklif:").locator("xpath=following-sibling::div[1]")).toHaveText("Toros AŞ");
+  const limitSatiri = page.locator(".kontrol.kontrol-engel").filter({ hasText: "22/d limiti aşılıyor" });
+  await expect(limitSatiri).toBeVisible();
+  await expect(page.getByRole("button", { name: /Tutanağı Onayla ve Sonraki Adıma Geç/ })).toBeDisabled();
 
   expect(hatalar).toEqual([]);
 });

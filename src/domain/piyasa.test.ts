@@ -91,9 +91,12 @@ describe("kontroller", () => {
     expect(basliklar).toContain("uyari:Onay tutarı aşılıyor");
   });
 
-  it("kalem bazlı çok firmalı sonuçta ayrı sipariş hatırlatır", () => {
+  it("kalem bazlı çok firmalı sonuçta her firma için ayrı dosya açılmasını uyarır", () => {
     const k = kontroller(arastirma({ degerlendirme: "kalem" }));
-    expect(k[k.length - 1].baslik).toBe("3 ayrı sipariş");
+    const son = k[k.length - 1];
+    expect(son).toMatchObject({ durum: "uyari", baslik: "3 firma kazandı" });
+    expect(son.detay).toContain("her firma için ayrı dosya açın");
+    expect(k.some((x) => x.baslik.includes("ayrı sipariş"))).toBe(false);
   });
 
   it("kalem yoksa tek engel döner", () => {
@@ -104,6 +107,19 @@ describe("kontroller", () => {
     const p = arastirma();
     p.teklifler[1].belgeAlindi = false;
     expect(kontroller(p).find((x) => x.durum === "engel")).toMatchObject({ baslik: "Kaşeli teklif belgesi yok" });
+  });
+});
+
+describe("22/d limiti", () => {
+  it("kazanan toplamı limiti aşınca engeller", () => {
+    const p = arastirma();
+    // En düşük toplam 480 kalem x 3.000 TL = 1.440.000 TL; büyükşehir limiti 1.021.827 TL
+    p.teklifler[0].fiyatlar = { k1: 3_100 * TL, k2: 3_100 * TL, k3: 3_100 * TL };
+    p.teklifler[1].fiyatlar = { k1: 3_000 * TL, k2: 3_000 * TL, k3: 3_000 * TL };
+    p.teklifler[2].fiyatlar = { k1: 3_200 * TL, k2: 3_200 * TL, k3: 3_200 * TL };
+    const engeller = kontroller(p).filter((x) => x.durum === "engel");
+    expect(engeller).toHaveLength(1);
+    expect(engeller[0]).toMatchObject({ baslik: "22/d limiti aşılıyor" });
   });
 });
 
