@@ -156,6 +156,19 @@ function CalismaAlani({ alimId }: { alimId: string }) {
     [alim, piyasa, dosya, yuk],
   );
 
+  // Basamak listesi kendi içinde kayar; seçili basamak görünür alana getirilir (pencere kaydırılmaz).
+  const rayListesi = useRef<HTMLOListElement>(null);
+  const listeHazir = liste !== null;
+  useEffect(() => {
+    const l = rayListesi.current;
+    const s = l?.querySelector<HTMLElement>('[aria-current="step"]');
+    if (!l || !s) return;
+    const lk = l.getBoundingClientRect();
+    const sk = s.getBoundingClientRect();
+    if (sk.top < lk.top) l.scrollTop -= lk.top - sk.top;
+    else if (sk.bottom > lk.bottom) l.scrollTop += sk.bottom - lk.bottom;
+  }, [no, listeHazir]);
+
   if (!alim) {
     return (
       <div className="sayfa">
@@ -277,7 +290,7 @@ function CalismaAlani({ alimId }: { alimId: string }) {
               <span className="cubuk-dolu cubuk-basari" style={{ width: `${gerekli ? (biten * 100) / gerekli : 0}%` }} />
             </span>
           </div>
-          <ol className="ray-listesi">
+          <ol className="ray-listesi" ref={rayListesi}>
             {GRUPLAR.map((grup) => (
               <li key={grup}>
                 <span className="ray-grup">{grup}</span>

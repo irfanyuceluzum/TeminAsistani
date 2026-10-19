@@ -261,28 +261,30 @@ export function OdemeBasamagi({ b }: { b: BasamakBaglami }) {
             </div>
           </fieldset>
 
-          <table className="cetvel">
-            <thead>
-              <tr>
-                <th scope="col">Hesap</th>
-                <th scope="col" className="sag">
-                  Borç
-                </th>
-                <th scope="col" className="sag">
-                  Alacak
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {satirlar.map((x) => (
-                <tr key={x.aciklama}>
-                  <td className={x.aciklama.startsWith("Yükleniciye") ? "kalin" : undefined}>{x.aciklama}</td>
-                  <td className="sag mono">{x.borc === null ? "—" : tlKurus(x.borc)}</td>
-                  <td className={`sag mono${x.aciklama.startsWith("Yükleniciye") ? " kalin" : ""}`}>{x.alacak === null ? "—" : tlKurus(x.alacak)}</td>
+          <div className="tablo-kutu">
+            <table className="cetvel">
+              <thead>
+                <tr>
+                  <th scope="col">Hesap</th>
+                  <th scope="col" className="sag">
+                    Borç
+                  </th>
+                  <th scope="col" className="sag">
+                    Alacak
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {satirlar.map((x) => (
+                  <tr key={x.aciklama}>
+                    <td className={x.aciklama.startsWith("Yükleniciye") ? "kalin" : undefined}>{x.aciklama}</td>
+                    <td className="sag mono">{x.borc === null ? "—" : tlKurus(x.borc)}</td>
+                    <td className={`sag mono${x.aciklama.startsWith("Yükleniciye") ? " kalin" : ""}`}>{x.alacak === null ? "—" : tlKurus(x.alacak)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
           <div className="sutun" style={{ gap: "6px" }}>
             {kontroller.map((k, i) => (

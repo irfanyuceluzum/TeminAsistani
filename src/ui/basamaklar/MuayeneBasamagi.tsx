@@ -206,54 +206,56 @@ export function MuayeneBasamagi({ b }: { b: BasamakBaglami }) {
                   {sonuc.metin}
                 </div>
               </div>
-              <table className="cetvel tam">
-                <thead>
-                  <tr>
-                    <th scope="col">Kalem</th>
-                    <th scope="col" className="sag">
-                      Sipariş
-                    </th>
-                    <th scope="col" className="sag">
-                      Fatura
-                    </th>
-                    <th scope="col" className="sag">
-                      Kabul
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {taslak.kalemler.map((x) => (
-                    <tr key={x.kalemId}>
-                      <td>{x.ad}</td>
-                      <td className="sag mono">
-                        {x.siparisMiktari} {x.birim}
-                      </td>
-                      <td className="sag">
-                        <input
-                          className="girdi mono fiyat-girdi"
-                          type="number"
-                          min={0}
-                          max={x.siparisMiktari}
-                          value={x.faturaMiktari}
-                          aria-label={`${x.ad} fatura miktarı`}
-                          onChange={(e) => faturaDegistir(x.kalemId, Number(e.target.value) || 0)}
-                        />
-                      </td>
-                      <td className="sag">
-                        <input
-                          className="girdi mono fiyat-girdi"
-                          type="number"
-                          min={0}
-                          max={x.faturaMiktari}
-                          value={x.kabulMiktari}
-                          aria-label={`${x.ad} kabul miktarı`}
-                          onChange={(e) => kabulDegistir(x.kalemId, Number(e.target.value) || 0)}
-                        />
-                      </td>
+              <div className="tablo-kutu">
+                <table className="cetvel tam">
+                  <thead>
+                    <tr>
+                      <th scope="col">Kalem</th>
+                      <th scope="col" className="sag">
+                        Sipariş
+                      </th>
+                      <th scope="col" className="sag">
+                        Fatura
+                      </th>
+                      <th scope="col" className="sag">
+                        Kabul
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {taslak.kalemler.map((x) => (
+                      <tr key={x.kalemId}>
+                        <td>{x.ad}</td>
+                        <td className="sag mono">
+                          {x.siparisMiktari} {x.birim}
+                        </td>
+                        <td className="sag">
+                          <input
+                            className="girdi mono fiyat-girdi"
+                            type="number"
+                            min={0}
+                            max={x.siparisMiktari}
+                            value={x.faturaMiktari}
+                            aria-label={`${x.ad} fatura miktarı`}
+                            onChange={(e) => faturaDegistir(x.kalemId, Number(e.target.value) || 0)}
+                          />
+                        </td>
+                        <td className="sag">
+                          <input
+                            className="girdi mono fiyat-girdi"
+                            type="number"
+                            min={0}
+                            max={x.faturaMiktari}
+                            value={x.kabulMiktari}
+                            aria-label={`${x.ad} kabul miktarı`}
+                            onChange={(e) => kabulDegistir(x.kalemId, Number(e.target.value) || 0)}
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
               <div className="alan tam">
                 <div className="panel-baslik-satiri">
                   <span className="etiket-yazi">Muayene ve kabul komisyonu</span>

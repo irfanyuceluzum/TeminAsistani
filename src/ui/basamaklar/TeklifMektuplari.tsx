@@ -398,51 +398,53 @@ export function TeklifMektuplariBasamagi({ b }: { b: BasamakBaglami }) {
                 </span>
               </div>
 
-              <table className="genis-tablo" style={{ fontSize: "13px" }}>
-                <thead>
-                  <tr>
-                    <th style={{ width: "5%" }}>Sıra</th>
-                    <th style={{ width: "45%" }}>Mal / Hizmet Kalemi</th>
-                    <th style={{ width: "15%", textAlign: "center" }}>Miktar</th>
-                    <th style={{ width: "20%", textAlign: "right" }}>KDV Hariç Birim (TL)</th>
-                    <th style={{ width: "15%", textAlign: "right" }}>Tutar (TL)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {b.kalemler.map((kalem, idx) => {
-                    const key = hucreKey(aktifFirmaTeklifi.tedarikciId, kalem.id);
-                    const degerMetin = metinler[key] ?? "";
-                    const kurus = aktifFirmaTeklifi.fiyatlar[kalem.id];
-                    const satirTutar = kurus ? Math.round(kalem.miktar * kurus) : 0;
+              <div className="tablo-kutu">
+                <table className="genis-tablo" style={{ fontSize: "13px" }}>
+                  <thead>
+                    <tr>
+                      <th style={{ width: "5%" }}>Sıra</th>
+                      <th style={{ width: "45%" }}>Mal / Hizmet Kalemi</th>
+                      <th style={{ width: "15%", textAlign: "center" }}>Miktar</th>
+                      <th style={{ width: "20%", textAlign: "right" }}>KDV Hariç Birim (TL)</th>
+                      <th style={{ width: "15%", textAlign: "right" }}>Tutar (TL)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {b.kalemler.map((kalem, idx) => {
+                      const key = hucreKey(aktifFirmaTeklifi.tedarikciId, kalem.id);
+                      const degerMetin = metinler[key] ?? "";
+                      const kurus = aktifFirmaTeklifi.fiyatlar[kalem.id];
+                      const satirTutar = kurus ? Math.round(kalem.miktar * kurus) : 0;
 
-                    return (
-                      <tr key={kalem.id}>
-                        <td style={{ textAlign: "center" }}>{idx + 1}</td>
-                        <td>
-                          <strong>{kalem.ad}</strong>
-                          {kalem.ozellik && <div className="soluk kucuk">{kalem.ozellik}</div>}
-                        </td>
-                        <td style={{ textAlign: "center" }}>
-                          {kalem.miktar.toLocaleString("tr-TR")} {kalem.birim}
-                        </td>
-                        <td style={{ textAlign: "right" }}>
-                          <input
-                            type="text"
-                            value={degerMetin}
-                            onChange={(e) => hucreMetinDegistir(aktifFirmaTeklifi.tedarikciId, kalem.id, e.target.value)}
-                            placeholder="0,00"
-                            className="mono sag"
-                            style={{ width: "120px", padding: "6px 8px", height: "34px", borderRadius: "6px" }}
-                          />
-                        </td>
-                        <td style={{ textAlign: "right", fontWeight: 500 }} className="mono">
-                          {satirTutar > 0 ? (satirTutar / 100).toLocaleString("tr-TR", { minimumFractionDigits: 2 }) : "—"}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                      return (
+                        <tr key={kalem.id}>
+                          <td style={{ textAlign: "center" }}>{idx + 1}</td>
+                          <td>
+                            <strong>{kalem.ad}</strong>
+                            {kalem.ozellik && <div className="soluk kucuk">{kalem.ozellik}</div>}
+                          </td>
+                          <td style={{ textAlign: "center" }}>
+                            {kalem.miktar.toLocaleString("tr-TR")} {kalem.birim}
+                          </td>
+                          <td style={{ textAlign: "right" }}>
+                            <input
+                              type="text"
+                              value={degerMetin}
+                              onChange={(e) => hucreMetinDegistir(aktifFirmaTeklifi.tedarikciId, kalem.id, e.target.value)}
+                              placeholder="0,00"
+                              className="mono sag"
+                              style={{ width: "120px", padding: "6px 8px", height: "34px", borderRadius: "6px" }}
+                            />
+                          </td>
+                          <td style={{ textAlign: "right", fontWeight: 500 }} className="mono">
+                            {satirTutar > 0 ? (satirTutar / 100).toLocaleString("tr-TR", { minimumFractionDigits: 2 }) : "—"}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
 
