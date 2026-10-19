@@ -33,27 +33,30 @@ export function Kabuk({ veri }: { veri: VeriDurumu }) {
   return (
     <div className="kabuk">
       <nav className="menu" aria-label="Ana menü">
-        <div className="marka">
-          <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true">
-            <rect x="1" y="1" width="26" height="26" rx="7" fill="var(--vurgu)" />
-            <path d="M8 14.5l4 4 8-9" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          <div>
-            <div className="marka-ad">Temin Asistanı</div>
-            <div className="marka-alt">4734 · Madde 22</div>
+        {/* Arka plan sayfa boyunca uzar; içerik ekrana yapışık kalır (bkz. .menu-ic) */}
+        <div className="menu-ic">
+          <div className="marka">
+            <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true">
+              <rect x="1" y="1" width="26" height="26" rx="7" fill="var(--vurgu)" />
+              <path d="M8 14.5l4 4 8-9" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <div>
+              <div className="marka-ad">Temin Asistanı</div>
+              <div className="marka-alt">4734 · Madde 22/d</div>
+            </div>
           </div>
-        </div>
-        {MENU.map((m) => (
-          <NavLink key={m.yol} to={m.yol} end={m.yol === "/"} className="menu-ogesi">
-            <Ikon d={m.ikon} />
-            {m.ad}
-          </NavLink>
-        ))}
-        <div className="menu-alt">
-          <span className="menu-alt-vurgu">{hazir?.ayarlar.idare?.birim || "İdare adı girilmedi"}</span>
-          {hazir?.ayarlar.idare?.ustIdare && <span>{hazir.ayarlar.idare.ustIdare}</span>}
-          <span>{hazir?.ayarlar.konum === "diger" ? "Büyükşehir dışında" : "Büyükşehir sınırları içinde"}</span>
-          {hazir?.depo.tur === "bellek" && <span className="menu-uyari">Örnek veri, tarayıcı önizlemesi</span>}
+          {MENU.map((m) => (
+            <NavLink key={m.yol} to={m.yol} end={m.yol === "/"} className="menu-ogesi">
+              <Ikon d={m.ikon} />
+              {m.ad}
+            </NavLink>
+          ))}
+          <div className="menu-alt">
+            <span className="menu-alt-vurgu">{hazir?.ayarlar.idare?.birim || "İdare adı girilmedi"}</span>
+            {hazir?.ayarlar.idare?.ustIdare && <span>{hazir.ayarlar.idare.ustIdare}</span>}
+            <span>{hazir?.ayarlar.konum === "diger" ? "Büyükşehir dışında" : "Büyükşehir sınırları içinde"}</span>
+            {hazir?.depo.tur === "bellek" && <span className="menu-uyari">Örnek veri, tarayıcı önizlemesi</span>}
+          </div>
         </div>
       </nav>
       <main className="icerik">
