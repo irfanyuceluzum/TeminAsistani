@@ -6,11 +6,20 @@ import {
   ddLimitKontrolu,
   limitDonemiBul,
   malAlimiMi,
+  odenekSiniri,
   yuzdeOnDurumu,
 } from "./kurallar";
 import type { Alim, BolmeKurallari, DamgaAyarlari, LimitDonemi } from "./tipler";
 
 const TL = 100;
+
+describe("odenekSiniri", () => {
+  it("ödeneğin yüzde onu, kuruş tamsayıya aşağı yuvarlanır", () => {
+    expect(odenekSiniri(0)).toBe(0);
+    expect(odenekSiniri(1_000_000)).toBe(100_000);
+    expect(odenekSiniri(1_009)).toBe(100);
+  });
+});
 
 const donemler: LimitDonemi[] = [
   { baslangic: "2025-02-01", bitis: "2026-01-31", buyuksehir: 800_366 * TL, diger: 266_618 * TL, dayanak: "2025" },

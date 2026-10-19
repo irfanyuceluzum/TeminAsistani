@@ -3,6 +3,7 @@ import { damgaVergisi, malAlimiMi, type DamgaSonucu } from "./kurallar";
 import type { EvrakDurumu } from "./dosya";
 import { muayeneOzeti, type Muayene } from "./muayene";
 import { sozlesmeZorunlu, type Kontrol } from "./sihirbaz";
+import { gunYaz } from "./tarih";
 import type { Alim, Ayarlar } from "./tipler";
 
 export interface TevkifatTuru {
@@ -88,9 +89,14 @@ export function tevkifatTuru(kod: string): TevkifatTuru {
   return TEVKIFAT_TURLERI.find((t) => t.kod === kod) ?? TEVKIFAT_TURLERI[0];
 }
 
+// KDV tutarı (kuruş): matrah × oran%, kuruşa yuvarlanır. Para hesaplarında KDV yuvarlaması tek yerdedir.
+export function kdvTutari(matrah: number, oranYuzde: number): number {
+  return Math.round((matrah * oranYuzde) / 100);
+}
+
 // Matrah kabul edilen KDV hariç tutardır. Borçlar, kesintilerden sonra kalan tutarı aşmayacak kadar mahsup edilir.
 export function odemeHesabi(matrah: number, o: Odeme, ayarlar: Ayarlar): OdemeHesabi {
-  const kdv = Math.round((matrah * o.kdvOrani) / 100);
+  const kdv = kdvTutari(matrah, o.kdvOrani);
   const brut = matrah + kdv;
   const t = tevkifatTuru(o.tevkifatTuru);
   const sinir = ayarlar.tevkifatSiniri ?? 0;
@@ -167,7 +173,7 @@ export function borcSorgulariTamam(o: Odeme, brut: number, ayarlar: Ayarlar): bo
 export function ekListesi(evraklar: EvrakDurumu[], o: Odeme, brut: number, ayarlar: Ayarlar): { ad: string; tamam: boolean; not: string }[] {
   const liste = evraklar
     .filter((e) => e.asama !== "odeme")
-    .map((e) => ({ ad: e.ad, tamam: e.tamam, not: e.tamam ? (e.tarih ? e.tarih.split("-").reverse().join(".") : e.not) : "Eksik" }));
+    .map((e) => ({ ad: e.ad, tamam: e.tamam, not: e.tamam ? (e.tarih ? gunYaz(e.tarih) : e.not) : "Eksik" }));
   const tamam = borcSorgulariTamam(o, brut, ayarlar);
   liste.push({
     ad: "Vergi ve SGK borç sorgusu",

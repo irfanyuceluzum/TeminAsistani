@@ -1,3 +1,4 @@
+import { gunFarki } from "./tarih";
 import type {
   Alim,
   BolmeKurallari,
@@ -14,9 +15,9 @@ export function malAlimiMi(ekonomikKod: string): boolean {
   return ekonomikKod.startsWith("03.2") || ekonomikKod.startsWith("06.1");
 }
 
-function gunFarki(a: string, b: string): number {
-  const ms = Date.parse(a + "T00:00:00Z") - Date.parse(b + "T00:00:00Z");
-  return Math.round(ms / 86_400_000);
+// Yıllık ödeneğin %10'u: 22/d alımlarının yıllık toplam sınırı.
+export function odenekSiniri(odenek: number): number {
+  return Math.floor(odenek / 10);
 }
 
 function maliYil(tarih: string): number {
@@ -63,7 +64,7 @@ export function yuzdeOnDurumu(
   const kullanilan = alimlar
     .filter((a) => a.bent === "22/d" && maliYil(a.onayTarihi) === yil && !SAYILMAYAN_ASAMALAR.has(a.asama))
     .reduce((t, a) => t + a.tutar, 0);
-  const sinir = Math.floor(odenek / 10);
+  const sinir = odenekSiniri(odenek);
   const oran = sinir === 0 ? 0 : kullanilan / odenek;
   const sonrakiOran = sinir === 0 ? 0 : (kullanilan + yeniTutar) / odenek;
   return { kullanilan, sinir, oran, sonrakiOran, asiyor: kullanilan + yeniTutar > sinir };

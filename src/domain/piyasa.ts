@@ -1,6 +1,7 @@
 import { tlKurus } from "./bicim";
 import { ddLimitKontrolu } from "./kurallar";
 import type { Kontrol } from "./sihirbaz";
+import { gunYaz } from "./tarih";
 import type { Alim, Ayarlar, LimitDonemi, Tedarikci } from "./tipler";
 
 export interface PiyasaKalemi {
@@ -186,7 +187,7 @@ export function piyasaKontrolleri(
   k.push(
     yaziEksik.length
       ? { durum: "yapilacak", baslik: "Teklif isteme yazısı", detay: yaziEksik.join(" ") }
-      : { durum: "tamam", baslik: "Teklif isteme yazısı", detay: `Son teklif tarihi ${p.yazi!.sonTeklifTarihi.split("-").reverse().join(".")}.` },
+      : { durum: "tamam", baslik: "Teklif isteme yazısı", detay: `Son teklif tarihi ${gunYaz(p.yazi!.sonTeklifTarihi)}.` },
   );
   const verenler = teklifVerenler(p);
   if (verenler.length === 0) {

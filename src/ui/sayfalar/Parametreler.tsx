@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useOutletContext } from "react-router-dom";
-import { limitDonemiBul } from "../../domain/kurallar";
+import { limitDonemiBul, odenekSiniri } from "../../domain/kurallar";
 import { ayarHatalari, limitDonemiHatalari, onerilenDonem } from "../../domain/parametreler";
 import { tutarCoz } from "../../domain/sihirbaz";
 import type { Ayarlar, KararPulu, Konum } from "../../domain/tipler";
@@ -498,7 +498,7 @@ export function Parametreler() {
                 onChange={(e) => metinDegistir({ odenekler: { ...metin.odenekler, [yil]: e.target.value } })}
                 placeholder="20.000.000,00"
               />
-              {tutarCoz(metin.odenekler[yil]) !== null && <span className="ipucu">Sınır: {tl(Math.floor((tutarCoz(metin.odenekler[yil]) ?? 0) / 10))}</span>}
+              {tutarCoz(metin.odenekler[yil]) !== null && <span className="ipucu">Sınır: {tl(odenekSiniri(tutarCoz(metin.odenekler[yil]) ?? 0))}</span>}
             </div>
           ))}
         </section>

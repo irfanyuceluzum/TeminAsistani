@@ -2,6 +2,7 @@ import { tlKurus } from "./bicim";
 import { degerlendir, kalemTutari, type PiyasaArastirmasi } from "./piyasa";
 import type { Kontrol } from "./sihirbaz";
 import { kisi } from "./personel";
+import { gunYaz } from "./tarih";
 import type { Alim, GorevAtamalari, Personel } from "./tipler";
 
 export interface MuayeneKalemi {
@@ -139,7 +140,7 @@ export function teslimSiparisKontrolu(teslimTarihi: string | null | undefined, s
   if (!teslim) return { durum: "yapilacak", baslik: "Teslim tarihi girilmedi", detay: "Malın teslim edildiği tarihi girin; tutanağa yazılır." };
   const siparis = siparisTarihi?.slice(0, 10);
   if (siparis && teslim < siparis) {
-    return { durum: "engel", baslik: "Teslim siparişten önce", detay: `Teslim tarihi sipariş yazısının tarihinden (${siparis.split("-").reverse().join(".")}) önce olamaz.` };
+    return { durum: "engel", baslik: "Teslim siparişten önce", detay: `Teslim tarihi sipariş yazısının tarihinden (${gunYaz(siparis)}) önce olamaz.` };
   }
   return null;
 }

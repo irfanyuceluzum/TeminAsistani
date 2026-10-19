@@ -3,9 +3,10 @@ import type { EvrakKaydi } from "./dosya";
 import { ddLimitKontrolu, malAlimiMi } from "./kurallar";
 import type { Muayene } from "./muayene";
 import { kikSonGunu } from "./raporlar";
-import type { Odeme } from "./odeme";
+import { kdvTutari, type Odeme } from "./odeme";
 import { kalemTutari, type PiyasaArastirmasi, type PiyasaKalemi } from "./piyasa";
 import { sozlesmeZorunlu, type Kontrol } from "./sihirbaz";
+import { gunYaz } from "./tarih";
 import type { Alim, Ayarlar, LimitDonemi } from "./tipler";
 
 // Alım dosyası örnek Excel düzeneğindeki gibi sırayla doldurulan basamaklardan oluşur.
@@ -153,7 +154,7 @@ export function yaklasikHesapla(kalemler: PiyasaKalemi[], y: YaklasikMaliyet): M
     return { kalem, fiyatlar, enDusuk, birimFiyat, tutar: birimFiyat === null ? 0 : kalemTutari(kalem, birimFiyat), aykirilar };
   });
   const toplam = satirlar.reduce((s, r) => s + r.tutar, 0);
-  const kdv = Math.round((toplam * y.kdvOrani) / 100);
+  const kdv = kdvTutari(toplam, y.kdvOrani);
   return { satirlar, toplam, kdv, kdvDahil: toplam + kdv, hesaplanabilir: kalemler.length > 0 && satirlar.every((r) => r.birimFiyat !== null) };
 }
 
@@ -414,7 +415,7 @@ export function onayBelgesiKontrolleri(
     });
   } else {
     // Ödenek KDV dahil tutarı karşılamalı (5018 md. 20/(d); Doğrudan Temin Tebliği m.3/1-g)
-    const kdvDahil = alim.tutar + Math.round((alim.tutar * dosya.yaklasik.kdvOrani) / 100);
+    const kdvDahil = alim.tutar + kdvTutari(alim.tutar, dosya.yaklasik.kdvOrani);
     k.push(
       kdvDahil > dosya.odenek
         ? {
@@ -542,8 +543,6 @@ export function yaklasikTutarYazilir(piyasa: PiyasaArastirmasi | null, toplam: n
 }
 
 // ---- Tarih sırası zinciri ----
-
-const gunYaz = (t: string) => t.slice(0, 10).split("-").reverse().join(".");
 
 // Dosyadaki belge tarihlerini basamak sırasına göre denetler; her çift "önce ≤ sonra" olmalıdır.
 // Tarihlerden biri boşsa çift atlanır; evrak tarihlerinde zaman damgası varsa yalnız gün (ilk 10 karakter) karşılaştırılır.

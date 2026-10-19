@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link, useOutletContext } from "react-router-dom";
 import { bolmeRiskleri, limitDonemiBul, yuzdeOnDurumu } from "../../domain/kurallar";
+import { yilAlimlari } from "../../domain/raporlar";
 import { ASAMA_ADI, asamaGrubu, bugun, gunFarki, kisaTarih, tl, yuzde, type AsamaGrubu } from "../bicim";
 import type { Veri } from "../useVeri";
 
@@ -21,7 +22,7 @@ export function AnaPanel() {
   const ozet = useMemo(() => {
     const odenek = ayarlar.odenekler[yil] ?? 0;
     const yuzdeOn = yuzdeOnDurumu(alimlar, yil, odenek);
-    const ddAlimlari = alimlar.filter((a) => a.onayTarihi.startsWith(String(yil)) && a.asama !== "iptal");
+    const ddAlimlari = yilAlimlari(alimlar, yil);
     const acik = alimlar.filter((a) => asamaGrubu(a.asama) !== "Kapalı").sort((x, y) => y.onayTarihi.localeCompare(x.onayTarihi) || y.id.localeCompare(x.id));
     const bekleyenler = acik.filter((a) => gunFarki(gun, a.sonIslem) > 10);
     const odeme = acik.filter((a) => a.asama === "odeme");

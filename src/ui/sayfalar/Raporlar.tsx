@@ -6,10 +6,9 @@ import type { EvrakKaydi } from "../../domain/dosya";
 import type { PiyasaArastirmasi } from "../../domain/piyasa";
 import { csvOlustur, kikBildirimleri, yilAlimlari, yillar, yillikOzet } from "../../domain/raporlar";
 import { ASAMA_ADI, asamaGrubu, BOS_DEGER, bosIse, bugun, tl, uzunTarih, yuzde } from "../bicim";
+import { AY_KISA, AY_UZUN } from "../../domain/tarih";
 import type { Veri } from "../useVeri";
 
-const AYLAR = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"];
-const AY_ADLARI = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
 const KOD_ADI: Record<string, string> = {
   "03.2": "Tüketime yönelik mal",
   "03.5": "Hizmet alımları",
@@ -160,7 +159,7 @@ export function Raporlar() {
                 <span />
                 <span />
               </div>
-              <div className="grafik-sutunlar" role="img" aria-label={`Aylık 22/d harcaması. En yüksek ay ${AY_ADLARI[zirveAy.ay - 1]}, ${tl(zirveAy.tutar)}.`}>
+              <div className="grafik-sutunlar" role="img" aria-label={`Aylık 22/d harcaması. En yüksek ay ${AY_UZUN[zirveAy.ay - 1]}, ${tl(zirveAy.tutar)}.`}>
                 {ozet.aylik.map((a, i) => (
                   <div key={a.ay} className="grafik-sutun" onMouseEnter={() => setUzerinde(i)} onMouseLeave={() => setUzerinde(null)}>
                     <div className="grafik-cubuk-alani">
@@ -172,14 +171,14 @@ export function Raporlar() {
                       {uzerinde === i && a.tutar > 0 && (
                         <div className="grafik-ipucu">
                           <span>
-                            {AY_ADLARI[i]} {yil}
+                            {AY_UZUN[i]} {yil}
                           </span>
                           <span className="mono kalin">{tl(a.tutar)}</span>
                           <span>{a.adet} alım</span>
                         </div>
                       )}
                     </div>
-                    <span className="grafik-ay">{AYLAR[i]}</span>
+                    <span className="grafik-ay">{AY_KISA[i]}</span>
                   </div>
                 ))}
               </div>

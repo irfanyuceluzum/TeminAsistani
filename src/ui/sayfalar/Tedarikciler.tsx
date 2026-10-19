@@ -7,7 +7,7 @@ import {
   firmaGecmisi,
   firmaKimligi,
   ibanBicimle,
-  SORGU_ESKIME_GUNU,
+  sorguYenilenmeli,
   sorguYasi,
   tedarikciHatalari,
   type TeklifSonucu,
@@ -60,7 +60,7 @@ export function Tedarikciler() {
   const gecmisler = useMemo(() => new Map(tedarikciler.map((t) => [t.id, firmaGecmisi(t.id, piyasalar, alimlar)])), [tedarikciler, piyasalar, alimlar]);
   const sorguGerekli = (t: Tedarikci) => {
     const yas = sorguYasi(gecmisler.get(t.id)?.sonSorgu ?? null, gun);
-    return yas === null || yas > SORGU_ESKIME_GUNU;
+    return sorguYenilenmeli(yas);
   };
 
   const q = arama.trim().toLocaleLowerCase("tr-TR");
@@ -232,7 +232,7 @@ export function Tedarikciler() {
                 </div>
               </section>
 
-              {(yas === null || yas > SORGU_ESKIME_GUNU) && (
+              {sorguYenilenmeli(yas) && (
                 <div className="bant bant-uyari" role="status">
                   {yas === null
                     ? "Bu firma için kayıtlı yasaklılık sorgusu yok. Teklif istemeden önce EKAP'ta sorgulayın."

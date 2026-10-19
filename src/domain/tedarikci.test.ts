@@ -1,9 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { ornekAlimlar, ornekPiyasa, ornekTedarikciler } from "../data/ornekVeri";
-import { bilgiEksik, firmaGecmisi, ibanBicimle, ibanGecerli, sorguYasi, tedarikciHatalari, teklifFirmaKontrolleri, yeniTedarikci } from "./tedarikci";
+import { bilgiEksik, firmaGecmisi, ibanBicimle, ibanGecerli, sorguYasi, sorguYenilenmeli, tedarikciHatalari, teklifFirmaKontrolleri, yeniTedarikci } from "./tedarikci";
 import type { Tedarikci } from "./tipler";
 
 const TL = 100;
+
+describe("sorguYenilenmeli", () => {
+  it("sorgu yoksa yenilenmeli", () => expect(sorguYenilenmeli(null)).toBe(true));
+  it("eşikte yenilenmez, eşiği aşınca yenilenir", () => {
+    expect(sorguYenilenmeli(0)).toBe(false);
+    expect(sorguYenilenmeli(90)).toBe(false);
+    expect(sorguYenilenmeli(91)).toBe(true);
+  });
+});
 
 describe("firma geçmişi", () => {
   const piyasalar = ornekPiyasa.map((p) => structuredClone(p));

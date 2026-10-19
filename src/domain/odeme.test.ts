@@ -2,9 +2,23 @@ import { describe, expect, it } from "vitest";
 import { ornekAlimlar, ornekAyarlar } from "../data/ornekVeri";
 import { evrakDurumlari, evrakListesi } from "./dosya";
 import { muayeneOlustur } from "./muayene";
-import { borcSorgusuGerekli, ekListesi, kbsAlanlari, odemeHesabi, odemeKontrolleri, odemeMatrahi, odemeOlustur, oebSatirlari, type Odeme } from "./odeme";
+import { borcSorgusuGerekli, ekListesi, kbsAlanlari, kdvTutari, odemeHesabi, odemeKontrolleri, odemeMatrahi, odemeOlustur, oebSatirlari, type Odeme } from "./odeme";
 
 const TL = 100;
+
+describe("kdvTutari", () => {
+  it("oran 0/1/10/20", () => {
+    expect(kdvTutari(10_000, 0)).toBe(0);
+    expect(kdvTutari(10_000, 1)).toBe(100);
+    expect(kdvTutari(10_000, 10)).toBe(1_000);
+    expect(kdvTutari(10_000, 20)).toBe(2_000);
+  });
+  it("kuruşa yuvarlar", () => {
+    expect(kdvTutari(1_234, 20)).toBe(247); // 246,8
+    expect(kdvTutari(1_233, 10)).toBe(123); // 123,3
+    expect(kdvTutari(1_005, 10)).toBe(101); // 100,5
+  });
+});
 const klima = ornekAlimlar.find((a) => a.id === "DT-2026-040")!;
 const matrah = 46_900 * TL;
 

@@ -1,5 +1,6 @@
 import { degerlendir, firmaToplami, type PiyasaArastirmasi } from "./piyasa";
 import type { Kontrol } from "./sihirbaz";
+import { gunFarki } from "./tarih";
 import type { Alim, Tedarikci } from "./tipler";
 
 // Bu süreden eski yasaklılık sorgusu, yeni alımda yenilenmesi gereken sorgu olarak işaretlenir.
@@ -71,7 +72,12 @@ export function firmaGecmisi(tedarikciId: string, piyasalar: PiyasaArastirmasi[]
 
 export function sorguYasi(sonSorgu: string | null, bugun: string): number | null {
   if (!sonSorgu) return null;
-  return Math.round((Date.parse(bugun + "T00:00:00Z") - Date.parse(sonSorgu + "T00:00:00Z")) / 86_400_000);
+  return gunFarki(bugun, sonSorgu);
+}
+
+// Sorgu hiç yapılmamışsa ya da eşikten eskiyse yenilenmelidir.
+export function sorguYenilenmeli(yas: number | null): boolean {
+  return yas === null || yas > SORGU_ESKIME_GUNU;
 }
 
 export function bilgiEksik(t: Tedarikci): boolean {
