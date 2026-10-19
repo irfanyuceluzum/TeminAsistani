@@ -1,4 +1,4 @@
-import type { PiyasaArastirmasi } from "./piyasa";
+import { degerlendir, yasaklilikEksikleri, type PiyasaArastirmasi } from "./piyasa";
 import { bentBilgisi, sozlesmeZorunlu } from "./sihirbaz";
 import type { Alim, Asama, Bent } from "./tipler";
 
@@ -73,15 +73,27 @@ export function evrakDurumlari(alim: Alim, kayitlar: Record<string, EvrakKaydi>,
       const no = alim.ekapKayitNo?.trim();
       return { ...t, tamam: !!no, not: no ? `No ${no}` : "Kayıt numarası dosya bilgilerinden girilir", tarih: null };
     }
+    if (t.kod === "yasaklilik") {
+      // Tutanağın onaylanmış olması yetmez: seçilen her firmanın sorgu tarihi girilmiş olmalı.
+      const kazananVar = !!piyasa && (degerlendir(piyasa)?.kazananlar.length ?? 0) > 0;
+      const eksik = piyasa ? yasaklilikEksikleri(piyasa) : [];
+      const tamam = kazananVar && eksik.length === 0;
+      return { ...t, tamam, not: tamam ? "Seçilen firmaların sorgu tarihi girildi" : "7. basamakta seçilen firmanın EKAP sorgu tarihini girin", tarih: null };
+    }
     if (t.sistemden) {
-      const tamamlandi = piyasa?.tamamlandi ?? false;
-      const sorgulu = tamamlandi && piyasa!.teklifler.length > 0;
-      const tamam = t.kod === "piyasa-tutanagi" ? tamamlandi : sorgulu;
+      const tamam = piyasa?.tamamlandi ?? false;
       return { ...t, tamam, not: tamam ? "Piyasa araştırması ekranından" : "Piyasa araştırması tamamlanınca gelir", tarih: null };
     }
     const k = kayitlar[t.kod];
     return { ...t, tamam: k?.tamam ?? false, not: k?.not ?? "", tarih: k?.tarih ?? null };
   });
+}
+
+// Dosya "tamamlandı" yapılmadan önce eksiksiz olması gereken evraklar; eksiklerin adlarını döndürür.
+export function kapanisEksikleri(alim: Alim, kayitlar: Record<string, EvrakKaydi>, piyasa: PiyasaArastirmasi | null): string[] {
+  return evrakDurumlari(alim, kayitlar, piyasa)
+    .filter((e) => !e.tamam)
+    .map((e) => e.ad);
 }
 
 export interface IlerlemeDurumu {

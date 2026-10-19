@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { ornekAlimlar, ornekAyarlar } from "../data/ornekVeri";
 import { evrakDurumlari, evrakListesi } from "./dosya";
-import { ekListesi, odemeHesabi, odemeKontrolleri, odemeOlustur, type Odeme } from "./odeme";
+import { muayeneOlustur } from "./muayene";
+import { ekListesi, odemeHesabi, odemeKontrolleri, odemeMatrahi, odemeOlustur, oebSatirlari, type Odeme } from "./odeme";
 
 const TL = 100;
 const klima = ornekAlimlar.find((a) => a.id === "DT-2026-040")!;
@@ -49,8 +50,8 @@ describe("ek listesi ve kontroller", () => {
   const tumu = Object.fromEntries(evrakListesi(klima).map((e) => [e.kod, { tamam: true, tarih: "2026-10-15", not: "" }]));
   const piyasa = {
     alimId: klima.id,
-    kalemler: [],
-    teklifler: [{ tedarikciId: "serin", teklifTarihi: null, yasaklilikSorgusu: "2026-10-03", fiyatlar: {} }],
+    kalemler: [{ id: "k1", ad: "Klima bakımı", miktar: 1, birim: "iş" }],
+    teklifler: [{ tedarikciId: "serin", teklifTarihi: null, yasaklilikSorgusu: "2026-10-03", fiyatlar: { k1: matrah } }],
     degerlendirme: "toplam" as const,
     gorevliler: "",
     tamamlandi: true,
@@ -88,5 +89,53 @@ describe("ek listesi ve kontroller", () => {
     const k = odemeKontrolleri({ ...o, sozlesmeVar: false }, odemeHesabi(matrah, o, ornekAyarlar), [], ornekAyarlar, true);
     expect(k[0]).toMatchObject({ durum: "uyari", baslik: "Sözleşme zorunlu" });
     expect(odemeKontrolleri({ ...o, sozlesmeVar: true }, odemeHesabi(matrah, o, ornekAyarlar), [], ornekAyarlar, true).some((x) => x.baslik === "Sözleşme zorunlu")).toBe(false);
+  });
+});
+
+describe("ödeme emri belgesi satırları", () => {
+  const temizlik = ornekAlimlar.find((a) => a.id === "DT-2026-041")!;
+  const yok = (d: Partial<Odeme> = {}) => odeme({ ...odemeOlustur(temizlik), tevkifatTuru: "yok", ...d });
+
+  it("fatura bedeline KDV'yi ekler; net ödeme KDV dahil tutardan kesintiler düşülerek bulunur", () => {
+    const h = odemeHesabi(32_700 * TL, yok(), ornekAyarlar);
+    const s = oebSatirlari(h, yok(), ornekAyarlar);
+    expect(s[0]).toEqual({ aciklama: "Mal / hizmet bedeli (KDV hariç)", borc: 32_700 * TL, alacak: null });
+    expect(s[1]).toEqual({ aciklama: "Katma değer vergisi (%20)", borc: 6_540 * TL, alacak: null });
+    const borc = s.reduce((t, x) => t + (x.borc ?? 0), 0);
+    const alacak = s.reduce((t, x) => t + (x.alacak ?? 0), 0);
+    expect(borc).toBe(39_240 * TL);
+    // Çift taraflı kayıt: borç ve alacak toplamı eşit
+    expect(alacak).toBe(borc);
+    expect(s[s.length - 1]).toEqual({ aciklama: "Yükleniciye net ödenecek", borc: null, alacak: 39_240 * TL - 31_000 });
+  });
+
+  it("damga satırını oranın gerçek adıyla yazar", () => {
+    const h = odemeHesabi(32_700 * TL, yok(), ornekAyarlar);
+    const s = oebSatirlari(h, yok(), ornekAyarlar);
+    expect(s.find((x) => x.aciklama.startsWith("Damga"))).toEqual({ aciklama: "Damga vergisi, makbuz (binde 9,48)", borc: null, alacak: 31_000 });
+    expect(s.some((x) => /karar|ihale/i.test(x.aciklama))).toBe(false);
+  });
+
+  it("tevkifat ve borç mahsubunu ayrı satır yapar", () => {
+    const o = odeme({ vergiSorgusu: { durum: "borclu", tarih: "2026-10-16", belgeNo: "V1", borc: 1_000 * TL } });
+    const h = odemeHesabi(matrah, o, ornekAyarlar);
+    const s = oebSatirlari(h, o, ornekAyarlar);
+    expect(s.map((x) => x.aciklama)).toEqual([
+      "Mal / hizmet bedeli (KDV hariç)",
+      "Katma değer vergisi (%20)",
+      "KDV tevkifatı (7/10)",
+      "Damga vergisi, makbuz (binde 9,48)",
+      "Vergi borcu mahsubu",
+      "Yükleniciye net ödenecek",
+    ]);
+  });
+
+  it("matrah olarak muayenede kabul edilen tutarı alır", () => {
+    const m = muayeneOlustur(klima, null, "2026-10-16");
+    expect(odemeMatrahi(klima, m)).toBe(klima.tutar);
+    m.kalemler[0].kabulMiktari = 0;
+    m.tamamlandi = true;
+    expect(odemeMatrahi(klima, m)).toBe(0);
+    expect(odemeMatrahi(klima, null)).toBe(klima.tutar);
   });
 });

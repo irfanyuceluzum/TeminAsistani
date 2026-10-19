@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
+import { bugun } from "../bicim";
 import { useNavigate } from "react-router-dom";
 import type { BasamakBaglami } from "../sayfalar/DosyaCalismaAlani";
 import { BelgeOnizleme } from "../BelgeOnizleme";
@@ -19,8 +20,8 @@ function kurusFormat(kurus: number | null | undefined): string {
 
 export function TeklifMektuplariBasamagi({ b }: { b: BasamakBaglami }) {
   const navigate = useNavigate();
-  const { alim, piyasa, dosya, veri } = b;
-  const { tedarikciler, depo } = veri;
+  const { alim, piyasa, dosya, veri, piyasaDegistir } = b;
+  const { tedarikciler } = veri;
 
   // Başlangıç teklif listesi: piyasa.teklifler doluysa onu kullan, yoksa yaklaşık maliyetteki firmalarla başlat
   const [teklifler, setTeklifler] = useState<FirmaTeklifi[]>(() => {
@@ -71,13 +72,9 @@ export function TeklifMektuplariBasamagi({ b }: { b: BasamakBaglami }) {
     if (sonKayit.current === jsonStr) return;
     sonKayit.current = jsonStr;
 
-    // Piyasa nesnesini güncelle ve kaydet
-    piyasa.teklifler = teklifler;
-    void depo.piyasaKaydet({
-      ...piyasa,
-      teklifler,
-    });
-  }, [teklifler, piyasa, depo]);
+    // Çalışma alanının otomatik kaydı üzerinden yazılır
+    piyasaDegistir((p) => ({ ...p, teklifler }));
+  }, [teklifler, piyasaDegistir]);
 
   const firmaAdi = (id: string) => tedarikciler.find((t) => t.id === id)?.ad || "Bilinmeyen Firma";
 
@@ -238,15 +235,11 @@ export function TeklifMektuplariBasamagi({ b }: { b: BasamakBaglami }) {
   const onaylaVeIlerle = async () => {
     setKaydediliyor(true);
     try {
-      piyasa.teklifler = teklifler;
-      await depo.piyasaKaydet({
-        ...piyasa,
-        teklifler,
-      });
+      piyasaDegistir((p) => ({ ...p, teklifler }));
 
       await b.evrakDegistir("fiyat-teklifi", "Teklif mektupları", {
         tamam: true,
-        tarih: new Date().toISOString(),
+        tarih: bugun(),
         not: "",
       });
       navigate(`/dosyalar/${alim.id}/basamak/7`);

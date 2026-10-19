@@ -5,7 +5,7 @@ import type { PiyasaKalemi } from "../../domain/piyasa";
 import type { PiyasaArastirmasi } from "../../domain/piyasa";
 import { degerlendir, firmaToplami } from "../../domain/piyasa";
 import type { Muayene } from "../../domain/muayene";
-import type { Odeme } from "../../domain/odeme";
+import type { Odeme, OebSatiri } from "../../domain/odeme";
 import { bentBilgisi } from "../../domain/sihirbaz";
 import type { Alim, Ayarlar, Tedarikci } from "../../domain/tipler";
 import { uzunTarih } from "../bicim";
@@ -645,6 +645,7 @@ export function piyasaTutanagiSayfalari(
   b: BelgeBilgisi,
   piyasa: PiyasaArastirmasi,
   firmaAdi: (id: string) => string,
+  tutanakTarihi = "",
 ): ReactNode[] {
   const ustIdare = (b.ayarlar.idare?.ustIdare || "T.C. İDARE MÜDÜRLÜĞÜ").toLocaleUpperCase("tr-TR");
   const birim = b.ayarlar.idare?.birim || "";
@@ -687,7 +688,7 @@ export function piyasaTutanagiSayfalari(
           </tr>
           <tr>
             <th className="onay-th-etiket">TUTANAK TARİHİ</th>
-            <td className="onay-td-deger">{b.alim.onayTarihi ? uzunTarih(b.alim.onayTarihi) : "…/…/20…"}</td>
+            <td className="onay-td-deger">{tutanakTarihi ? uzunTarih(tutanakTarihi) : "…/…/20…"}</td>
             <th className="onay-th-etiket">DEĞERLENDİRME ŞEKLİ</th>
             <td className="onay-td-deger">{piyasa.degerlendirme === "kalem" ? "Kısmi Teklif (Kalem Bazında)" : "Toplam Tutar Esasına Göre"}</td>
           </tr>
@@ -758,7 +759,13 @@ export function piyasaTutanagiSayfalari(
       </table>
 
       <div style={{ marginTop: "6pt", padding: "6pt", border: "1px solid #000", fontSize: "8pt", lineHeight: 1.35, textAlign: "justify" }}>
-        <strong>KARAR:</strong> İdaremizce 4734 sayılı Kamu İhale Kanunu’nun 22 nci maddesinin ({bentBilgisi(b.alim.bent).harf}) bendi uyarınca yapılan piyasa fiyat araştırması neticesinde; teklif veren firmaların fiyat teklifleri ve şartları incelenmiş olup, en uygun ve avantajlı teklifin KDV hariç <strong>{para(toplamKurus)} TL</strong> ile <strong>{kazanan}</strong> tarafından verildiği tespit edilmiştir. Alımın anılan firmadan yapılması uygun görülerek işbu tutanak tarafımızca müştereken tanzim ve imza edilmiştir.
+        <strong>KARAR:</strong> İdaremizce 4734 sayılı Kamu İhale Kanunu’nun 22 nci maddesinin ({bentBilgisi(b.alim.bent).harf}) bendi uyarınca yapılan piyasa fiyat araştırması neticesinde; teklif veren firmaların fiyat teklifleri ve şartları incelenmiş olup, en uygun ve avantajlı teklifin KDV hariç <strong>{para(toplamKurus)} TL</strong> ile <strong>{kazanan}</strong> tarafından verildiği tespit edilmiştir.{" "}
+        {sonuc?.kazananlar
+          .map((id) => ({ id, tarih: piyasa.teklifler.find((t) => t.tedarikciId === id)?.yasaklilikSorgusu }))
+          .filter((x) => x.tarih)
+          .map((x) => `${firmaAdi(x.id)} hakkında ${uzunTarih(x.tarih!)} tarihinde EKAP üzerinden yapılan sorgulamada ihalelere katılmaktan yasaklı olmadığı görülmüştür. `)
+          .join("")}
+        Alımın anılan firmadan yapılması uygun görülerek işbu tutanak tarafımızca müştereken tanzim ve imza edilmiştir.
       </div>
 
       <div style={{ marginTop: "10pt" }}>
@@ -1022,7 +1029,10 @@ export function tasinirIslemFisiSayfalari(
 export function odemeEmriBelgesiSayfalari(
   b: BelgeBilgisi,
   odeme: Odeme | null,
+  satirlar: OebSatiri[],
+  oebTarihi: string,
   firmaAdi: (id: string) => string,
+  iban = "",
 ): ReactNode[] {
   const ustIdare = (b.ayarlar.idare?.ustIdare || "T.C. İDARE MÜDÜRLÜĞÜ").toLocaleUpperCase("tr-TR");
   const birim = b.ayarlar.idare?.birim || "";
@@ -1030,14 +1040,13 @@ export function odemeEmriBelgesiSayfalari(
   const gg = imzaci(b.ayarlar, g?.gerceklestirme);
   const hy = imzaci(b.ayarlar, g?.harcamaYetkilisi);
   const para = (k: number | null | undefined): string => {
-    if (k === null || k === undefined) return "0,00";
-    return (k / 100).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (k === null || k === undefined) return "—";
+    return (k / 100).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL";
   };
-
-  const brut = b.alim.tutar;
-  const damga = Math.round((brut * 948) / 100000); // Binde 9,48 damga vergisi
-  const net = brut - damga;
-  const oebTarihi = b.alim.onayTarihi ? uzunTarih(b.alim.onayTarihi) : "…/…/20…";
+  const borcToplami = satirlar.reduce((t, x) => t + (x.borc ?? 0), 0);
+  const alacakToplami = satirlar.reduce((t, x) => t + (x.alacak ?? 0), 0);
+  // "Kırtasiye malzemesi alımı" gibi konular zaten "alımı" ile biter; ikinci kez eklenmez.
+  const konu = /alımı$/i.test(b.alim.konu.trim()) ? b.alim.konu.trim() : `${b.alim.konu.trim()} alımı`;
 
   return [
     <div key="odeme-emri" className="onay-sablon-kapsayici">
@@ -1054,23 +1063,24 @@ export function odemeEmriBelgesiSayfalari(
             <th className="onay-th-etiket" style={{ width: "25%" }}>ÖEB NUMARASI</th>
             <td className="onay-td-deger kalin">{odeme?.oebNo || "…"}</td>
             <th className="onay-th-etiket" style={{ width: "20%" }}>ÖEB TARİHİ</th>
-            <td className="onay-td-deger">{oebTarihi}</td>
+            <td className="onay-td-deger">{oebTarihi ? uzunTarih(oebTarihi) : "…/…/20…"}</td>
           </tr>
           <tr>
             <th className="onay-th-etiket">HAK SAHİBİ (ALACAKLI)</th>
             <td className="onay-td-deger kalin" colSpan={3}>
               {b.alim.tedarikciId ? firmaAdi(b.alim.tedarikciId) : "—"}
+              {iban && <span style={{ fontWeight: "normal" }}> · IBAN {iban}</span>}
             </td>
           </tr>
           <tr>
             <th className="onay-th-etiket">BÜTÇE TERTİBİ</th>
             <td className="onay-td-deger">{b.alim.ekonomikKod || "—"}</td>
             <th className="onay-th-etiket">ÖDEME TÜRÜ</th>
-            <td className="onay-td-deger">Doğrudan Temin Kesin Hesap</td>
+            <td className="onay-td-deger">Doğrudan temin, 4734 md. 22/{bentBilgisi(b.alim.bent).harf}</td>
           </tr>
           <tr>
             <th className="onay-th-etiket">İŞİN ADI VE AÇIKLAMASI</th>
-            <td className="onay-td-deger" colSpan={3}>{b.alim.konu} alımı bedeli ödemesi.</td>
+            <td className="onay-td-deger" colSpan={3}>{konu} bedelinin ödenmesi.</td>
           </tr>
         </tbody>
       </table>
@@ -1078,26 +1088,23 @@ export function odemeEmriBelgesiSayfalari(
       <table className="onay-sablon-tablo" style={{ marginBottom: "10pt" }}>
         <thead>
           <tr>
-            <th style={{ width: "40%", textAlign: "left" }}>HESAP AÇIKLAMASI</th>
-            <th style={{ width: "30%", textAlign: "right" }}>BORÇ TUTARI (TL)</th>
-            <th style={{ width: "30%", textAlign: "right" }}>ALACAK / KESİNTİ (TL)</th>
+            <th style={{ width: "50%", textAlign: "left" }}>HESAP AÇIKLAMASI</th>
+            <th style={{ width: "25%", textAlign: "right" }}>BORÇ (TL)</th>
+            <th style={{ width: "25%", textAlign: "right" }}>ALACAK (TL)</th>
           </tr>
         </thead>
         <tbody>
-          <tr>
-            <td>Bütçe Gideri (Fatura Bedeli, KDV Dahil)</td>
-            <td style={{ textAlign: "right" }}>{para(brut)} TL</td>
-            <td style={{ textAlign: "right" }}>—</td>
-          </tr>
-          <tr>
-            <td>Karar / İhale Damga Vergisi Kesintisi (‰9,48)</td>
-            <td style={{ textAlign: "right" }}>—</td>
-            <td style={{ textAlign: "right" }}>{para(damga)} TL</td>
-          </tr>
+          {satirlar.map((x) => (
+            <tr key={x.aciklama} style={x.aciklama.startsWith("Yükleniciye") ? { fontWeight: "bold" } : undefined}>
+              <td>{x.aciklama}</td>
+              <td style={{ textAlign: "right" }}>{para(x.borc)}</td>
+              <td style={{ textAlign: "right" }}>{para(x.alacak)}</td>
+            </tr>
+          ))}
           <tr style={{ fontWeight: "bold" }}>
-            <td>NET ÖDENECEK TUTAR (Banka Hesabına)</td>
-            <td style={{ textAlign: "right" }}>—</td>
-            <td style={{ textAlign: "right", color: "#000" }}>{para(net)} TL</td>
+            <td>TOPLAM</td>
+            <td style={{ textAlign: "right" }}>{para(borcToplami)}</td>
+            <td style={{ textAlign: "right" }}>{para(alacakToplami)}</td>
           </tr>
         </tbody>
       </table>

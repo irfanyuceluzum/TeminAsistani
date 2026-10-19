@@ -5,27 +5,30 @@ import { BelgeOnizleme } from "../BelgeOnizleme";
 import { KontrolSatiri } from "../KontrolSatiri";
 import { KucukA4 } from "./KucukA4";
 import { piyasaTutanagiSayfalari } from "./belgeler";
-import { degerlendir, type Degerlendirme } from "../../domain/piyasa";
+import { degerlendir, yasaklilikEksikleri, type Degerlendirme } from "../../domain/piyasa";
+import { evrakFormu, evrakKaydiYap } from "../../domain/basamaklar";
+import { bugun } from "../bicim";
 import type { Kontrol } from "../../domain/sihirbaz";
 import { yetkiliMi } from "../../domain/personel";
 
 export function PiyasaTutanagiBasamagi({ b }: { b: BasamakBaglami }) {
   const navigate = useNavigate();
-  const { alim, piyasa, dosya, veri } = b;
+  const { alim, piyasa, dosya, veri, piyasaDegistir } = b;
   const { ayarlar, tedarikciler } = veri;
   const [kaydediliyor, setKaydediliyor] = useState(false);
   const [onizle, setOnizle] = useState(false);
+  const [mesaj, setMesaj] = useState("");
+  const [form, setForm] = useState(() => evrakFormu(b.evraklar["piyasa-tutanagi"], bugun()));
+  const dd = alim.bent === "22/d";
+  const sorgusuz = dd ? yasaklilikEksikleri(piyasa) : [];
 
   const firmaAdi = (id: string) => tedarikciler.find((t) => t.id === id)?.ad || "Bilinmeyen Firma";
 
   const sonuc = useMemo(() => degerlendir(piyasa), [piyasa]);
 
-  const degerlendirmeDegistir = (tur: Degerlendirme) => {
-    const yeni = { ...piyasa, degerlendirme: tur };
-    void veri.depo.piyasaKaydet(yeni).then(() => {
-      piyasa.degerlendirme = tur;
-    });
-  };
+  const degerlendirmeDegistir = (tur: Degerlendirme) => piyasaDegistir((p) => ({ ...p, degerlendirme: tur }));
+  const sorguTarihiDegistir = (tedarikciId: string, tarih: string) =>
+    piyasaDegistir((p) => ({ ...p, teklifler: p.teklifler.map((t) => (t.tedarikciId === tedarikciId ? { ...t, yasaklilikSorgusu: tarih || null } : t)) }));
 
   const kontroller = useMemo((): Kontrol[] => {
     const k: Kontrol[] = [];
@@ -64,6 +67,26 @@ export function PiyasaTutanagiBasamagi({ b }: { b: BasamakBaglami }) {
       });
     }
 
+    // Doğrudan Temin Tebliği m.4/8: 22/d'de seçilen firmanın yasaklı olmadığı EKAP'tan sorgulanır.
+    if (dd && sonuc && sonuc.kazananlar.length > 0) {
+      k.push(
+        sorgusuz.length
+          ? {
+              durum: "engel",
+              baslik: "Yasaklılık sorgusu yapılmadı",
+              detay: `${sorgusuz.map(firmaAdi).join(", ")} için EKAP yasaklılık sorgusunu yapıp sorgu tarihini girin (Doğrudan Temin Tebliği m.4/8).`,
+            }
+          : { durum: "tamam", baslik: "Yasaklılık sorgusu yapıldı", detay: "Seçilen firmanın EKAP sorgu tarihi tutanağa yazılır." },
+      );
+    }
+    if (form.tarih && dosya.fiyatIsteme.sonTarih && form.tarih < dosya.fiyatIsteme.sonTarih) {
+      k.push({
+        durum: "uyari",
+        baslik: "Tutanak tarihi son teklif gününden önce",
+        detay: "Teklifler son gün dolmadan değerlendiriliyor. Tutanak tarihini kontrol edin.",
+      });
+    }
+
     const gorevliSayisi = (g?.piyasaGorevlileri ?? []).filter((id) => g ? !yetkiliMi(id, g) : true).length;
     if (gorevliSayisi < 2) {
       k.push({
@@ -74,7 +97,7 @@ export function PiyasaTutanagiBasamagi({ b }: { b: BasamakBaglami }) {
     }
 
     return k;
-  }, [sonuc, ayarlar.gorevler, tedarikciler]);
+  }, [sonuc, ayarlar.gorevler, tedarikciler, dd, sorgusuz.join(), form.tarih, dosya.fiyatIsteme.sonTarih]);
 
   const engelVar = kontroller.some((k) => k.durum === "engel");
 
@@ -82,11 +105,20 @@ export function PiyasaTutanagiBasamagi({ b }: { b: BasamakBaglami }) {
     return piyasaTutanagiSayfalari(
       { alim, ayarlar, dosya, kalemler: b.kalemler },
       piyasa,
-      firmaAdi
+      firmaAdi,
+      form.tarih
     );
-  }, [alim, ayarlar, dosya, b.kalemler, piyasa, tedarikciler]);
+  }, [alim, ayarlar, dosya, b.kalemler, piyasa, tedarikciler, form.tarih]);
 
   const onaylaVeIlerle = async () => {
+    setMesaj("");
+    let kayit;
+    try {
+      kayit = evrakKaydiYap(form);
+    } catch (e) {
+      setMesaj(String((e as Error).message));
+      return;
+    }
     setKaydediliyor(true);
     try {
       const kazananId = sonuc?.kazananlar?.[0] || alim.tedarikciId;
@@ -101,16 +133,9 @@ export function PiyasaTutanagiBasamagi({ b }: { b: BasamakBaglami }) {
         "Piyasa fiyat araştırma tutanağı onaylandı, alım sipariş aşamasına geçti."
       );
 
-      await veri.depo.piyasaKaydet({
-        ...piyasa,
-        tamamlandi: true,
-      });
+      piyasaDegistir((p) => ({ ...p, tamamlandi: true }));
 
-      await b.evrakDegistir("piyasa-tutanagi", "Piyasa fiyat araştırma tutanağı", {
-        tamam: true,
-        tarih: new Date().toISOString(),
-        not: "",
-      });
+      await b.evrakDegistir("piyasa-tutanagi", "Piyasa fiyat araştırma tutanağı", kayit);
 
       navigate(`/dosyalar/${alim.id}/basamak/8`);
     } finally {
@@ -166,6 +191,34 @@ export function PiyasaTutanagiBasamagi({ b }: { b: BasamakBaglami }) {
                   {(sonuc.toplam / 100).toLocaleString("tr-TR", { minimumFractionDigits: 2 })} TL
                 </div>
               </div>
+            </div>
+          )}
+
+          <div className="form-izgara" style={{ marginTop: "12px" }}>
+            <div className="alan">
+              <label htmlFor="tutanak-tarih">Tutanak tarihi</label>
+              <input id="tutanak-tarih" type="date" value={form.tarih} onChange={(e) => setForm((f) => ({ ...f, tarih: e.target.value }))} aria-invalid={!form.tarih} />
+            </div>
+          </div>
+
+          {dd && sonuc && sonuc.kazananlar.length > 0 && (
+            <fieldset className="secim-grubu" style={{ marginTop: "12px" }}>
+              <legend>EKAP yasaklılık sorgusu (Doğrudan Temin Tebliği m.4/8)</legend>
+              {sonuc.kazananlar.map((id) => {
+                const tarih = piyasa.teklifler.find((t) => t.tedarikciId === id)?.yasaklilikSorgusu ?? "";
+                return (
+                  <div key={id} className="alan">
+                    <label htmlFor={`yasak-${id}`}>{firmaAdi(id)} · sorgu tarihi (yasaklı değil)</label>
+                    <input id={`yasak-${id}`} type="date" value={tarih} onChange={(e) => sorguTarihiDegistir(id, e.target.value)} aria-invalid={!tarih} />
+                  </div>
+                );
+              })}
+            </fieldset>
+          )}
+
+          {mesaj && (
+            <div className="bant bant-hata" role="alert" style={{ marginTop: "12px" }}>
+              {mesaj}
             </div>
           )}
 

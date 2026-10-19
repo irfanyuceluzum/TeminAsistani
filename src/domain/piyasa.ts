@@ -144,6 +144,14 @@ function kalemBazli(p: PiyasaArastirmasi): Sonuc | null {
   return { mod: "kalem", atamalar, toplam: atamalar.reduce((s, a) => s + a.tutar, 0), kazananlar, esitlikler };
 }
 
+// Doğrudan Temin Tebliği m.4/8: 22/d alımlarında seçilen firmanın EKAP'ta yasaklı olmadığı sorgulanır.
+// Sorgu tarihi girilmemiş kazanan firmaların kimliklerini döndürür; sonuç yoksa (teklif eksik) boş döner.
+export function yasaklilikEksikleri(p: PiyasaArastirmasi): string[] {
+  const sonuc = degerlendir(p);
+  if (!sonuc) return [];
+  return sonuc.kazananlar.filter((id) => !p.teklifler.find((t) => t.tedarikciId === id)?.yasaklilikSorgusu);
+}
+
 // Eşitlikte ilk girilen teklif seçilir ve kontrol listesinde uyarı verilir.
 export function degerlendir(p: PiyasaArastirmasi): Sonuc | null {
   return p.degerlendirme === "toplam" ? toplamBazli(p) : kalemBazli(p);
@@ -204,7 +212,7 @@ export function piyasaKontrolleri(
     k.push({ durum: "engel", baslik: "Kaşeli teklif belgesi yok", detay: `${belgesiz.map(ad).join(", ")} için kaşeli ve imzalı teklif belgesinin alındığını işaretleyin.` });
   }
 
-  const sorgusuz = sonuc.kazananlar.filter((id) => !p.teklifler.find((t) => t.tedarikciId === id)?.yasaklilikSorgusu);
+  const sorgusuz = yasaklilikEksikleri(p);
   k.push(
     sorgusuz.length
       ? { durum: "engel", baslik: "Yasaklılık sorgusu eksik", detay: `${sorgusuz.map(ad).join(", ")} için EKAP sorgusunu yapıp işaretleyin.` }

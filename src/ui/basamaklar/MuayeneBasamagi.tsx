@@ -6,6 +6,8 @@ import { KontrolSatiri } from "../KontrolSatiri";
 import { KucukA4 } from "./KucukA4";
 import { muayeneTalebiSayfalari, muayeneKabulTutanagiSayfalari } from "./belgeler";
 import type { Kontrol } from "../../domain/sihirbaz";
+import { evrakFormu, evrakKaydiYap } from "../../domain/basamaklar";
+import { bugun } from "../bicim";
 import { komisyon } from "../../domain/personel";
 import { muayeneOlustur } from "../../domain/muayene";
 
@@ -17,11 +19,13 @@ export function MuayeneBasamagi({ b }: { b: BasamakBaglami }) {
 
   const [kaydediliyor, setKaydediliyor] = useState(false);
   const [onizle, setOnizle] = useState(false);
-  const [talepSayi, setTalepSayi] = useState("");
-  const [talepTarih, setTalepTarih] = useState(() => new Date().toISOString().slice(0, 10));
+  const [ilkTalep] = useState(() => evrakFormu(b.evraklar["muayene-talebi"], bugun()));
+  const [talepSayi, setTalepSayi] = useState(ilkTalep.sayi);
+  const [talepTarih, setTalepTarih] = useState(ilkTalep.tarih);
+  const [mesaj, setMesaj] = useState("");
 
   const [faturaNo, setFaturaNo] = useState(muayene?.faturaNo || "");
-  const [faturaTarih, setFaturaTarih] = useState(muayene?.faturaTarihi || new Date().toISOString().slice(0, 10));
+  const [faturaTarih, setFaturaTarih] = useState(muayene?.faturaTarihi || bugun());
 
   const firmaAdi = (id: string) => tedarikciler.find((t) => t.id === id)?.ad || "Bilinmeyen Firma";
 
@@ -86,7 +90,7 @@ export function MuayeneBasamagi({ b }: { b: BasamakBaglami }) {
   const engelVar = kontroller.some((k) => k.durum === "engel");
 
   const aktifMuayene = useMemo(() => {
-    const m = muayene ?? muayeneOlustur(alim, piyasa, new Date().toISOString().slice(0, 10));
+    const m = muayene ?? muayeneOlustur(alim, piyasa, bugun());
     return {
       ...m,
       faturaNo,
@@ -110,25 +114,29 @@ export function MuayeneBasamagi({ b }: { b: BasamakBaglami }) {
   }, [isTalep, alim, ayarlar, dosya, b.kalemler, talepSayi, talepTarih, aktifMuayene, tedarikciler]);
 
   const onaylaVeIlerle = async () => {
+    setMesaj("");
+    let talep, fatura;
+    try {
+      talep = evrakKaydiYap({ tarih: talepTarih, sayi: talepSayi });
+      fatura = evrakKaydiYap({ tarih: faturaTarih, sayi: faturaNo });
+    } catch (e) {
+      setMesaj((e as Error).message);
+      return;
+    }
     setKaydediliyor(true);
     try {
       if (isTalep) {
-        await b.evrakDegistir("muayene-talebi", "Muayene talep yazısı", {
-          tamam: true,
-          tarih: new Date().toISOString(),
-          not: talepSayi.trim(),
-        });
+        await b.evrakDegistir("muayene-talebi", "Muayene talep yazısı", talep);
         navigate(`/dosyalar/${alim.id}/basamak/10`);
       } else {
         await veri.depo.muayeneKaydet({
           ...aktifMuayene,
           tamamlandi: true,
         });
-        await b.evrakDegistir("muayene-raporu", "Muayene raporu", {
-          tamam: true,
-          tarih: new Date().toISOString(),
-          not: faturaNo.trim(),
-        });
+        await b.evrakDegistir("muayene-raporu", "Muayene raporu", fatura);
+        // Evrak kontrol listesindeki karşılıkları: fatura ve muayene ve kabul tutanağı
+        await b.evrakDegistir("fatura", "Fatura", fatura);
+        await b.evrakDegistir("muayene-tutanagi", "Muayene ve kabul tutanağı", { ...fatura, not: "" });
         navigate(`/dosyalar/${alim.id}/basamak/12`);
       }
     } finally {
@@ -213,6 +221,12 @@ export function MuayeneBasamagi({ b }: { b: BasamakBaglami }) {
               ))}
             </div>
           </div>
+
+          {mesaj && (
+            <div className="bant bant-hata" role="alert" style={{ marginTop: "12px" }}>
+              {mesaj}
+            </div>
+          )}
 
           <div className="dugme-grubu" style={{ marginTop: "16px" }}>
             <button

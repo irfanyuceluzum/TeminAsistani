@@ -47,6 +47,8 @@ export interface BasamakBaglami {
   basamak: Basamak;
   dosyaDegistir: (f: (d: DosyaBasamaklari) => DosyaBasamaklari) => void;
   kalemleriDegistir: (k: PiyasaKalemi[]) => void;
+  // Piyasa araştırması kaydı çalışma alanının otomatik kaydından geçer; basamaklar depoya doğrudan yazmaz.
+  piyasaDegistir: (f: (p: PiyasaArastirmasi) => PiyasaArastirmasi) => void;
   evrakDegistir: (kod: string, ad: string, kayit: EvrakKaydi) => Promise<void>;
   alimDegistir: (d: Partial<Alim>, aciklama: string) => Promise<void>;
 }
@@ -178,6 +180,7 @@ function CalismaAlani({ alimId }: { alimId: string }) {
     basamak: secili,
     dosyaDegistir: (f) => setDosya((d) => (d ? f(d) : d)),
     kalemleriDegistir: (k) => setPiyasa((p) => (p ? { ...p, kalemler: k } : p)),
+    piyasaDegistir: (f) => setPiyasa((p) => (p ? f(p) : p)),
     evrakDegistir: async (kod, ad, k) => {
       setHata("");
       try {

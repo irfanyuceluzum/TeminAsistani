@@ -6,6 +6,8 @@ import { KontrolSatiri } from "../KontrolSatiri";
 import { KucukA4 } from "./KucukA4";
 import { siparisYazisiSayfalari } from "./belgeler";
 import type { Kontrol } from "../../domain/sihirbaz";
+import { evrakFormu, evrakKaydiYap } from "../../domain/basamaklar";
+import { bugun } from "../bicim";
 
 export function SiparisBasamagi({ b }: { b: BasamakBaglami }) {
   const navigate = useNavigate();
@@ -14,8 +16,11 @@ export function SiparisBasamagi({ b }: { b: BasamakBaglami }) {
   const [kaydediliyor, setKaydediliyor] = useState(false);
   const [onizle, setOnizle] = useState(false);
 
-  const [siparisSayi, setSiparisSayi] = useState(dosya.fiyatIsteme.sayi ? `${dosya.fiyatIsteme.sayi}-S` : "");
-  const [siparisTarih, setSiparisTarih] = useState(() => new Date().toISOString().slice(0, 10));
+  // Kayıtlı sipariş yazısı varsa sayısı ve tarihi geri yüklenir
+  const [ilkForm] = useState(() => evrakFormu(b.evraklar["siparis-yazisi"], bugun()));
+  const [siparisSayi, setSiparisSayi] = useState(ilkForm.sayi);
+  const [siparisTarih, setSiparisTarih] = useState(ilkForm.tarih);
+  const [mesaj, setMesaj] = useState("");
 
   const yuklenici = useMemo(() => {
     return tedarikciler.find((t) => t.id === alim.tedarikciId) ?? null;
@@ -74,13 +79,17 @@ export function SiparisBasamagi({ b }: { b: BasamakBaglami }) {
   }, [alim, ayarlar, dosya, b.kalemler, yuklenici, siparisSayi, siparisTarih]);
 
   const onaylaVeIlerle = async () => {
+    setMesaj("");
+    let kayit;
+    try {
+      kayit = evrakKaydiYap({ tarih: siparisTarih, sayi: siparisSayi });
+    } catch (e) {
+      setMesaj((e as Error).message);
+      return;
+    }
     setKaydediliyor(true);
     try {
-      await b.evrakDegistir("siparis-yazisi", "Sipariş yazısı", {
-        tamam: true,
-        tarih: new Date().toISOString(),
-        not: siparisSayi.trim(),
-      });
+      await b.evrakDegistir("siparis-yazisi", "Sipariş yazısı", kayit);
       navigate(`/dosyalar/${alim.id}/basamak/9`);
     } finally {
       setKaydediliyor(false);
@@ -140,6 +149,12 @@ export function SiparisBasamagi({ b }: { b: BasamakBaglami }) {
               ))}
             </div>
           </div>
+
+          {mesaj && (
+            <div className="bant bant-hata" role="alert" style={{ marginTop: "12px" }}>
+              {mesaj}
+            </div>
+          )}
 
           <div className="dugme-grubu" style={{ marginTop: "16px" }}>
             <button

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ihtiyacOnayiKontrolleri, type IhtiyacOnayi } from "../../domain/basamaklar";
 import { kisi, kisiYazisi } from "../../domain/personel";
-import { olayKaydet } from "../../data/olay";
+import { bugun } from "../bicim";
 import { BelgeOnizleme } from "../BelgeOnizleme";
 import { miktarYazisi } from "../IhtiyacListesi";
 import { KontrolSatiri } from "../KontrolSatiri";
@@ -91,7 +91,8 @@ export function IhtiyacOnayiBasamagi({ b }: { b: BasamakBaglami }) {
             checked={o.imzali}
             onChange={(e) => {
               degistir({ imzali: e.target.checked });
-              void olayKaydet(b.veri.depo, ayarlar, alim.id, "evrak", `İhtiyaç onayı: ${e.target.checked ? "imzalandı" : "imza geri alındı"}`).catch(() => undefined);
+              // Evrak kontrol listesindeki "İhtiyaç talep yazısı" bu belgedir; evrakDegistir denetim izine de yazar.
+              void b.evrakDegistir("ihtiyac-yazisi", "İhtiyaç onayı", { tamam: e.target.checked, tarih: o.tarih || bugun(), not: o.sayi.trim() });
             }}
           />
           <span>

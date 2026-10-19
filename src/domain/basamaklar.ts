@@ -482,3 +482,26 @@ export function onayBelgesiKontrolleri(
   return k;
 }
 
+// ---- Evrakla tamamlanan basamakların formu ----
+
+export interface EvrakFormu {
+  tarih: string;
+  sayi: string;
+}
+
+const GUN = /^\d{4}-\d{2}-\d{2}$/;
+
+// Sayfa açılırken kayıtlı evrakın tarihi ve sayısı geri yüklenir; kayıt yoksa bugün ve varsayılan sayı gelir.
+// Eski sürümün tarih yerine zaman damgası (ISO) yazdığı kayıtlarda ilk on karakter alınır.
+export function evrakFormu(kayit: EvrakKaydi | undefined, bugun: string, varsayilanSayi = ""): EvrakFormu {
+  return {
+    tarih: kayit?.tarih ? kayit.tarih.slice(0, 10) : bugun,
+    sayi: kayit?.not ?? varsayilanSayi,
+  };
+}
+
+// Kullanıcının girdiği belge tarihi olduğu gibi kaydedilir ("YYYY-AA-GG"); boş ya da başka biçimdeki tarih reddedilir.
+export function evrakKaydiYap(form: EvrakFormu, tamam = true): EvrakKaydi {
+  if (!GUN.test(form.tarih)) throw new Error("Belge tarihi YYYY-AA-GG biçiminde olmalı.");
+  return { tamam, tarih: form.tarih, not: form.sayi.trim() };
+}

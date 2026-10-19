@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ornekAlimlar, ornekPiyasa } from "../data/ornekVeri";
-import { asamaIlerlemesi, asamaSirasi, evrakDurumlari, evrakListesi } from "./dosya";
+import { asamaIlerlemesi, asamaSirasi, evrakDurumlari, evrakListesi, kapanisEksikleri } from "./dosya";
 import type { Alim } from "./tipler";
 
 const alim = (id: string, d: Partial<Alim> = {}): Alim => ({ ...ornekAlimlar.find((a) => a.id === id)!, ...d });
@@ -33,6 +33,59 @@ describe("evrak listesi", () => {
     expect(evrakDurumlari(a, {}, p).find((e) => e.kod === "piyasa-tutanagi")!.tamam).toBe(false);
     p.tamamlandi = true;
     expect(evrakDurumlari(a, {}, p).find((e) => e.kod === "piyasa-tutanagi")!.tamam).toBe(true);
+  });
+});
+
+describe("yasaklılık sorgusu", () => {
+  it("tutanak onaylı olsa da seçilen firmanın sorgu tarihi yoksa eksik sayar", () => {
+    const a = alim("DT-2026-041");
+    const p = structuredClone(ornekPiyasa[0]);
+    p.tamamlandi = true;
+    p.teklifler.forEach((t) => (t.yasaklilikSorgusu = null));
+    const y = evrakDurumlari(a, {}, p).find((e) => e.kod === "yasaklilik")!;
+    expect(y.tamam).toBe(false);
+    expect(y.not).toMatch(/7\. basamak/);
+  });
+
+  it("yalnızca kazanan firmanın sorgusu yeterlidir", () => {
+    const a = alim("DT-2026-041");
+    const p = structuredClone(ornekPiyasa[0]);
+    // Toplam esasında Toros AŞ en düşük teklifi veriyor; diğerlerinin sorgusu aranmaz.
+    p.teklifler.forEach((t) => (t.yasaklilikSorgusu = t.tedarikciId === "toros" ? "2026-10-16" : null));
+    expect(evrakDurumlari(a, {}, p).find((e) => e.kod === "yasaklilik")!.tamam).toBe(true);
+  });
+
+  it("teklif yokken tamam saymaz", () => {
+    const a = alim("DT-2026-041");
+    const p = { ...structuredClone(ornekPiyasa[0]), teklifler: [] };
+    expect(evrakDurumlari(a, {}, p).find((e) => e.kod === "yasaklilik")!.tamam).toBe(false);
+  });
+});
+
+describe("dosyanın kapanışı", () => {
+  const hepsi = (a: Alim) => Object.fromEntries(evrakListesi(a).filter((e) => !e.sistemden).map((e) => [e.kod, tamam()]));
+
+  it("bütün evraklar tamamsa eksik bırakmaz", () => {
+    const a = alim("DT-2026-041", { ekapKayitNo: "26DT1" });
+    const p = { ...structuredClone(ornekPiyasa[0]), tamamlandi: true };
+    expect(kapanisEksikleri(a, hepsi(a), p)).toEqual([]);
+  });
+
+  it("fatura, ödeme emri ve KİK bildirimi eksikse adlarını verir", () => {
+    const a = alim("DT-2026-041", { ekapKayitNo: "26DT1" });
+    const p = { ...structuredClone(ornekPiyasa[0]), tamamlandi: true };
+    const k = hepsi(a);
+    delete k["fatura"];
+    delete k["odeme-emri"];
+    delete k["kik-bildirimi"];
+    expect(kapanisEksikleri(a, k, p)).toEqual(["Fatura", "Ödeme emri belgesi", "KİK bildirimi"]);
+  });
+
+  it("yasaklılık sorgusu yapılmadan kapanmaz", () => {
+    const a = alim("DT-2026-041", { ekapKayitNo: "26DT1" });
+    const p = { ...structuredClone(ornekPiyasa[0]), tamamlandi: true };
+    p.teklifler.forEach((t) => (t.yasaklilikSorgusu = null));
+    expect(kapanisEksikleri(a, hepsi(a), p)).toEqual(["Yasaklılık sorgusu çıktıları"]);
   });
 });
 

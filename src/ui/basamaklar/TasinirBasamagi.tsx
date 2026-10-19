@@ -6,6 +6,8 @@ import { KontrolSatiri } from "../KontrolSatiri";
 import { KucukA4 } from "./KucukA4";
 import { tasinirIslemFisiSayfalari } from "./belgeler";
 import type { Kontrol } from "../../domain/sihirbaz";
+import { evrakFormu, evrakKaydiYap } from "../../domain/basamaklar";
+import { bugun } from "../bicim";
 
 export function TasinirBasamagi({ b }: { b: BasamakBaglami }) {
   const navigate = useNavigate();
@@ -14,8 +16,10 @@ export function TasinirBasamagi({ b }: { b: BasamakBaglami }) {
   const [kaydediliyor, setKaydediliyor] = useState(false);
   const [onizle, setOnizle] = useState(false);
 
-  const [tifNo, setTifNo] = useState("");
-  const [tifTarih, setTifTarih] = useState(() => new Date().toISOString().slice(0, 10));
+  const [ilkForm] = useState(() => evrakFormu(b.evraklar["tasinir-fisi"], bugun()));
+  const [tifNo, setTifNo] = useState(ilkForm.sayi);
+  const [tifTarih, setTifTarih] = useState(ilkForm.tarih);
+  const [mesaj, setMesaj] = useState("");
 
   const kontroller = useMemo((): Kontrol[] => {
     const k: Kontrol[] = [];
@@ -43,13 +47,17 @@ export function TasinirBasamagi({ b }: { b: BasamakBaglami }) {
   }, [alim, ayarlar, dosya, b.kalemler, tifNo, tifTarih]);
 
   const onaylaVeIlerle = async () => {
+    setMesaj("");
+    let kayit;
+    try {
+      kayit = evrakKaydiYap({ tarih: tifTarih, sayi: tifNo });
+    } catch (e) {
+      setMesaj((e as Error).message);
+      return;
+    }
     setKaydediliyor(true);
     try {
-      await b.evrakDegistir("tasinir-fisi", "Taşınır işlem fişi", {
-        tamam: true,
-        tarih: new Date().toISOString(),
-        not: tifNo.trim(),
-      });
+      await b.evrakDegistir("tasinir-fisi", "Taşınır işlem fişi", kayit);
       navigate(`/dosyalar/${alim.id}/basamak/13`);
     } finally {
       setKaydediliyor(false);
@@ -99,6 +107,12 @@ export function TasinirBasamagi({ b }: { b: BasamakBaglami }) {
               ))}
             </div>
           </div>
+
+          {mesaj && (
+            <div className="bant bant-hata" role="alert" style={{ marginTop: "12px" }}>
+              {mesaj}
+            </div>
+          )}
 
           <div className="dugme-grubu" style={{ marginTop: "16px" }}>
             <button

@@ -1,5 +1,6 @@
 import { damgaVergisi, type DamgaSonucu } from "./kurallar";
 import type { EvrakDurumu } from "./dosya";
+import { muayeneOzeti, type Muayene } from "./muayene";
 import { sozlesmeZorunlu, type Kontrol } from "./sihirbaz";
 import type { Alim, Ayarlar } from "./tipler";
 
@@ -102,6 +103,38 @@ export function odemeHesabi(matrah: number, o: Odeme, ayarlar: Ayarlar): OdemeHe
     vergiDairesine: tevkifat + damga.toplam + vergiMahsubu,
     sgkya: sgkMahsubu,
   };
+}
+
+// Ödemenin matrahı: muayenede kabul edilen KDV hariç tutar; muayene tamamlanmadıysa dosyadaki sözleşme/sipariş tutarı.
+export function odemeMatrahi(alim: Alim, muayene: Muayene | null): number {
+  return muayene?.tamamlandi ? muayeneOzeti(muayene).kabulToplami : alim.tutar;
+}
+
+export interface OebSatiri {
+  aciklama: string;
+  // Kuruş; olmayan taraf null
+  borc: number | null;
+  alacak: number | null;
+}
+
+function binde(yuzBinde: number): string {
+  return (yuzBinde / 100).toLocaleString("tr-TR", { maximumFractionDigits: 2 });
+}
+
+// Ödeme emri belgesinin hesap satırları. Borç: KDV dahil fatura bedeli; alacak: kesintiler ve yükleniciye net ödeme.
+export function oebSatirlari(h: OdemeHesabi, o: Odeme, ayarlar: Ayarlar): OebSatiri[] {
+  const s: OebSatiri[] = [
+    { aciklama: "Mal / hizmet bedeli (KDV hariç)", borc: h.matrah, alacak: null },
+    { aciklama: `Katma değer vergisi (%${o.kdvOrani})`, borc: h.kdv, alacak: null },
+  ];
+  if (h.tevkifat) s.push({ aciklama: `KDV tevkifatı (${tevkifatTuru(o.tevkifatTuru).pay}/${tevkifatTuru(o.tevkifatTuru).payda})`, borc: null, alacak: h.tevkifat });
+  if (h.damga.makbuz) s.push({ aciklama: `Damga vergisi, makbuz (binde ${binde(ayarlar.damga.makbuzOrani)})`, borc: null, alacak: h.damga.makbuz });
+  if (h.damga.sozlesme) s.push({ aciklama: `Damga vergisi, sözleşme (binde ${binde(ayarlar.damga.sozlesmeOrani)})`, borc: null, alacak: h.damga.sozlesme });
+  if (h.damga.karar) s.push({ aciklama: `Damga vergisi, karar (binde ${binde(ayarlar.damga.kararOrani)})`, borc: null, alacak: h.damga.karar });
+  if (h.vergiMahsubu) s.push({ aciklama: "Vergi borcu mahsubu", borc: null, alacak: h.vergiMahsubu });
+  if (h.sgkMahsubu) s.push({ aciklama: "SGK borcu mahsubu", borc: null, alacak: h.sgkMahsubu });
+  s.push({ aciklama: "Yükleniciye net ödenecek", borc: null, alacak: h.yukleniciye });
+  return s;
 }
 
 // Ödeme emrine eklenecek belgeler: önceki aşamaların evrakları ve borç sorgusu. Ödeme emri ve KİK bildirimi ödemeden sonra gelir.

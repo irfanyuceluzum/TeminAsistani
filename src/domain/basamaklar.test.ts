@@ -5,6 +5,8 @@ import {
   basamaklar,
   basamaklariTamamla,
   bosBasamaklar,
+  evrakFormu,
+  evrakKaydiYap,
   ilerleme,
   ihtiyacOnayiKontrolleri,
   isinTuruBul,
@@ -207,3 +209,23 @@ describe("kayıt ve kontroller", () => {
   });
 });
 
+
+describe("evrak formu (sipariş, muayene, taşınır basamakları)", () => {
+  it("girilen belge tarihini olduğu gibi kaydeder", () => {
+    expect(evrakKaydiYap({ tarih: "2026-10-26", sayi: " E-541 " })).toEqual({ tamam: true, tarih: "2026-10-26", not: "E-541" });
+  });
+
+  it("zaman damgasını ya da boş tarihi kaydetmez", () => {
+    expect(() => evrakKaydiYap({ tarih: "2026-10-19T17:22:04.000Z", sayi: "" })).toThrow();
+    expect(() => evrakKaydiYap({ tarih: "", sayi: "" })).toThrow();
+  });
+
+  it("sayfa yeniden açılınca kayıtlı tarih ve sayı geri gelir", () => {
+    expect(evrakFormu({ tamam: true, tarih: "2026-10-26", not: "E-541" }, "2026-11-05")).toEqual({ tarih: "2026-10-26", sayi: "E-541" });
+    expect(evrakFormu(undefined, "2026-11-05", "E-1")).toEqual({ tarih: "2026-11-05", sayi: "E-1" });
+  });
+
+  it("eski sürümün yazdığı zaman damgasından günü çıkarır", () => {
+    expect(evrakFormu({ tamam: true, tarih: "2026-10-26T09:00:00.000Z", not: "" }, "2026-11-05").tarih).toBe("2026-10-26");
+  });
+});
