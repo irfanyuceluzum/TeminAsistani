@@ -1,4 +1,5 @@
 import { degerlendir, firmaToplami, type PiyasaArastirmasi } from "./piyasa";
+import type { Kontrol } from "./sihirbaz";
 import type { Alim, Tedarikci } from "./tipler";
 
 // Bu süreden eski yasaklılık sorgusu, yeni alımda yenilenmesi gereken sorgu olarak işaretlenir.
@@ -97,6 +98,49 @@ export function tedarikciHatalari(t: Tedarikci, mevcut: Tedarikci[]): string[] {
   if (t.iban?.trim() && !ibanGecerli(t.iban)) h.push("IBAN geçersiz. TR ile başlayan 26 karakteri kontrol edin.");
   if (t.eposta?.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t.eposta.trim())) h.push("E-posta adresi geçersiz.");
   return h;
+}
+
+// Teklif aşamasında firma kartının eksikleri. Unvan, VKN, vergi dairesi ve adres teklif mektubunda ve sipariş
+// yazısında yazılır; VKN aynı zamanda EKAP yasaklılık sorgusunun anahtarıdır. IBAN ancak kazanan firmaya ödemede
+// gerekir, bu yüzden "yapılacak" düzeyinde kalır. Her firma için tek satır döner; hepsi tamsa tek "tamam" satırı.
+export function teklifFirmaKontrolleri(firmaIdleri: string[], tedarikciler: Tedarikci[]): Kontrol[] {
+  const k: Kontrol[] = [];
+  let tam = 0;
+  for (const id of firmaIdleri) {
+    const t = tedarikciler.find((x) => x.id === id);
+    if (!t) {
+      k.push({ durum: "uyari", baslik: "Firma kaydı bulunamadı", detay: `Teklif listesindeki "${id}" firması tedarikçi rehberinde yok; firmayı yeniden ekleyin.` });
+      continue;
+    }
+    const eksik: string[] = [];
+    const vkn = t.vkn?.trim() ?? "";
+    if (!vkn) eksik.push("VKN");
+    else if (!/^\d{10,11}$/.test(vkn)) eksik.push("VKN (10 ya da 11 hane olmalı)");
+    if (!t.vergiDairesi?.trim()) eksik.push("vergi dairesi");
+    if (!t.adres?.trim()) eksik.push("adres");
+    if (eksik.length > 0) {
+      k.push({
+        durum: "uyari",
+        baslik: `${t.ad}: ${eksik.join(", ")} eksik`,
+        detay: "Teklif mektubu ve sipariş yazısında yazılır, yasaklılık sorgusu VKN ile yapılır. Tedarikçiler ekranından tamamlayın.",
+      });
+      continue;
+    }
+    const iban = t.iban?.trim() ?? "";
+    if (!iban || !ibanGecerli(iban)) {
+      k.push({
+        durum: "yapilacak",
+        baslik: `${t.ad}: IBAN ${iban ? "geçersiz" : "girilmemiş"}`,
+        detay: "Firma kazanırsa ödeme banka hesabına yapılır; ödeme basamağından önce Tedarikçiler ekranından girin.",
+      });
+      continue;
+    }
+    tam++;
+  }
+  if (firmaIdleri.length > 0 && tam === firmaIdleri.length) {
+    k.push({ durum: "tamam", baslik: "Firma bilgileri tam", detay: "Teklif veren firmaların VKN, vergi dairesi, adres ve IBAN bilgileri kayıtlı." });
+  }
+  return k;
 }
 
 export function ibanBicimle(iban: string): string {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ornekAlimlar, ornekPiyasa, ornekTedarikciler } from "../data/ornekVeri";
-import { bilgiEksik, firmaGecmisi, ibanBicimle, ibanGecerli, sorguYasi, tedarikciHatalari, yeniTedarikci } from "./tedarikci";
+import { bilgiEksik, firmaGecmisi, ibanBicimle, ibanGecerli, sorguYasi, tedarikciHatalari, teklifFirmaKontrolleri, yeniTedarikci } from "./tedarikci";
+import type { Tedarikci } from "./tipler";
 
 const TL = 100;
 
@@ -39,8 +40,10 @@ describe("sorgu yaşı ve eksik bilgi", () => {
   });
 
   it("VKN ya da IBAN yoksa eksik sayar", () => {
-    expect(bilgiEksik(ornekTedarikciler[0])).toBe(true);
-    expect(bilgiEksik({ ...ornekTedarikciler[0], vkn: "1234567890", iban: "TR330006100519786457841326" })).toBe(false);
+    const kaya = ornekTedarikciler.find((t) => t.id === "kaya")!;
+    expect(bilgiEksik(kaya)).toBe(true);
+    expect(bilgiEksik({ ...kaya, iban: "TR330006100519786457841326" })).toBe(false);
+    expect(bilgiEksik({ ...kaya, iban: "TR330006100519786457841326", vkn: "" })).toBe(true);
   });
 });
 
@@ -82,5 +85,41 @@ describe("yeni tedarikçi", () => {
   it("kimlik mevcut kimliklerle çakışmaz", () => {
     const mevcut = [{ id: "ege", ad: "Ege Ltd", kategori: "" }];
     expect(yeniTedarikci("Ege", "", mevcut).id).toBe("ege-2");
+  });
+});
+
+describe("teklif aşamasında firma bilgisi kontrolü", () => {
+  const tam: Tedarikci = { ...ornekTedarikciler.find((t) => t.id === "toros")! };
+
+  it("örnek firmaların IBAN'ları geçerli, Kaya Ticaret'inki eksik", () => {
+    for (const t of ornekTedarikciler.filter((x) => x.iban)) expect(ibanGecerli(t.iban!)).toBe(true);
+    expect(ornekTedarikciler.find((t) => t.id === "kaya")!.iban).toBeUndefined();
+  });
+
+  it("bütün firmalar tamsa tek 'tamam' satırı döner", () => {
+    expect(teklifFirmaKontrolleri(["toros", "ece"], ornekTedarikciler)).toEqual([expect.objectContaining({ durum: "tamam", baslik: "Firma bilgileri tam" })]);
+  });
+
+  it("VKN, vergi dairesi ve adres eksikse tek uyarıda sayar", () => {
+    const eksik = { ...tam, id: "x", ad: "X Ltd.", vkn: "", vergiDairesi: " ", adres: undefined };
+    const k = teklifFirmaKontrolleri(["x"], [eksik]);
+    expect(k).toEqual([expect.objectContaining({ durum: "uyari", baslik: "X Ltd.: VKN, vergi dairesi, adres eksik" })]);
+  });
+
+  it("hatalı biçimli VKN'yi eksik sayar", () => {
+    const k = teklifFirmaKontrolleri(["x"], [{ ...tam, id: "x", ad: "X Ltd.", vkn: "12345" }]);
+    expect(k[0]).toMatchObject({ durum: "uyari", baslik: "X Ltd.: VKN (10 ya da 11 hane olmalı) eksik" });
+  });
+
+  it("IBAN eksikliği yalnız 'yapılacak' düzeyindedir; tamam satırı çıkmaz", () => {
+    const k = teklifFirmaKontrolleri(["toros", "kaya"], ornekTedarikciler);
+    expect(k).toEqual([expect.objectContaining({ durum: "yapilacak", baslik: "Kaya Ticaret: IBAN girilmemiş" })]);
+    const gecersiz = teklifFirmaKontrolleri(["x"], [{ ...tam, id: "x", ad: "X Ltd.", iban: "TR00 0000" }]);
+    expect(gecersiz[0]).toMatchObject({ durum: "yapilacak", baslik: "X Ltd.: IBAN geçersiz" });
+  });
+
+  it("rehberde olmayan firmayı bildirir, boş listede satır üretmez", () => {
+    expect(teklifFirmaKontrolleri(["silinmis"], ornekTedarikciler)[0]).toMatchObject({ durum: "uyari", baslik: "Firma kaydı bulunamadı" });
+    expect(teklifFirmaKontrolleri([], ornekTedarikciler)).toEqual([]);
   });
 });

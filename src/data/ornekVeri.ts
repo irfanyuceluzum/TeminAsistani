@@ -26,12 +26,58 @@ export const ornekLimitDonemleri: LimitDonemi[] = [
   },
 ];
 
+// Kimlik ve banka bilgileri uydurmadır (VKN 999 ile, IBAN 00999 banka koduyla başlar); IBAN sağlama basamağı geçerlidir.
+// Kaya Ticaret IBAN'sız bırakıldı: teklif basamağı bu eksikliği "yapılacak" olarak gösterir.
 export const ornekTedarikciler: Tedarikci[] = [
-  { id: "toros", ad: "Toros AŞ", kategori: "Temizlik malzemesi" },
-  { id: "ece", ad: "Ece Ltd. Şti.", kategori: "Temizlik, kâğıt ürünleri" },
-  { id: "kaya", ad: "Kaya Ticaret", kategori: "Temizlik, ambalaj" },
-  { id: "serin", ad: "Serin Teknik Ltd.", kategori: "İklimlendirme bakım" },
-  { id: "anka", ad: "Anka Kırtasiye", kategori: "Kırtasiye, sarf" },
+  {
+    id: "toros",
+    ad: "Toros AŞ",
+    kategori: "Temizlik malzemesi",
+    vkn: "9990011101",
+    vergiDairesi: "Kızılbey",
+    adres: "Örnek Mah. Deneme Cad. No: 12 Çankaya/Ankara",
+    telefon: "0312 000 00 01",
+    iban: "TR61 0099 9000 0000 0000 0001 01",
+  },
+  {
+    id: "ece",
+    ad: "Ece Ltd. Şti.",
+    kategori: "Temizlik, kâğıt ürünleri",
+    vkn: "9990011102",
+    vergiDairesi: "Maltepe",
+    adres: "Örnek Mah. Çınar Sok. No: 4 Yenimahalle/Ankara",
+    telefon: "0312 000 00 02",
+    iban: "TR34 0099 9000 0000 0000 0001 02",
+  },
+  {
+    id: "kaya",
+    ad: "Kaya Ticaret",
+    kategori: "Temizlik, ambalaj",
+    vkn: "9990011103",
+    vergiDairesi: "Ostim",
+    adres: "Sanayi Mah. 1. Cad. No: 8 Yenimahalle/Ankara",
+    telefon: "0312 000 00 03",
+  },
+  {
+    id: "serin",
+    ad: "Serin Teknik Ltd.",
+    kategori: "İklimlendirme bakım",
+    vkn: "9990011104",
+    vergiDairesi: "Kavaklıdere",
+    adres: "Örnek Mah. Lale Sok. No: 21 Çankaya/Ankara",
+    telefon: "0312 000 00 04",
+    iban: "TR77 0099 9000 0000 0000 0001 04",
+  },
+  {
+    id: "anka",
+    ad: "Anka Kırtasiye",
+    kategori: "Kırtasiye, sarf",
+    vkn: "9990011105",
+    vergiDairesi: "Ulus",
+    adres: "Örnek Mah. Kitap Sok. No: 3 Altındağ/Ankara",
+    telefon: "0312 000 00 05",
+    iban: "TR50 0099 9000 0000 0000 0001 05",
+  },
 ];
 
 type Satir = [string, string, string, Bent, number, string, string, string | null, Asama, string];

@@ -9,6 +9,7 @@ import { teklifIstemeMektubuSayfalari } from "./belgeler";
 import { YeniFirmaFormu } from "./YeniFirmaFormu";
 import { bosYazi, teklifTarihiKontrolleri, type FirmaTeklifi, type TeklifYazisi } from "../../domain/piyasa";
 import type { Kontrol } from "../../domain/sihirbaz";
+import { teklifFirmaKontrolleri } from "../../domain/tedarikci";
 
 function hucreKey(firmaId: string, kalemId: string): string {
   return `${firmaId}__${kalemId}`;
@@ -226,6 +227,7 @@ export function TeklifMektuplariBasamagi({ b }: { b: BasamakBaglami }) {
       });
     }
 
+    k.push(...teklifFirmaKontrolleri(teklifler.map((t) => t.tedarikciId), tedarikciler));
     k.push(...teklifTarihiKontrolleri({ ...piyasa, teklifler, yazi }, firmaAdi));
 
     return k;
