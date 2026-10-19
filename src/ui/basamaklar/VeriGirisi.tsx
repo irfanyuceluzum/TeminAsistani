@@ -74,6 +74,16 @@ export function VeriGirisi({ b }: { b: BasamakBaglami }) {
             </span>
           </div>
         </div>
+        <div className="form-izgara genis-alanlar">
+          <div className="alan">
+            <label htmlFor="nitelik">İşin niteliği, türü ve miktarı</label>
+            <textarea id="nitelik" rows={2} value={dosya.nitelik} onChange={(e) => dosyaDegistir((d) => ({ ...d, nitelik: e.target.value }))} placeholder="Boşsa ihtiyaç listesinden yazılır" />
+          </div>
+          <div className="alan">
+            <label htmlFor="bolme">Bölme yasağı açıklaması (4734 md. 5)</label>
+            <textarea id="bolme" rows={2} value={dosya.bolmeGerekcesi} onChange={(e) => dosyaDegistir((d) => ({ ...d, bolmeGerekcesi: e.target.value }))} placeholder="60 gün içinde benzer alım varsa neden ayrı yapıldığını yazın" />
+          </div>
+        </div>
         <label className="onay-kutusu onay-zemin">
           <input
             type="checkbox"

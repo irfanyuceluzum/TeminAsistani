@@ -79,7 +79,8 @@ export function PiyasaTutanagiBasamagi({ b }: { b: BasamakBaglami }) {
           : { durum: "tamam", baslik: "Yasaklılık sorgusu yapıldı", detay: "Seçilen firmanın EKAP sorgu tarihi tutanağa yazılır." },
       );
     }
-    if (form.tarih && dosya.fiyatIsteme.sonTarih && form.tarih < dosya.fiyatIsteme.sonTarih) {
+    const sonTeklif = piyasa.yazi?.sonTeklifTarihi ?? "";
+    if (form.tarih && sonTeklif && form.tarih < sonTeklif) {
       k.push({
         durum: "uyari",
         baslik: "Tutanak tarihi son teklif gününden önce",
@@ -97,7 +98,7 @@ export function PiyasaTutanagiBasamagi({ b }: { b: BasamakBaglami }) {
     }
 
     return k;
-  }, [sonuc, ayarlar.gorevler, tedarikciler, dd, sorgusuz.join(), form.tarih, dosya.fiyatIsteme.sonTarih]);
+  }, [sonuc, ayarlar.gorevler, tedarikciler, dd, sorgusuz.join(), form.tarih, piyasa.yazi?.sonTeklifTarihi]);
 
   const engelVar = kontroller.some((k) => k.durum === "engel");
 
@@ -130,7 +131,7 @@ export function PiyasaTutanagiBasamagi({ b }: { b: BasamakBaglami }) {
           tutar: toplamTutar,
           asama: "siparis",
         },
-        "Piyasa fiyat araştırma tutanağı onaylandı, alım sipariş aşamasına geçti."
+        `Piyasa fiyat araştırma tutanağı onaylandı: ${firmaAdi(kazananId ?? "")}, ${(toplamTutar / 100).toLocaleString("tr-TR", { minimumFractionDigits: 2 })} TL + KDV${toplamTutar !== alim.tutar ? ` (dosya tutarı ${(alim.tutar / 100).toLocaleString("tr-TR", { minimumFractionDigits: 2 })} TL idi)` : ""}`
       );
 
       piyasaDegistir((p) => ({ ...p, tamamlandi: true }));

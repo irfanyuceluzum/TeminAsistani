@@ -65,6 +65,10 @@ export interface OnayBelgesiAyari {
 export interface DosyaBasamaklari {
   alimId: string;
   talepEden: string;
+  // Sihirbazda yazılan "işin niteliği, türü ve miktarı"; boşsa ihtiyaç listesinden yazılır.
+  nitelik: string;
+  // 60 gün içinde benzer alım varsa bölme yasağına (4734 md. 5) aykırı olmadığının açıklaması
+  bolmeGerekcesi: string;
   teslimYeri: string;
   // Bütçe tertibindeki kullanılabilir ödenek, kuruş; 0 girilmemiş demektir.
   odenek: number;
@@ -79,14 +83,16 @@ export function bosBasamaklar(alimId: string, bugun: string): DosyaBasamaklari {
   return {
     alimId,
     talepEden: "",
+    nitelik: "",
+    bolmeGerekcesi: "",
     teslimYeri: "",
     odenek: 0,
     sartlar: { teslimSuresi: "", parti: "", nakliye: "", ozel: "", standart: "", teknik: "", diger: "" },
     ihtiyacOnayi: { tarih: bugun, sayi: "", gerekce: "", imzali: false },
     fiyatIsteme: { tarih: "", sayi: "", sonTarih: "" },
     yaklasik: { hesaplanmayacak: false, yontem: "ortalama", kdvOrani: 20, firmalar: [], onaylandi: false },
+    // Makam başlığı boşsa idarenin adından türetilir (makamBasligi)
     onayBelgesi: {
-      makam: "BAŞKANLIK MAKAMINA",
       fiyatFarki: "Verilmeyecektir",
       avans: "Verilmeyecektir",
       dokuman: "İhtiyaç Listesi ve Şartlar hazırlanmıştır",
@@ -402,11 +408,21 @@ export function onayBelgesiKontrolleri(
       detay: "Onay belgesinde ödenek tutarının görünmesi için 1. basamakta ödenek miktarını girmeniz önerilir.",
     });
   } else {
-    k.push({
-      durum: "tamam",
-      baslik: "Kullanılabilir ödenek hazır",
-      detay: `Bütçe tertibindeki kullanılabilir ödenek: ${tl(dosya.odenek)}.`,
-    });
+    // Ödenek KDV dahil tutarı karşılamalı (5018 md. 31: ödeneği olmayan harcama yapılamaz)
+    const kdvDahil = alim.tutar + Math.round((alim.tutar * dosya.yaklasik.kdvOrani) / 100);
+    k.push(
+      kdvDahil > dosya.odenek
+        ? {
+            durum: "engel",
+            baslik: "Ödenek yetersiz",
+            detay: `KDV dahil ${tl(kdvDahil)}, kullanılabilir ödenek ${tl(dosya.odenek)}; ${tl(kdvDahil - dosya.odenek)} eksik.`,
+          }
+        : {
+            durum: "tamam",
+            baslik: "Ödenek yeterli",
+            detay: `KDV dahil ${tl(kdvDahil)}; ödenekten ${tl(dosya.odenek - kdvDahil)} kalır.`,
+          },
+    );
   }
 
   // 3. EKAP doğrudan temin kayıt numarası
@@ -504,4 +520,18 @@ export function evrakFormu(kayit: EvrakKaydi | undefined, bugun: string, varsayi
 export function evrakKaydiYap(form: EvrakFormu, tamam = true): EvrakKaydi {
   if (!GUN.test(form.tarih)) throw new Error("Belge tarihi YYYY-AA-GG biçiminde olmalı.");
   return { tamam, tarih: form.tarih, not: form.sayi.trim() };
+}
+
+// "Kırmızıdağ İlkokulu Müdürlüğü" → "MÜDÜRLÜK MAKAMINA", "Karataş Kaymakamlığı" → "KAYMAKAMLIK MAKAMINA".
+// Son sözcüğün iyelik eki (-lüğü, -lığı, -liği, -luğu) atılır; tanınmayan adlarda birim adı olduğu gibi kullanılır.
+export function makamBasligi(birim: string): string {
+  const son = birim.trim().split(/\s+/).pop() ?? "";
+  const m = son.match(/^(.*l[ıiuü])ğ[ıiuü]$/i);
+  const kok = m ? `${m[1]}k` : birim.trim();
+  return kok ? `${kok.toLocaleUpperCase("tr-TR")} MAKAMINA` : "MAKAMA";
+}
+
+// Tutanak onaylandıktan sonra dosya tutarı sipariş tutarıdır; yaklaşık maliyetin sonradan onaylanması onu değiştirmez.
+export function yaklasikTutarYazilir(piyasa: PiyasaArastirmasi | null, toplam: number, mevcut: number): boolean {
+  return !piyasa?.tamamlandi && toplam > 0 && toplam !== mevcut;
 }

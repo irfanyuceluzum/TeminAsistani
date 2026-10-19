@@ -8,8 +8,8 @@ import { muayeneTalebiSayfalari, muayeneKabulTutanagiSayfalari } from "./belgele
 import type { Kontrol } from "../../domain/sihirbaz";
 import { evrakFormu, evrakKaydiYap } from "../../domain/basamaklar";
 import { bugun } from "../bicim";
-import { komisyon } from "../../domain/personel";
-import { muayeneOlustur } from "../../domain/muayene";
+import { BOS_GOREVLER, belgeGorevlileri, muayeneKomisyonuKontrolleri } from "../../domain/personel";
+import { kabulSonucu, muayeneKalemKontrolleri, muayeneOlustur, type Muayene } from "../../domain/muayene";
 
 export function MuayeneBasamagi({ b }: { b: BasamakBaglami }) {
   const navigate = useNavigate();
@@ -26,8 +26,20 @@ export function MuayeneBasamagi({ b }: { b: BasamakBaglami }) {
 
   const [faturaNo, setFaturaNo] = useState(muayene?.faturaNo || "");
   const [faturaTarih, setFaturaTarih] = useState(muayene?.faturaTarihi || bugun());
+  const [teslimTarihi, setTeslimTarihi] = useState(muayene?.teslimTarihi || muayene?.muayeneTarihi || bugun());
+  const [muayeneTarihi, setMuayeneTarihi] = useState(muayene?.muayeneTarihi || bugun());
+  // Kalemler piyasa araştırmasının sonucundan gelir; kabul miktarları burada düzeltilir.
+  const [taslak, setTaslak] = useState<Muayene>(() => muayene ?? muayeneOlustur(alim, piyasa, bugun(), belgeGorevlileri(ayarlar).komisyon));
 
   const firmaAdi = (id: string) => tedarikciler.find((t) => t.id === id)?.ad || "Bilinmeyen Firma";
+
+  const aktifMuayene: Muayene = useMemo(
+    () => ({ ...taslak, faturaNo, faturaTarihi: faturaTarih, teslimTarihi, muayeneTarihi }),
+    [taslak, faturaNo, faturaTarih, teslimTarihi, muayeneTarihi],
+  );
+  const sonuc = kabulSonucu(aktifMuayene);
+  const kabulDegistir = (kalemId: string, miktar: number) =>
+    setTaslak((m) => ({ ...m, kalemler: m.kalemler.map((x) => (x.kalemId === kalemId ? { ...x, kabulMiktari: Math.max(0, miktar) } : x)) }));
 
   const kontroller = useMemo((): Kontrol[] => {
     const k: Kontrol[] = [];
@@ -40,64 +52,25 @@ export function MuayeneBasamagi({ b }: { b: BasamakBaglami }) {
           baslik: "Gerçekleştirme Görevlisi tanımlanmamış",
           detay: "Muayene talep yazısını Gerçekleştirme Görevlisi imzalar.",
         });
+      } else if (!talepSayi.trim()) {
+        k.push({ durum: "yapilacak", baslik: "Yazı sayısı girilmedi", detay: "Talep yazısının sayısını girin." });
       } else {
-        k.push({
-          durum: "tamam",
-          baslik: "Talep yazısı hazır",
-          detay: "Muayene komisyonuna sevk yazısı düzenlenmiştir.",
-        });
+        k.push({ durum: "tamam", baslik: "Talep yazısı hazır", detay: "Muayene komisyonuna sevk yazısı düzenlendi." });
       }
     } else {
-      const muayeneKomisyonu = komisyon(g ?? { harcamaYetkilisi: null, gerceklestirme: null, yaklasikMaliyetGorevlileri: [], piyasaGorevlileri: [], muayeneBaskani: null, muayeneUyeleri: [] });
-      const muayenedeYetkili = [g?.harcamaYetkilisi, g?.gerceklestirme].filter(
-        (id): id is string => !!id && muayeneKomisyonu.includes(id)
-      );
+      k.push(...muayeneKomisyonuKontrolleri(ayarlar.personel ?? [], g ?? BOS_GOREVLER));
 
-      if (muayenedeYetkili.length > 0) {
-        k.push({
-          durum: "engel",
-          baslik: "Yetkili muayene komisyonunda yer alamaz",
-          detay: "Harcama Yetkilisi ve Gerçekleştirme Görevlisi mevzuat gereği kabul komisyonuna dahil olamaz.",
-        });
-      } else {
-        k.push({
-          durum: "tamam",
-          baslik: "Muayene komisyonu mevzuata uygun",
-          detay: "Teslim alma ve muayene işlemi bağımsız komisyon üyelerince yürütülmektedir.",
-        });
-      }
-
-      if (!g?.muayeneBaskani) {
-        k.push({
-          durum: "uyari",
-          baslik: "Komisyon başkanı seçilmemiş",
-          detay: "Ayarlar > Personel ve Görevler ekranından bir komisyon başkanı belirleyin.",
-        });
-      }
-
-      if (!faturaNo.trim()) {
-        k.push({
-          durum: "uyari",
-          baslik: "Fatura numarası henüz girilmedi",
-          detay: "Yüklenici faturasının seri ve sıra numarasını kaydedebilirsiniz.",
-        });
+      k.push(...muayeneKalemKontrolleri(aktifMuayene));
+      const siparis = b.evraklar["siparis-yazisi"]?.tarih?.slice(0, 10);
+      if (siparis && teslimTarihi < siparis) {
+        k.push({ durum: "engel", baslik: "Teslim siparişten önce", detay: `Teslim tarihi sipariş yazısının tarihinden (${siparis.split("-").reverse().join(".")}) önce olamaz.` });
       }
     }
 
     return k;
-  }, [isTalep, ayarlar.gorevler, faturaNo]);
+  }, [isTalep, ayarlar, aktifMuayene, b.evraklar, teslimTarihi, talepSayi]);
 
   const engelVar = kontroller.some((k) => k.durum === "engel");
-
-  const aktifMuayene = useMemo(() => {
-    const m = muayene ?? muayeneOlustur(alim, piyasa, bugun());
-    return {
-      ...m,
-      faturaNo,
-      faturaTarihi: faturaTarih,
-      muayeneTarihi: faturaTarih,
-    };
-  }, [muayene, alim, piyasa, faturaNo, faturaTarih]);
 
   const belgeSayfalari = useMemo(() => {
     if (isTalep) {
@@ -205,11 +178,53 @@ export function MuayeneBasamagi({ b }: { b: BasamakBaglami }) {
                 />
               </div>
               <div className="alan">
-                <span className="etiket-yazi">Kabul Sonucu</span>
-                <div className="salt kalin" style={{ color: "var(--basari)" }}>
-                  UYGUNDUR (Eksiksiz Kabul Edildi)
+                <label htmlFor="teslim-tarihi">Teslim tarihi</label>
+                <input id="teslim-tarihi" type="date" value={teslimTarihi} onChange={(e) => setTeslimTarihi(e.target.value)} />
+              </div>
+              <div className="alan">
+                <label htmlFor="muayene-tarihi">Muayene tarihi</label>
+                <input id="muayene-tarihi" type="date" value={muayeneTarihi} onChange={(e) => setMuayeneTarihi(e.target.value)} />
+              </div>
+              <div className="alan tam">
+                <span className="etiket-yazi">Kabul sonucu</span>
+                <div className="salt kalin" style={{ color: sonuc.sonuc === "tam" ? "var(--basari)" : sonuc.sonuc === "kismi" ? "var(--uyari)" : "var(--tehlike)" }}>
+                  {sonuc.metin}
                 </div>
               </div>
+              <table className="cetvel tam">
+                <thead>
+                  <tr>
+                    <th scope="col">Kalem</th>
+                    <th scope="col" className="sag">
+                      Sipariş
+                    </th>
+                    <th scope="col" className="sag">
+                      Kabul
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {taslak.kalemler.map((x) => (
+                    <tr key={x.kalemId}>
+                      <td>{x.ad}</td>
+                      <td className="sag mono">
+                        {x.siparisMiktari} {x.birim}
+                      </td>
+                      <td className="sag">
+                        <input
+                          className="girdi mono fiyat-girdi"
+                          type="number"
+                          min={0}
+                          max={x.faturaMiktari}
+                          value={x.kabulMiktari}
+                          aria-label={`${x.ad} kabul miktarı`}
+                          onChange={(e) => kabulDegistir(x.kalemId, Number(e.target.value) || 0)}
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
 

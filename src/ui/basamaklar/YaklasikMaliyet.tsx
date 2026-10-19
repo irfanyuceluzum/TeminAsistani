@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { yaklasikHesapla, yaklasikKontrolleri, type YaklasikMaliyet } from "../../domain/basamaklar";
+import { yaklasikHesapla, yaklasikKontrolleri, yaklasikTutarYazilir, type YaklasikMaliyet } from "../../domain/basamaklar";
 import { tlKurus } from "../bicim";
 import { BelgeOnizleme } from "../BelgeOnizleme";
 import { miktarYazisi } from "../IhtiyacListesi";
@@ -27,7 +27,7 @@ export function YaklasikMaliyetBasamagi({ b }: { b: BasamakBaglami }) {
   async function onayla(yeniDurum: boolean) {
     setOnaylaniyor(true);
     maliyetDegistir({ onaylandi: yeniDurum });
-    if (yeniDurum && sonuc.hesaplanabilir && sonuc.toplam > 0 && sonuc.toplam !== alim.tutar) {
+    if (yeniDurum && sonuc.hesaplanabilir && yaklasikTutarYazilir(piyasa, sonuc.toplam, alim.tutar)) {
       await b.alimDegistir({ tutar: sonuc.toplam }, `Yaklaşık maliyet ${tlKurus(sonuc.toplam)} (KDV hariç) olarak onaylandı ve onay tutarı güncellendi`);
     }
     setOnaylaniyor(false);
@@ -175,9 +175,9 @@ export function YaklasikMaliyetBasamagi({ b }: { b: BasamakBaglami }) {
           <span className="kart-not">Piyasada bildirilen fiyatların ortalamasıdır.</span>
         </div>
         <div className="kutu">
-          <span className="kucuk">Onay Belgesindeki Tutar (KDV Hariç)</span>
+          <span className="kucuk">{piyasa.tamamlandi ? "Sipariş Tutarı (KDV Hariç, tutanaktan)" : "Onay Belgesindeki Tutar (KDV Hariç)"}</span>
           <span className="kutu-deger mono">{tlKurus(alim.tutar)}</span>
-          {sonuc.hesaplanabilir && sonuc.toplam > 0 && sonuc.toplam !== alim.tutar && (
+          {sonuc.hesaplanabilir && yaklasikTutarYazilir(piyasa, sonuc.toplam, alim.tutar) && (
             <button
               type="button"
               className="metin-dugme kendi-genisligi"

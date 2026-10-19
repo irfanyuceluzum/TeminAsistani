@@ -169,6 +169,8 @@ export const ornekBasamaklar: DosyaBasamaklari[] = [
   {
     alimId: "DT-2026-041",
     talepEden: "Okul aile birliği ve hizmetliler",
+    nitelik: "",
+    bolmeGerekcesi: "",
     teslimYeri: "Okul deposu",
     odenek: 85_000 * TL,
     sartlar: {

@@ -124,6 +124,35 @@ export function gorevKontrolleri(personel: Personel[], g: GorevAtamalari): Kontr
   return k;
 }
 
+// Muayene ve kabul basamağının komisyon kontrolleri. "Uygun" sonucu ancak engel ve uyarı yoksa verilir.
+export function muayeneKomisyonuKontrolleri(personel: Personel[], g: GorevAtamalari): Kontrol[] {
+  const ad = (id: string) => kisi(personel, id)?.ad ?? id;
+  const kom = komisyon(g);
+  const k: Kontrol[] = [];
+  const yetkili = [g.harcamaYetkilisi, g.gerceklestirme].filter((id): id is string => !!id && kom.includes(id));
+  if (yetkili.length) {
+    k.push({
+      durum: "engel",
+      baslik: "Yetkili muayene komisyonunda yer alamaz",
+      detay: `${yetkili.map(ad).join(", ")} harcama yetkilisi ya da gerçekleştirme görevlisi; muayene ve kabul komisyonunda yer alamaz.`,
+    });
+  }
+  if (!g.muayeneBaskani) k.push({ durum: "uyari", baslik: "Komisyon başkanı seçilmemiş", detay: "Personel ve görevler ekranından başkan seçin." });
+  if (kom.length < 3 || kom.length % 2 === 0) {
+    k.push({ durum: "uyari", baslik: `${kom.length} kişilik komisyon`, detay: "Komisyonun en az üç kişiden ve tek sayıda üyeden oluşması önerilir." });
+  }
+  const ortak = g.piyasaGorevlileri.filter((p) => kom.includes(p) && !yetkiliMi(p, g));
+  if (ortak.length) {
+    k.push({
+      durum: "uyari",
+      baslik: "Görev çakışması",
+      detay: `${ortak.map(ad).join(", ")} hem piyasa fiyat araştırmasında hem muayene komisyonunda. Fiyatı araştıranın malı kabul etmemesi önerilir.`,
+    });
+  }
+  if (!k.length) k.push({ durum: "tamam", baslik: "Muayene komisyonu uygun", detay: `${kom.length} kişilik komisyon; yetkililer ve piyasa görevlileri yer almıyor.` });
+  return k;
+}
+
 // Belgelere dolacak görevli adları; yetkililer komisyonlardan hariç tutulur.
 export function belgeGorevlileri(a: Ayarlar) {
   const personel = a.personel ?? [];

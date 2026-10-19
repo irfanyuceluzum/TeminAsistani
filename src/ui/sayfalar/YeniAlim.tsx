@@ -1,14 +1,13 @@
 import { useMemo, useState } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import { BENTLER, bentBilgisi, dayanakKontrolleri, engelVarMi, tutarCoz, yeniDosyaNo } from "../../domain/sihirbaz";
+import { basamaklariTamamla } from "../../domain/basamaklar";
 import type { Bent } from "../../domain/tipler";
 import { olayKaydet } from "../../data/olay";
 import { belgeGorevlileri } from "../../domain/personel";
 import { bosArastirma, bosYazi, type PiyasaKalemi } from "../../domain/piyasa";
-import { IhtiyacListesiDuzenleyici, IhtiyacTablosu, yeniKalem } from "../IhtiyacListesi";
-import { bugun, tl, tlKurus, uzunTarih } from "../bicim";
-import { BelgeOnizleme } from "../BelgeOnizleme";
-import { IdareBasligi } from "../IdareBasligi";
+import { IhtiyacListesiDuzenleyici, yeniKalem } from "../IhtiyacListesi";
+import { bugun, tl } from "../bicim";
 import { KontrolSatiri } from "../KontrolSatiri";
 import type { Veri } from "../useVeri";
 
@@ -22,7 +21,8 @@ const EKONOMIK_KODLAR: [string, string][] = [
   ["03.7.1.02", "Bakım ve onarım giderleri"],
 ];
 
-const ADIMLAR = ["İhtiyaç", "Dayanak", "Onay belgesi", "Piyasa araştırması", "Sipariş", "Muayene kabul", "Ödeme"];
+// Sihirbaz dosyayı açar; ihtiyaç onayından ödemeye kadar diğer işler basamaklı çalışma alanında yapılır.
+const ADIMLAR = ["İhtiyaç", "Dayanak ve dosyanın açılması"];
 
 interface Form {
   konu: string;
@@ -31,15 +31,6 @@ interface Form {
   ekonomikKod: string;
   kalemKodu: string;
   birim: string;
-}
-
-interface OnayBilgisi {
-  sayi: string;
-  piyasaGorevlileri: string;
-  gerceklestirme: string;
-  harcamaYetkilisi: string;
-  yaklasikMaliyetYaz: boolean;
-  ekapKayitNo: string;
 }
 
 type Hatalar = Partial<Record<keyof Form, string>>;
@@ -69,18 +60,10 @@ export function YeniAlim() {
   const [bent, setBent] = useState<Bent>("22/d");
   // Görevliler Personel ve görevler ekranındaki atamalardan gelir; dosya için değiştirilebilir.
   const gorevli = belgeGorevlileri(ayarlar);
-  const [onay, setOnay] = useState<OnayBilgisi>({
-    sayi: "",
-    piyasaGorevlileri: gorevli.piyasaGorevlileri,
-    gerceklestirme: gorevli.gerceklestirme,
-    harcamaYetkilisi: gorevli.harcamaYetkilisi,
-    yaklasikMaliyetYaz: true,
-    ekapKayitNo: "",
-  });
+  const [bolmeGerekcesi, setBolmeGerekcesi] = useState("");
   const [engelMesaji, setEngelMesaji] = useState("");
   const [kayitHatasi, setKayitHatasi] = useState("");
   const [kaydediliyor, setKaydediliyor] = useState(false);
-  const [onizleme, setOnizleme] = useState(false);
 
   const tutar = tutarCoz(form.tutar) ?? 0;
   const kalemler = useMemo(() => {
@@ -93,6 +76,8 @@ export function YeniAlim() {
     [tarih, tutar, form.ekonomikKod, form.kalemKodu, sureliIs, bent, alimlar, ayarlar, limitDonemleri],
   );
   const bilgi = bentBilgisi(bent);
+  // Kurallardaki "benzer alım" uyarısı çıktığında bölme açıklaması istenir
+  const benzerAlimVar = kontroller.some((k) => /benzer alım/i.test(k.baslik));
 
   function alan<K extends keyof Form>(k: K, deger: string) {
     setForm((f) => ({ ...f, [k]: deger }));
@@ -117,6 +102,11 @@ export function YeniAlim() {
   }
 
   async function kaydet() {
+    if (engelVarMi(kontroller)) {
+      setEngelMesaji("Kırmızı işaretli kontrol çözülmeden dosya açılamaz.");
+      return;
+    }
+    setEngelMesaji("");
     setKaydediliyor(true);
     setKayitHatasi("");
     try {
@@ -129,96 +119,36 @@ export function YeniAlim() {
         ekonomikKod: form.ekonomikKod,
         kalemKodu: form.kalemKodu.trim().toLocaleUpperCase("tr-TR"),
         tedarikciId: null,
-        asama: "onay",
+        asama: "ihtiyac",
         sonIslem: tarih,
-        ekapKayitNo: onay.ekapKayitNo.trim() || undefined,
         sureliIs,
       });
-      // İhtiyaç listesi piyasa araştırmasının kalemleri olur; teklif isteme yazısı ve fiyat girişi buradan başlar.
+      // İhtiyaç listesi piyasa araştırmasının kalemleri olur; fiyat isteme ve teklif yazıları buradan başlar.
       await depo.piyasaKaydet({
         ...bosArastirma(dosyaNo),
         kalemler: ihtiyaclar.map((k) => ({ ...k, ad: k.ad.trim(), ozellik: k.ozellik?.trim(), birim: k.birim.trim() })),
-        gorevliler: onay.piyasaGorevlileri.trim(),
+        gorevliler: gorevli.piyasaGorevlileri,
         yazi: bosYazi(tarih),
       });
-      await olayKaydet(depo, ayarlar, dosyaNo, "olusturuldu", `Dosya açıldı, dayanak ${bent}, ${ihtiyaclar.length} kalem, tahmini tutar ${tl(tutar)}`);
+      // Sihirbazda girilen ve basamaklarda kullanılan bilgiler dosya kaydına geçer.
+      await depo.basamaklarKaydet(
+        basamaklariTamamla({ alimId: dosyaNo, talepEden: form.birim.trim(), nitelik: form.nitelik.trim(), bolmeGerekcesi: bolmeGerekcesi.trim() }, tarih),
+      );
+      await olayKaydet(
+        depo,
+        ayarlar,
+        dosyaNo,
+        "olusturuldu",
+        `Dosya açıldı, dayanak ${bent}, ${ihtiyaclar.length} kalem, tahmini tutar ${tl(tutar)}${bolmeGerekcesi.trim() ? `; bölme açıklaması: ${bolmeGerekcesi.trim()}` : ""}`,
+      );
       await yenile();
-      navigate(bent === "22/d" ? `/piyasa/${dosyaNo}` : "/");
+      navigate(`/dosyalar/${dosyaNo}`);
     } catch (e) {
       setKayitHatasi(`Dosya kaydedilemedi. ${String(e)}`);
       setKaydediliyor(false);
     }
   }
 
-  // Onay belgesi ve EK-1 ayrı A4 sayfalarıdır.
-  const onaySayfalari = [
-    <>
-
-              <IdareBasligi ayarlar={ayarlar} />
-              <div className="belge-baslik">DOĞRUDAN TEMİN ONAY BELGESİ</div>
-              <div className="belge-satir">
-                <span>Sayı: {onay.sayi || "…"}</span>
-                <span>Tarih: {uzunTarih(tarih)}</span>
-              </div>
-              <table className="belge-tablo">
-                <tbody>
-                  <tr>
-                    <th scope="row">İşin adı</th>
-                    <td>{form.konu}</td>
-                  </tr>
-                  <tr>
-                    <th scope="row">Niteliği, türü ve miktarı</th>
-                    <td>{form.nitelik || `${ihtiyaclar.length} kalem, ekli ihtiyaç listesinde (EK-1)`}</td>
-                  </tr>
-                  {onay.yaklasikMaliyetYaz && (
-                    <tr>
-                      <th scope="row">Yaklaşık maliyet (KDV hariç)</th>
-                      <td>{tlKurus(tutar).replace("₺", "")} TL</td>
-                    </tr>
-                  )}
-                  <tr>
-                    <th scope="row">Bütçe tertibi</th>
-                    <td>[Kurumsal kod] · {form.ekonomikKod}</td>
-                  </tr>
-                  <tr>
-                    <th scope="row">Alım usulü</th>
-                    <td>4734 sayılı Kanun {bent}, doğrudan temin</td>
-                  </tr>
-                  <tr>
-                    <th scope="row">Piyasa fiyat araştırması görevlileri</th>
-                    <td>{onay.piyasaGorevlileri || "…"}</td>
-                  </tr>
-                </tbody>
-              </table>
-              <p>
-                Yukarıda belirtilen ihtiyacın 4734 sayılı Kamu İhale Kanununun 22 nci maddesinin ({bilgi.harf}) bendi uyarınca doğrudan temin usulüyle
-                karşılanması hususunu onaylarınıza arz ederim.
-              </p>
-              <div className="belge-imzalar">
-                <div>
-                  <span className="imza-bosluk" />
-                  <span className="kalin">{onay.gerceklestirme || "…"}</span>
-                  <span>Gerçekleştirme görevlisi</span>
-                </div>
-                <div>
-                  <span className="kalin">OLUR</span>
-                  <span>…/…/{tarih.slice(0, 4)}</span>
-                  <span className="kalin">{onay.harcamaYetkilisi || "…"}</span>
-                  <span>Harcama yetkilisi</span>
-                </div>
-              </div>
-    </>,
-    <>
-      <div className="belge-satir">
-        <span className="kalin">EK-1 İhtiyaç listesi</span>
-        <span>{dosyaNo}</span>
-      </div>
-      <p>
-        <span className="kalin">İşin adı:</span> {form.konu}
-      </p>
-      <IhtiyacTablosu kalemler={ihtiyaclar} />
-    </>,
-  ];
 
   return (
     <div className="sayfa">
@@ -297,7 +227,7 @@ export function YeniAlim() {
 
       {adim === 0 && (
         <section className="panel yazdirma" aria-labelledby="liste-baslik">
-          <div className="sutun-dar">
+          <div>
             <h2 id="liste-baslik">İhtiyaç listesi</h2>
             <p className="soluk kucuk">Alınacak malzeme ya da hizmetleri yazın. Liste onay belgesine EK-1 olarak, firmalara gidecek teklif cetveline de kalem kalem girer.</p>
           </div>
@@ -346,49 +276,23 @@ export function YeniAlim() {
             {kontroller.map((k) => (
               <KontrolSatiri key={k.baslik} k={k} />
             ))}
-          </aside>
-        </div>
-      )}
-
-      {adim === 2 && (
-        <div>
-          <section className="panel yazdirma" aria-labelledby="onay-baslik">
-            <h2 id="onay-baslik">Belge bilgileri</h2>
-            <div className="form-izgara">
+            {benzerAlimVar && (
               <div className="alan">
-                <span className="etiket-yazi">Tarih</span>
-                <span className="salt mono">{uzunTarih(tarih)}</span>
-              </div>
-              <div className="alan">
-                <label htmlFor="sayi">Sayı</label>
-                <input id="sayi" className="mono" value={onay.sayi} onChange={(e) => setOnay({ ...onay, sayi: e.target.value })} placeholder="E-12345678-934.01-…" />
-              </div>
-              <div className="alan tam">
-                <label htmlFor="pfa">Piyasa fiyat araştırması görevlileri</label>
-                <input id="pfa" value={onay.piyasaGorevlileri} onChange={(e) => setOnay({ ...onay, piyasaGorevlileri: e.target.value })} placeholder="A. Yılmaz (Şef), M. Kaya (Memur)" />
-              </div>
-              <div className="alan">
-                <label htmlFor="gg">Gerçekleştirme görevlisi</label>
-                <input id="gg" value={onay.gerceklestirme} onChange={(e) => setOnay({ ...onay, gerceklestirme: e.target.value })} placeholder="S. Demir" />
-              </div>
-              <div className="alan">
-                <label htmlFor="hy">Harcama yetkilisi</label>
-                <input id="hy" value={onay.harcamaYetkilisi} onChange={(e) => setOnay({ ...onay, harcamaYetkilisi: e.target.value })} placeholder="Ad Soyad" />
-              </div>
-              <div className="alan tam">
-                <label htmlFor="ekap">EKAP doğrudan temin kayıt numarası</label>
-                <input id="ekap" className="mono" value={onay.ekapKayitNo} onChange={(e) => setOnay({ ...onay, ekapKayitNo: e.target.value })} placeholder="Kayıt yapıldıysa girin, sonra dosyadan da girilebilir" />
-              </div>
-              <label className="secim tam">
-                <input type="checkbox" checked={onay.yaklasikMaliyetYaz} onChange={(e) => setOnay({ ...onay, yaklasikMaliyetYaz: e.target.checked })} />
-                <span>
-                  <span className="kalin">Yaklaşık maliyeti belgeye yaz</span>
-                  <span className="soluk kucuk blok">Doğrudan teminde zorunlu değil.</span>
+                <label htmlFor="bolme-gerekcesi">Bölme yasağı açıklaması (4734 md. 5)</label>
+                <textarea
+                  id="bolme-gerekcesi"
+                  rows={3}
+                  value={bolmeGerekcesi}
+                  onChange={(e) => setBolmeGerekcesi(e.target.value)}
+                  placeholder="Önceki alım farklı dönemin ihtiyacıydı; bu ihtiyaç sonradan ortaya çıktı."
+                  aria-describedby="bolme-not"
+                />
+                <span id="bolme-not" className="soluk kucuk">
+                  Onay belgesinin açıklamalar bölümüne ve denetim izine yazılır.
                 </span>
-              </label>
-            </div>
-          </section>
-
+              </div>
+            )}
+          </aside>
         </div>
       )}
 
@@ -414,23 +318,17 @@ export function YeniAlim() {
           </button>
         )}
         <div className="dugme-grubu">
-          {adim === 2 && (
-            <button type="button" className="dugme" onClick={() => setOnizleme(true)}>
-              Onay belgesini önizle
-            </button>
-          )}
-          {adim < 2 ? (
+          {adim === 0 ? (
             <button type="button" className="dugme dugme-ana" onClick={ilerle}>
-              {adim === 0 ? "Dayanağa geç" : "Onay belgesine geç"}
+              Dayanağa geç
             </button>
           ) : (
-            <button type="button" className="dugme dugme-ana" onClick={kaydet} disabled={kaydediliyor}>
-              {kaydediliyor ? "Kaydediliyor…" : "Dosyayı kaydet"}
+            <button type="button" className="dugme dugme-ana" onClick={() => void kaydet()} disabled={kaydediliyor}>
+              {kaydediliyor ? "Kaydediliyor…" : "Dosyayı aç, ihtiyaç onayına geç"}
             </button>
           )}
         </div>
       </div>
-      {onizleme && <BelgeOnizleme baslik={`${dosyaNo} · Doğrudan temin onay belgesi`} sayfalar={onaySayfalari} kapat={() => setOnizleme(false)} />}
     </div>
   );
 }

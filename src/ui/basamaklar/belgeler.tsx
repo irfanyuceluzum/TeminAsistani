@@ -1,10 +1,10 @@
 import { Fragment, type ReactNode } from "react";
-import { SARTLAR, type DosyaBasamaklari, type MaliyetSonucu, isinTuruBul } from "../../domain/basamaklar";
+import { SARTLAR, type DosyaBasamaklari, type MaliyetSonucu, isinTuruBul, makamBasligi } from "../../domain/basamaklar";
 import { kisi } from "../../domain/personel";
 import type { PiyasaKalemi } from "../../domain/piyasa";
 import type { PiyasaArastirmasi } from "../../domain/piyasa";
 import { degerlendir, firmaToplami } from "../../domain/piyasa";
-import type { Muayene } from "../../domain/muayene";
+import { kabulSonucu, type Muayene } from "../../domain/muayene";
 import type { Odeme, OebSatiri } from "../../domain/odeme";
 import { bentBilgisi } from "../../domain/sihirbaz";
 import type { Alim, Ayarlar, Tedarikci } from "../../domain/tipler";
@@ -92,7 +92,7 @@ export function ihtiyacOnayiSayfalari(b: BelgeBilgisi): ReactNode[] {
         <span>{tarihYazisi(o.tarih)}</span>
       </div>
       <p>Konu: İhtiyaç onayı</p>
-      <p className="belge-baslik">MÜDÜRLÜK MAKAMINA</p>
+      <p className="belge-baslik">{makamBasligi(b.ayarlar.idare?.birim ?? "")}</p>
       {o.gerekce.trim() && <p className="girintili">{o.gerekce.trim()}</p>}
       <p className="girintili">
         Bu nedenle ekli listede cinsi ve miktarı belirtilen {b.kalemler.length} kalem ihtiyacın ("{b.alim.konu}") 4734 sayılı Kamu İhale Kanununun 22 nci
@@ -393,7 +393,7 @@ export function dogrudanTeminOnaySayfalari(
   const g = b.ayarlar.gorevler;
   const ustIdare = (b.ayarlar.idare?.ustIdare || "T.C. İDARE MÜDÜRLÜĞÜ").toLocaleUpperCase("tr-TR");
   const birim = b.ayarlar.idare?.birim || "";
-  const makam = (ozellestirme?.makam || b.dosya.onayBelgesi?.makam || "BAŞKANLIK MAKAMINA").toLocaleUpperCase("tr-TR");
+  const makam = (ozellestirme?.makam || b.dosya.onayBelgesi?.makam || makamBasligi(b.ayarlar.idare?.birim ?? "")).toLocaleUpperCase("tr-TR");
   const isinTuru = isinTuruBul(b.alim.ekonomikKod);
 
   const gg = imzaci(b.ayarlar, g?.gerceklestirme);
@@ -508,6 +508,16 @@ export function dogrudanTeminOnaySayfalari(
               <div className="onay-aciklama-satir">
                 <strong>GEREKÇELERİ:</strong> {b.dosya.ihtiyacOnayi.gerekce || "İdaremizin ihtiyacının karşılanması."}
               </div>
+              {b.dosya.nitelik.trim() && (
+                <div className="onay-aciklama-satir">
+                  <strong>İŞİN NİTELİĞİ:</strong> {b.dosya.nitelik.trim()}
+                </div>
+              )}
+              {b.dosya.bolmeGerekcesi.trim() && (
+                <div className="onay-aciklama-satir">
+                  <strong>BÖLME YASAĞI (4734 md. 5) AÇIKLAMASI:</strong> {b.dosya.bolmeGerekcesi.trim()}
+                </div>
+              )}
               <div className="onay-ekler-satir">
                 <strong>Ekler:</strong>
                 <ul style={{ margin: "2pt 0 0 16pt", padding: 0 }}>
@@ -525,7 +535,7 @@ export function dogrudanTeminOnaySayfalari(
           <tr>
             <td className="onay-imza-sol" style={{ width: "50%", verticalAlign: "top" }}>
               <p style={{ margin: "0 0 16pt 0", fontSize: "8.5pt", lineHeight: 1.4, textAlign: "justify" }}>
-                Yukarıda belirtilen işin Kamu İhale Kanunu’nun {b.alim.bent} (Parasal Limit Kapsamında) maddesi kapsamında
+                Yukarıda belirtilen işin Kamu İhale Kanunu’nun {b.alim.bent} ({bentBilgisi(b.alim.bent).ad}) maddesi kapsamında
                 doğrudan temin yoluyla satın alınması hususunda onaylarınızı arz ederim.
               </p>
               <div className="onay-imza-kutu">
@@ -708,13 +718,17 @@ export function piyasaTutanagiSayfalari(
                 <div style={{ fontSize: "6.5pt", color: "#333" }}>{t.belgeAlindi ? "(Kaşeli Belge Alındı)" : "(Belge Bekleniyor)"}</div>
               </th>
             ))}
-            <th style={{ width: "12%", textAlign: "center", fontWeight: "bold" }}>EN UYGUN FİYAT</th>
+            <th style={{ width: "12%", textAlign: "center", fontWeight: "bold" }}>
+              {piyasa.degerlendirme === "kalem" ? "EN UYGUN FİYAT" : "SEÇİLEN TEKLİF"}
+            </th>
           </tr>
         </thead>
         <tbody>
           {b.kalemler.map((k, idx) => {
-            const teklifFiyatlari = piyasa.teklifler.map((t) => t.fiyatlar[k.id]).filter((x): x is number => x !== null && x !== undefined && x > 0);
-            const enUygun = teklifFiyatlari.length > 0 ? Math.min(...teklifFiyatlari) : null;
+            // Değerlendirmenin sonucu: toplam esasında kazananın fiyatı, kalem esasında kalemin en düşük fiyatı.
+            // Böylece sütunun toplamı her zaman sonuç toplamına eşit olur.
+            const atama = sonuc?.atamalar.find((a) => a.kalemId === k.id);
+            const enUygun = atama?.birimFiyat ?? null;
             return (
               <tr key={k.id}>
                 <td style={{ textAlign: "center" }}>{idx + 1}</td>
@@ -723,7 +737,7 @@ export function piyasaTutanagiSayfalari(
                 <td style={{ textAlign: "center" }}>{k.birim}</td>
                 {piyasa.teklifler.map((t) => {
                   const f = t.fiyatlar[k.id];
-                  const uygunMu = f !== null && f !== undefined && enUygun !== null && f === enUygun;
+                  const uygunMu = atama?.tedarikciId === t.tedarikciId;
                   return (
                     <td key={t.tedarikciId} style={{ textAlign: "right", fontWeight: uygunMu ? "bold" : "normal" }}>
                       {f ? `${para(f)} TL` : "—"}
@@ -930,7 +944,8 @@ export function muayeneKabulTutanagiSayfalari(
   const yukleniciAdi = b.alim.tedarikciId ? firmaAdi(b.alim.tedarikciId) : "—";
   const faturaNo = muayene?.faturaNo || "—";
   const faturaTarih = muayene?.faturaTarihi ? uzunTarih(muayene.faturaTarihi) : "—";
-  const muayeneTarih = muayene?.muayeneTarihi ? uzunTarih(muayene.muayeneTarihi) : "…/…/20…";
+  const teslimTarih = muayene?.teslimTarihi || muayene?.muayeneTarihi;
+  const sonuc = muayene ? kabulSonucu(muayene) : null;
 
   return [
     <div key="muayene-kabul-tutanak" className="onay-sablon-kapsayici">
@@ -954,18 +969,53 @@ export function muayeneKabulTutanagiSayfalari(
             <td className="onay-td-deger">{faturaNo} / {faturaTarih}</td>
           </tr>
           <tr>
-            <th className="onay-th-etiket">TESLİM TARİHİ</th>
-            <td className="onay-td-deger">{muayeneTarih}</td>
+            <th className="onay-th-etiket">TESLİM / MUAYENE TARİHİ</th>
+            <td className="onay-td-deger">
+              {teslimTarih ? uzunTarih(teslimTarih) : "…/…/20…"} / {muayene?.muayeneTarihi ? uzunTarih(muayene.muayeneTarihi) : "…/…/20…"}
+            </td>
             <th className="onay-th-etiket">KABUL SONUCU</th>
-            <td className="onay-td-deger kalin">{muayene?.tamamlandi ? "UYGUNDUR (Eksiksiz Kabul Edildi)" : "İnceleme Devam Ediyor"}</td>
+            <td className="onay-td-deger kalin">{sonuc?.metin ?? "—"}</td>
           </tr>
         </tbody>
       </table>
 
-      <IhtiyacTablosu kalemler={b.kalemler} />
+      {muayene ? (
+        <table className="belge-tablo ek-tablo">
+          <thead>
+            <tr>
+              <th scope="col">Sıra</th>
+              <th scope="col">Malzeme veya hizmet</th>
+              <th scope="col">Sipariş</th>
+              <th scope="col">Fatura</th>
+              <th scope="col">Kabul</th>
+              <th scope="col">Birim</th>
+            </tr>
+          </thead>
+          <tbody>
+            {muayene.kalemler.map((k, i) => (
+              <tr key={k.kalemId}>
+                <td>{i + 1}</td>
+                <td>{k.ad}</td>
+                <td>{miktarYazisi(k.siparisMiktari)}</td>
+                <td>{miktarYazisi(k.faturaMiktari)}</td>
+                <td>{miktarYazisi(k.kabulMiktari)}</td>
+                <td>{k.birim}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : (
+        <IhtiyacTablosu kalemler={b.kalemler} />
+      )}
 
       <div style={{ marginTop: "6pt", padding: "6pt", border: "1px solid #000", fontSize: "8pt", lineHeight: 1.35, textAlign: "justify" }}>
-        <strong>MUAYENE RAPORU:</strong> Yukarıda nitelik ve miktarları yazılı malzemeler komisyonumuzca fiziki, teknik ve idari açıdan muayene edilmiş olup, sipariş şartlarına ve numunesine uygun olduğu, ayıpsız ve noksansız olarak teslim alındığı tespit edilmiştir. İşbu kabul tutanağı tarafımızca tanzim edilerek müştereken imza altına alınmıştır.
+        <strong>MUAYENE RAPORU:</strong>{" "}
+        {sonuc?.sonuc === "kismi"
+          ? "Yukarıda nitelik ve miktarları yazılı malzemeler komisyonumuzca fiziki, teknik ve idari açıdan muayene edilmiş; kabul sütununda gösterilen miktarlar sipariş şartlarına uygun bulunarak kabul edilmiş, kalan miktarlar kabul edilmemiştir."
+          : sonuc?.sonuc === "ret"
+            ? "Yukarıda nitelik ve miktarları yazılı malzemeler komisyonumuzca muayene edilmiş, sipariş şartlarına uygun bulunmadığından kabul edilmemiştir."
+            : "Yukarıda nitelik ve miktarları yazılı malzemeler komisyonumuzca fiziki, teknik ve idari açıdan muayene edilmiş olup, sipariş şartlarına uygun olduğu, ayıpsız ve noksansız olarak teslim alındığı tespit edilmiştir."}{" "}
+        İşbu tutanak tarafımızca tanzim edilerek müştereken imza altına alınmıştır.
       </div>
 
       <div style={{ marginTop: "12pt" }}>
@@ -991,7 +1041,14 @@ export function muayeneKabulTutanagiSayfalari(
 export function tasinirIslemFisiSayfalari(
   b: BelgeBilgisi,
   tif?: { no?: string; tarih?: string },
+  muayene?: Muayene | null,
 ): ReactNode[] {
+  // Taşınıra giren miktar muayenede kabul edilen miktardır; muayene yoksa ihtiyaç listesi miktarı yazılır.
+  const satirlar = muayene
+    ? muayene.kalemler.filter((k) => k.kabulMiktari > 0).map((k) => ({ ad: k.ad, birim: k.birim, miktar: k.kabulMiktari, birimFiyat: k.birimFiyat as number | null }))
+    : b.kalemler.map((k) => ({ ad: k.ad, birim: k.birim, miktar: k.miktar, birimFiyat: null as number | null }));
+  const para = (k: number) => (k / 100).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const toplam = satirlar.reduce((t, x) => t + (x.birimFiyat === null ? 0 : Math.round(x.miktar * x.birimFiyat)), 0);
   return [
     <div key="tif-belgesi" className="onay-sablon-kapsayici">
       <IdareBasligi ayarlar={b.ayarlar} />
@@ -1016,6 +1073,38 @@ export function tasinirIslemFisiSayfalari(
             <th className="onay-th-etiket">Giriş Türü</th>
             <td className="onay-td-deger">Satın Alma Yoluyla Giriş</td>
           </tr>
+        </tbody>
+      </table>
+      <table className="belge-tablo ek-tablo" style={{ margin: "0 0 12pt 0" }}>
+        <thead>
+          <tr>
+            <th scope="col">Sıra</th>
+            <th scope="col">Taşınırın adı</th>
+            <th scope="col">Miktar</th>
+            <th scope="col">Birim</th>
+            <th scope="col">Birim fiyat (KDV hariç)</th>
+            <th scope="col">Tutar (KDV hariç)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {satirlar.map((x, i) => (
+            <tr key={i}>
+              <td>{i + 1}</td>
+              <td>{x.ad}</td>
+              <td>{miktarYazisi(x.miktar)}</td>
+              <td>{x.birim}</td>
+              <td style={{ textAlign: "right" }}>{x.birimFiyat === null ? "—" : para(x.birimFiyat)}</td>
+              <td style={{ textAlign: "right" }}>{x.birimFiyat === null ? "—" : para(Math.round(x.miktar * x.birimFiyat))}</td>
+            </tr>
+          ))}
+          {muayene && (
+            <tr>
+              <th scope="row" colSpan={5} style={{ textAlign: "right" }}>
+                Toplam (KDV hariç)
+              </th>
+              <td style={{ textAlign: "right", fontWeight: "bold" }}>{para(toplam)}</td>
+            </tr>
+          )}
         </tbody>
       </table>
       <p style={{ fontSize: "8.5pt", lineHeight: 1.5, textAlign: "justify" }}>

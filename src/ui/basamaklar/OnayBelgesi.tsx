@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { onayBelgesiKontrolleri } from "../../domain/basamaklar";
+import { makamBasligi, onayBelgesiKontrolleri } from "../../domain/basamaklar";
 import { engelVarMi } from "../../domain/sihirbaz";
 import { bugun, tl } from "../bicim";
 import { BelgeOnizleme } from "../BelgeOnizleme";
@@ -21,14 +21,16 @@ export function OnayBelgesiBasamagi({ b }: { b: BasamakBaglami }) {
   const [tarih, setTarih] = useState(evrak?.tarih || alim.onayTarihi || bugun());
   const [sayi, setSayi] = useState(evrak?.not ?? "");
   const [ekapNo, setEkapNo] = useState(alim.ekapKayitNo ?? "");
-  const [makam, setMakam] = useState(dosya.onayBelgesi?.makam ?? "BAŞKANLIK MAKAMINA");
+  const varsayilanMakam = makamBasligi(ayarlar.idare?.birim ?? "");
+  const [makam, setMakam] = useState(dosya.onayBelgesi?.makam || varsayilanMakam);
   const [onizle, setOnizle] = useState(false);
   const [onaylaniyor, setOnaylaniyor] = useState(false);
   const [mesaj, setMesaj] = useState("");
 
   const kontroller = useMemo(
-    () => onayBelgesiKontrolleri(alim, dosya, ayarlar, piyasa),
-    [alim, dosya, ayarlar, piyasa],
+    // Yazılmakta olan EKAP numarası da kontrollerde hesaba katılır
+    () => onayBelgesiKontrolleri({ ...alim, ekapKayitNo: ekapNo.trim() || undefined }, dosya, ayarlar, piyasa),
+    [alim, ekapNo, dosya, ayarlar, piyasa],
   );
   const engelVar = engelVarMi(kontroller);
 
@@ -51,7 +53,7 @@ export function OnayBelgesiBasamagi({ b }: { b: BasamakBaglami }) {
         await b.alimDegistir({ ekapKayitNo: ekapNo.trim() || undefined }, "EKAP kayıt numarası güncellendi");
       }
       // Makam başlığı güncellendiyse dosya basamaklarına yaz
-      if (makam !== (dosya.onayBelgesi?.makam ?? "BAŞKANLIK MAKAMINA")) {
+      if (makam !== (dosya.onayBelgesi?.makam || varsayilanMakam)) {
         dosyaDegistir((d) => ({
           ...d,
           onayBelgesi: { ...d.onayBelgesi, makam },
@@ -154,7 +156,7 @@ export function OnayBelgesiBasamagi({ b }: { b: BasamakBaglami }) {
                 id="makam-adi"
                 value={makam}
                 onChange={(e) => setMakam(e.target.value)}
-                placeholder="BAŞKANLIK MAKAMINA"
+                placeholder={varsayilanMakam}
               />
             </div>
           </div>
@@ -203,7 +205,7 @@ export function OnayBelgesiBasamagi({ b }: { b: BasamakBaglami }) {
                 className="dugme dugme-ana"
                 disabled={onaylaniyor || engelVar}
                 onClick={onayla}
-                title={engelVar ? "Engelleri giderdikten sonra onaylayabilirsiniz" : "Onayla ve 6. basamağa geç"}
+                title={engelVar ? "Engelleri giderdikten sonra onaylayabilirsiniz" : undefined}
               >
                 Onay belgesini onayla ve sonraki basamağa geç ›
               </button>

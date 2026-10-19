@@ -367,7 +367,7 @@ export function PiyasaArastirmasiSayfasi() {
 
       <fieldset className="kilit yazdirma" disabled={kilitli}>
         <section className="panel" aria-labelledby="kalem-baslik">
-          <div className="sutun-dar">
+          <div>
             <h2 id="kalem-baslik">1. İhtiyaç listesi</h2>
             <p className="soluk kucuk">Sihirbazda girilen liste. Teklif isteme yazısı gönderildikten sonra değiştirmeyin; firmalar bu listeye fiyat verir.</p>
           </div>

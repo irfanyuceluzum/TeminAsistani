@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ornekAlimlar, ornekAyarlar, ornekLimitDonemleri, ornekTedarikciler } from "../data/ornekVeri";
+import { ornekAlimlar, ornekAyarlar, ornekLimitDonemleri, ornekPiyasa, ornekTedarikciler } from "../data/ornekVeri";
 import { degerlendir, firmaToplami, piyasaKontrolleri, yaziEksikleri, type PiyasaArastirmasi } from "./piyasa";
 
 const TL = 100;
@@ -118,5 +118,23 @@ describe("teklif isteme yazısı", () => {
   it("son teklif tarihinin yazıdan önce olmasını reddeder", () => {
     const p = arastirma({ yazi: { sayi: "", tarih: "2026-10-09", sonTeklifTarihi: "2026-10-01", teslimYeri: "", teslimSuresi: "", aciklama: "" } });
     expect(yaziEksikleri(p)).toEqual(["Son teklif tarihi yazı tarihinden önce olamaz."]);
+  });
+});
+
+describe("tutanaktaki seçilen fiyat sütunu", () => {
+  it("toplam esasında kazananın fiyatlarını verir; toplamı sonuç toplamına eşittir", () => {
+    const s = degerlendir(structuredClone(ornekPiyasa[0]))!;
+    expect(new Set(s.atamalar.map((a) => a.tedarikciId)).size).toBe(1);
+    expect(s.atamalar.reduce((t, a) => t + a.tutar, 0)).toBe(s.toplam);
+  });
+
+  it("kalem esasında her kalemin en düşük fiyatını verir; toplamı yine sonuç toplamıdır", () => {
+    const p: PiyasaArastirmasi = { ...structuredClone(ornekPiyasa[0]), degerlendirme: "kalem" };
+    const s = degerlendir(p)!;
+    for (const a of s.atamalar) {
+      const fiyatlar = p.teklifler.map((t) => t.fiyatlar[a.kalemId]).filter((x): x is number => typeof x === "number");
+      expect(a.birimFiyat).toBe(Math.min(...fiyatlar));
+    }
+    expect(s.atamalar.reduce((t, a) => t + a.tutar, 0)).toBe(s.toplam);
   });
 });

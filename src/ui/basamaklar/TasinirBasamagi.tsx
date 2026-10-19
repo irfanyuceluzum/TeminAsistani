@@ -42,9 +42,10 @@ export function TasinirBasamagi({ b }: { b: BasamakBaglami }) {
   const tifSayfalari = useMemo(() => {
     return tasinirIslemFisiSayfalari(
       { alim, ayarlar, dosya, kalemler: b.kalemler },
-      { no: tifNo, tarih: tifTarih }
+      { no: tifNo, tarih: tifTarih },
+      b.muayene
     );
-  }, [alim, ayarlar, dosya, b.kalemler, tifNo, tifTarih]);
+  }, [alim, ayarlar, dosya, b.kalemler, tifNo, tifTarih, b.muayene]);
 
   const onaylaVeIlerle = async () => {
     setMesaj("");

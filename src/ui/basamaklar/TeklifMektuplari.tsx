@@ -6,7 +6,7 @@ import { BelgeOnizleme } from "../BelgeOnizleme";
 import { KontrolSatiri } from "../KontrolSatiri";
 import { KucukA4 } from "./KucukA4";
 import { teklifIstemeMektubuSayfalari } from "./belgeler";
-import type { FirmaTeklifi } from "../../domain/piyasa";
+import { bosYazi, type FirmaTeklifi, type TeklifYazisi } from "../../domain/piyasa";
 import type { Kontrol } from "../../domain/sihirbaz";
 
 function hucreKey(firmaId: string, kalemId: string): string {
@@ -21,6 +21,9 @@ function kurusFormat(kurus: number | null | undefined): string {
 export function TeklifMektuplariBasamagi({ b }: { b: BasamakBaglami }) {
   const navigate = useNavigate();
   const { alim, piyasa, dosya, veri, piyasaDegistir } = b;
+  // Teklif isteme yazısı piyasa araştırması kaydında tutulur (eski piyasa ekranıyla ortak)
+  const yazi = piyasa.yazi ?? bosYazi("");
+  const yaziDegistir = (d: Partial<TeklifYazisi>) => piyasaDegistir((p) => ({ ...p, yazi: { ...(p.yazi ?? bosYazi("")), ...d } }));
   const { tedarikciler } = veri;
 
   // Başlangıç teklif listesi: piyasa.teklifler doluysa onu kullan, yoksa yaklaşık maliyetteki firmalarla başlat
@@ -224,11 +227,7 @@ export function TeklifMektuplariBasamagi({ b }: { b: BasamakBaglami }) {
     return teklifIstemeMektubuSayfalari(
       { alim, ayarlar: veri.ayarlar, dosya, kalemler: b.kalemler },
       aktifTedarikci,
-      {
-        sayi: dosya.fiyatIsteme?.sayi,
-        tarih: dosya.fiyatIsteme?.tarih,
-        sonTarih: dosya.fiyatIsteme?.sonTarih,
-      }
+      { sayi: yazi.sayi, tarih: yazi.tarih, sonTarih: yazi.sonTeklifTarihi }
     );
   }, [alim, veri.ayarlar, dosya, b.kalemler, aktifTedarikci]);
 
@@ -297,6 +296,29 @@ export function TeklifMektuplariBasamagi({ b }: { b: BasamakBaglami }) {
                   Ekle
                 </button>
               )}
+            </div>
+          </div>
+
+          {/* Teklif mektubu isteyen yazı, 3. basamaktaki fiyat isteme yazısından ayrı bir resmî yazıdır; kendi sayısı ve tarihi olur. */}
+          <div className="form-izgara" style={{ marginTop: "12px" }}>
+            <div className="alan">
+              <label htmlFor="teklif-yazi-sayi">Teklif isteme yazısı sayısı</label>
+              <input id="teklif-yazi-sayi" className="mono" value={yazi.sayi} onChange={(e) => yaziDegistir({ sayi: e.target.value })} placeholder="E-12345678-934.01-…" />
+            </div>
+            <div className="alan">
+              <label htmlFor="teklif-yazi-tarih">Yazı tarihi</label>
+              <input id="teklif-yazi-tarih" type="date" value={yazi.tarih} onChange={(e) => yaziDegistir({ tarih: e.target.value })} />
+            </div>
+            <div className="alan">
+              <label htmlFor="teklif-son-tarih">Son teklif tarihi</label>
+              <input
+                id="teklif-son-tarih"
+                type="date"
+                value={yazi.sonTeklifTarihi}
+                min={yazi.tarih || undefined}
+                aria-invalid={!!yazi.tarih && !!yazi.sonTeklifTarihi && yazi.sonTeklifTarihi < yazi.tarih}
+                onChange={(e) => yaziDegistir({ sonTeklifTarihi: e.target.value })}
+              />
             </div>
           </div>
 

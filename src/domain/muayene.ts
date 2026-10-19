@@ -24,6 +24,8 @@ export interface KomisyonUyesi {
 export interface Muayene {
   alimId: string;
   muayeneTarihi: string;
+  // Malların idareye teslim edildiği gün; boşsa muayene tarihi kullanılır.
+  teslimTarihi?: string;
   yer: string;
   faturaNo: string;
   faturaTarihi: string;
@@ -88,7 +90,6 @@ function tl(kurus: number): string {
 
 export function muayeneKontrolleri(m: Muayene): Kontrol[] {
   const k: Kontrol[] = [];
-  const ozet = muayeneOzeti(m);
 
   const baskanlar = m.uyeler.filter((u) => u.rol === "baskan");
   const adsiz = m.uyeler.filter((u) => !u.ad.trim()).length;
@@ -102,6 +103,14 @@ export function muayeneKontrolleri(m: Muayene): Kontrol[] {
     );
   }
 
+  k.push(...muayeneKalemKontrolleri(m));
+  return k;
+}
+
+// Komisyon dışındaki kontroller: tarih, fatura ve kalem miktarları. Basamaklı dosya komisyonu ayrıca denetler.
+export function muayeneKalemKontrolleri(m: Muayene): Kontrol[] {
+  const k: Kontrol[] = [];
+  const ozet = muayeneOzeti(m);
   if (!m.muayeneTarihi) k.push({ durum: "engel", baslik: "Muayene tarihi", detay: "Muayenenin yapıldığı tarihi girin." });
   if (!m.faturaNo.trim() || !m.faturaTarihi) k.push({ durum: "uyari", baslik: "Fatura bilgisi eksik", detay: "Fatura numarası ve tarihi tutanağa yazılır." });
 
@@ -119,5 +128,18 @@ export function muayeneKontrolleri(m: Muayene): Kontrol[] {
   } else {
     k.push({ durum: "tamam", baslik: "Tamamı kabul", detay: `${tl(ozet.kabulToplami)} + KDV kabul ediliyor.` });
   }
+  if (m.teslimTarihi && m.muayeneTarihi && m.muayeneTarihi < m.teslimTarihi) {
+    k.push({ durum: "engel", baslik: "Muayene teslimden önce", detay: "Muayene tarihi teslim tarihinden önce olamaz." });
+  }
   return k;
+}
+
+export type KabulSonucu = "tam" | "kismi" | "ret";
+
+// Tutanakta ve ekranda aynı ifade kullanılır; sonuç kabul miktarlarından çıkar.
+export function kabulSonucu(m: Muayene): { sonuc: KabulSonucu; metin: string } {
+  const ozet = muayeneOzeti(m);
+  if (ozet.kabulToplami === 0) return { sonuc: "ret", metin: "KABUL EDİLMEDİ (Ret)" };
+  if (ozet.kismi) return { sonuc: "kismi", metin: `KISMEN KABUL EDİLDİ (${tl(ozet.fark)} + KDV eksik)` };
+  return { sonuc: "tam", metin: "UYGUNDUR (Eksiksiz kabul edildi)" };
 }

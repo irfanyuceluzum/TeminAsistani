@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ornekAyarlar } from "../data/ornekVeri";
-import { BOS_GOREVLER, belgeGorevlileri, gorevKontrolleri, idareSatirlari, kisininGorevleri, komisyon, personelCikar } from "./personel";
+import { BOS_GOREVLER, belgeGorevlileri, gorevKontrolleri, idareSatirlari, kisininGorevleri, komisyon, muayeneKomisyonuKontrolleri, personelCikar } from "./personel";
 import type { GorevAtamalari } from "./tipler";
 
 const personel = ornekAyarlar.personel!;
@@ -62,5 +62,27 @@ describe("personel işlemleri", () => {
   it("idare adını belge başlığına göre biçimler", () => {
     expect(idareSatirlari(ornekAyarlar)).toEqual({ ust: "KARATAŞ KAYMAKAMLIĞI", birim: "Kırmızıdağ İlkokulu Müdürlüğü" });
     expect(idareSatirlari({ ...ornekAyarlar, idare: undefined })).toEqual({ ust: "[ÜST İDARE]", birim: "[Birim]" });
+  });
+});
+
+describe("muayene komisyonu kontrolleri", () => {
+  it("piyasa görevlisi komisyondaysa 'uygun' demez, çakışmayı uyarır", () => {
+    // Örnek atamada Ali Yılmaz (p3) hem piyasa görevlisi hem muayene üyesi
+    const k = muayeneKomisyonuKontrolleri(personel, gorevler);
+    expect(k.map((x) => x.baslik)).toEqual(["Görev çakışması"]);
+    expect(k[0].durum).toBe("uyari");
+    expect(k[0].detay).toMatch(/Ali Yılmaz/);
+  });
+
+  it("çakışma yoksa tek 'uygun' kontrolü verir", () => {
+    const g: GorevAtamalari = { ...gorevler, muayeneUyeleri: ["p5", "p6"], piyasaGorevlileri: ["p3"] };
+    const k = muayeneKomisyonuKontrolleri(personel, g);
+    expect(k).toHaveLength(1);
+    expect(k[0]).toMatchObject({ durum: "tamam", baslik: "Muayene komisyonu uygun" });
+  });
+
+  it("yetkiliyi komisyonda engeller", () => {
+    const g: GorevAtamalari = { ...gorevler, muayeneUyeleri: [gorevler.gerceklestirme!, "p5"] };
+    expect(muayeneKomisyonuKontrolleri(personel, g).find((x) => x.durum === "engel")?.baslik).toBe("Yetkili muayene komisyonunda yer alamaz");
   });
 });

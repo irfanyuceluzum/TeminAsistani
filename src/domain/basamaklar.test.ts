@@ -8,6 +8,8 @@ import {
   evrakFormu,
   evrakKaydiYap,
   ilerleme,
+  makamBasligi,
+  yaklasikTutarYazilir,
   ihtiyacOnayiKontrolleri,
   isinTuruBul,
   onayBelgesiKontrolleri,
@@ -198,7 +200,7 @@ describe("kayıt ve kontroller", () => {
     const alimEkap = { ...temizlik, ekapKayitNo: "26DT12345" };
     const k2 = onayBelgesiKontrolleri(alimEkap, d, ornekAyarlar, temizlikPiyasa);
     expect(k2.find((x) => x.baslik === "Yaklaşık maliyet hazır")?.durum).toBe("tamam");
-    expect(k2.find((x) => x.baslik === "Kullanılabilir ödenek hazır")?.durum).toBe("tamam");
+    expect(k2.find((x) => x.baslik === "Ödenek yeterli")?.durum).toBe("tamam");
     expect(k2.find((x) => x.baslik === "EKAP kayıt numarası girildi")?.durum).toBe("tamam");
   });
 
@@ -227,5 +229,50 @@ describe("evrak formu (sipariş, muayene, taşınır basamakları)", () => {
 
   it("eski sürümün yazdığı zaman damgasından günü çıkarır", () => {
     expect(evrakFormu({ tamam: true, tarih: "2026-10-26T09:00:00.000Z", not: "" }, "2026-11-05").tarih).toBe("2026-10-26");
+  });
+});
+
+describe("makam başlığı", () => {
+  it("birim adının son sözcüğünden makamı türetir", () => {
+    expect(makamBasligi("Kırmızıdağ İlkokulu Müdürlüğü")).toBe("MÜDÜRLÜK MAKAMINA");
+    expect(makamBasligi("Karataş Kaymakamlığı")).toBe("KAYMAKAMLIK MAKAMINA");
+    expect(makamBasligi("Ankara Valiliği")).toBe("VALİLİK MAKAMINA");
+    expect(makamBasligi("Destek Hizmetleri Daire Başkanlığı")).toBe("BAŞKANLIK MAKAMINA");
+    expect(makamBasligi("Mühendislik Fakültesi Dekanlığı")).toBe("DEKANLIK MAKAMINA");
+  });
+
+  it("tanınmayan adda birimi olduğu gibi kullanır", () => {
+    expect(makamBasligi("Belediye Encümeni")).toBe("BELEDİYE ENCÜMENİ MAKAMINA");
+    expect(makamBasligi("")).toBe("MAKAMA");
+  });
+});
+
+describe("onay belgesinde ödenek", () => {
+  const dosyaIle = (odenek: number) => {
+    const d = bosBasamaklar(temizlik.id, "2026-10-17");
+    d.odenek = odenek;
+    d.yaklasik.onaylandi = true;
+    return d;
+  };
+
+  it("KDV dahil tutar ödeneği aşarsa engeller", () => {
+    // 25.380 + %20 KDV = 30.456
+    const k = onayBelgesiKontrolleri(temizlik, dosyaIle(30_000 * TL), ornekAyarlar, null);
+    expect(k.find((x) => x.baslik === "Ödenek yetersiz")).toMatchObject({ durum: "engel" });
+  });
+
+  it("ödenek yetiyorsa kalanı yazar", () => {
+    const k = onayBelgesiKontrolleri(temizlik, dosyaIle(85_000 * TL), ornekAyarlar, null);
+    expect(k.find((x) => x.baslik === "Ödenek yeterli")?.detay).toMatch(/54\.544/);
+  });
+});
+
+describe("yaklaşık maliyet ve dosya tutarı", () => {
+  it("tutanak onaylanmadan önce dosya tutarını yaklaşık maliyete çeker", () => {
+    expect(yaklasikTutarYazilir({ ...temizlikPiyasa, tamamlandi: false }, 26_000 * TL, 25_000 * TL)).toBe(true);
+  });
+
+  it("tutanaktan sonra sipariş tutarını değiştirmez", () => {
+    expect(yaklasikTutarYazilir({ ...temizlikPiyasa, tamamlandi: true }, 26_000 * TL, 25_380 * TL)).toBe(false);
   });
 });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ornekAlimlar, ornekPiyasa } from "../data/ornekVeri";
-import { muayeneKontrolleri, muayeneOlustur, muayeneOzeti, type Muayene } from "./muayene";
+import { kabulSonucu, muayeneKalemKontrolleri, muayeneKontrolleri, muayeneOlustur, muayeneOzeti, type Muayene } from "./muayene";
 
 const TL = 100;
 const klima = ornekAlimlar.find((a) => a.id === "DT-2026-040")!;
@@ -77,5 +77,36 @@ describe("muayene kontrolleri", () => {
     ]);
     expect(m.uyeler.map((u) => u.ad)).toEqual(["Fatma Kaya", "Hasan Çelik"]);
     expect(muayeneOlustur(klima, klimaPiyasa, "2026-10-16").uyeler).toHaveLength(3);
+  });
+});
+
+describe("kabul sonucu", () => {
+  it("tamamı kabul edilince 'uygundur' der", () => {
+    expect(kabulSonucu(dolu())).toEqual({ sonuc: "tam", metin: "UYGUNDUR (Eksiksiz kabul edildi)" });
+  });
+
+  it("eksik kabulde eksik tutarı yazar", () => {
+    const m = dolu();
+    m.kalemler[0].kabulMiktari = 22;
+    expect(kabulSonucu(m)).toEqual({ sonuc: "kismi", metin: "KISMEN KABUL EDİLDİ (₺2.500 + KDV eksik)" });
+  });
+
+  it("hiçbir kalem kabul edilmezse ret der", () => {
+    const m = dolu();
+    m.kalemler.forEach((x) => (x.kabulMiktari = 0));
+    expect(kabulSonucu(m).sonuc).toBe("ret");
+  });
+});
+
+describe("teslim ve muayene tarihi", () => {
+  it("muayeneyi teslimden önce yapılmış göstermeye izin vermez", () => {
+    const m = { ...dolu(), teslimTarihi: "2026-10-20", muayeneTarihi: "2026-10-18" };
+    expect(muayeneKalemKontrolleri(m).find((x) => x.durum === "engel")?.baslik).toBe("Muayene teslimden önce");
+    expect(muayeneKalemKontrolleri({ ...m, muayeneTarihi: "2026-10-21" }).some((x) => x.durum === "engel")).toBe(false);
+  });
+
+  it("kalem kontrolleri komisyonu denetlemez", () => {
+    const m = muayeneOlustur(klima, klimaPiyasa, "2026-10-16");
+    expect(muayeneKalemKontrolleri(m).map((x) => x.baslik)).not.toContain("Üye adı eksik");
   });
 });
