@@ -25,3 +25,7 @@ dist-ssr
 
 # Orkestra geçici dosyaları
 .claude/tmp/
+
+# Uçtan uca test çıktıları
+e2e/sonuclar/
+playwright-report/
