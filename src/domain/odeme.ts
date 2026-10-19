@@ -214,7 +214,7 @@ export function kbsAlanlari(alim: Alim, h: OdemeHesabi, yukleniciAdi: string, ib
 export function odemeKontrolleri(o: Odeme, h: OdemeHesabi, ekler: { ad: string; tamam: boolean }[], ayarlar: Ayarlar, sozlesmeGerekli = false): Kontrol[] {
   const k: Kontrol[] = [];
   if (sozlesmeGerekli && !o.sozlesmeVar) {
-    k.push({ durum: "uyari", baslik: "Sözleşme zorunlu", detay: "22/c alımlarında ve süreye yayılan işlerde sözleşme imzalanması zorunludur (Doğrudan Temin Tebliği m.4/5)." });
+    k.push({ durum: "uyari", baslik: "Sözleşme zorunlu", detay: "Süreye yayılan işlerde sözleşme imzalanması zorunludur (Doğrudan Temin Tebliği m.4/5)." });
   }
   const eksik = ekler.filter((e) => !e.tamam).map((e) => e.ad);
   k.push(

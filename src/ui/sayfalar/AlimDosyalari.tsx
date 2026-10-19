@@ -15,7 +15,7 @@ export function AlimDosyalari() {
   const satirlar = [...alimlar]
     .sort((x, y) => y.onayTarihi.localeCompare(x.onayTarihi) || y.id.localeCompare(x.id))
     .filter((a) => filtre === "Tümü" || asamaGrubu(a.asama) === filtre)
-    .filter((a) => !q || `${a.id} ${a.konu} ${a.bent} ${firmaAdi(a.tedarikciId)}`.toLocaleLowerCase("tr-TR").includes(q));
+    .filter((a) => !q || `${a.id} ${a.konu} ${firmaAdi(a.tedarikciId)}`.toLocaleLowerCase("tr-TR").includes(q));
 
   return (
     <div className="sayfa">
@@ -51,7 +51,6 @@ export function AlimDosyalari() {
                 <th scope="col">Dosya</th>
                 <th scope="col">Onay</th>
                 <th scope="col">Konu</th>
-                <th scope="col">Bent</th>
                 <th scope="col">Tedarikçi</th>
                 <th scope="col" className="sag">
                   Tutar
@@ -67,7 +66,6 @@ export function AlimDosyalari() {
                   </td>
                   <td className="mono soluk">{uzunTarih(a.onayTarihi)}</td>
                   <td>{a.konu}</td>
-                  <td className="mono">{a.bent}</td>
                   <td className="soluk">{firmaAdi(a.tedarikciId) || "—"}</td>
                   <td className="mono sag">{tl(a.tutar)}</td>
                   <td>
@@ -77,7 +75,7 @@ export function AlimDosyalari() {
               ))}
               {satirlar.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="soluk bos">
+                  <td colSpan={6} className="soluk bos">
                     Aramaya uyan dosya yok. Aramayı ya da süzgeci değiştirin.
                   </td>
                 </tr>

@@ -1,10 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { depoAc, type Depo } from "../data/depo";
+import { gorunurAlimlar } from "../domain/gorunurluk";
 import type { Alim, Ayarlar, LimitDonemi, Tedarikci } from "../domain/tipler";
 
 export interface Veri {
   depo: Depo;
+  // Ekranlarda gösterilen kayıtlar: yalnız 22/d.
   alimlar: Alim[];
+  // Ham liste (22/d dışı gizli kayıtlar dahil); yalnız dosya numarası üretimi gibi bütün kayıtları görmesi gereken yerler kullanır.
+  tumAlimlar: Alim[];
   tedarikciler: Tedarikci[];
   limitDonemleri: LimitDonemi[];
   ayarlar: Ayarlar;
@@ -25,7 +29,10 @@ export function useVeri(): VeriDurumu {
         depo.limitDonemleri(),
         depo.ayarlar(),
       ]);
-      setSonuc({ durum: "hazir", veri: { depo, alimlar, tedarikciler, limitDonemleri, ayarlar, yenile: yukle } });
+      setSonuc({
+        durum: "hazir",
+        veri: { depo, alimlar: gorunurAlimlar(alimlar), tumAlimlar: alimlar, tedarikciler, limitDonemleri, ayarlar, yenile: yukle },
+      });
     } catch (e) {
       setSonuc({ durum: "hata", mesaj: String(e) });
     }

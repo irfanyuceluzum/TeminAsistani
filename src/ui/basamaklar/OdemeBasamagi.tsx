@@ -194,7 +194,7 @@ export function OdemeBasamagi({ b }: { b: BasamakBaglami }) {
             </label>
           </div>
           {sozlesmeZorunlu(alim) && (
-            <p className="soluk kucuk">Bu alımda sözleşme zorunludur (22/c ve süreye yayılan işler); kutu varsayılan işaretlidir. Sözleşme damga vergisi hesaba girer.</p>
+            <p className="soluk kucuk">Bu alım süreye yayılan bir iş olduğundan sözleşme zorunludur (Doğrudan Temin Tebliği m.4/5); kutu varsayılan işaretlidir. Sözleşme damga vergisi hesaba girer.</p>
           )}
 
           <fieldset className="secim-grubu">

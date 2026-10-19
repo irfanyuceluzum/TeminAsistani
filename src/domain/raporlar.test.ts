@@ -10,16 +10,16 @@ describe("yıllık özet", () => {
   it("tüm bentlerin ve 22/d'nin toplamını verir", () => {
     // 19 alım: DT-2026-037 (tamamlanmış örnek dosya, ₺32.200) eklendi; önceki değerler 18, 12 ve ₺330.880
     expect(o.adet).toBe(19);
-    expect(o.ddAdet).toBe(13);
-    expect(o.ddToplam).toBe((330_880 + 32_200) * TL);
-    expect(o.toplam).toBe(o.bentler.reduce((s, b) => s + b.tutar, 0));
+    // örnek veride 22/d dışı kalmadı: altı kayıt 22/d'ye çevrildi (₺199.040)
+    expect(o.ddAdet).toBe(19);
+    expect(o.ddToplam).toBe((330_880 + 32_200 + 199_040) * TL);
   });
 
-  it("bentleri tutara göre sıralar ve payları bire tamamlar", () => {
-    // 22/d toplamı ₺363.080 ile ₺360.000'lik 22/e kirasını geçti (önceden 22/e ilkti)
-    expect(o.bentler[0].bent).toBe("22/d");
-    expect(o.bentler[1].bent).toBe("22/e");
-    expect(o.bentler.reduce((s, b) => s + b.pay, 0)).toBeCloseTo(1);
+  it("22/d toplamı görünen bütün alımların toplamına eşittir", () => {
+    const iptalsiz = ornekAlimlar.filter((a) => a.asama !== "iptal" && a.onayTarihi.startsWith("2026"));
+    expect(o.ddToplam).toBe(iptalsiz.reduce((s, a) => s + a.tutar, 0));
+    expect(o.ddToplam).toBe(o.toplam);
+    expect(o.ddAdet).toBe(o.adet);
   });
 
   it("22/d'yi aylara dağıtır", () => {
@@ -50,7 +50,7 @@ describe("KİK bildirimleri", () => {
   it("siparişi verilmiş tüm alımları bentten bağımsız listeler", () => {
     // DT-2026-037 eklendi; önceki değer 16
     expect(k).toHaveLength(17);
-    expect(k.some((x) => x.alim.bent === "22/d")).toBe(true);
+    expect(k.some((x) => x.alim.id === "DT-2026-019")).toBe(true);
     expect(k.some((x) => x.alim.id === "DT-2026-041")).toBe(false);
   });
 

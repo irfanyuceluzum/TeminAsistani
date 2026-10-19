@@ -21,7 +21,7 @@ export function AnaPanel() {
   const ozet = useMemo(() => {
     const odenek = ayarlar.odenekler[yil] ?? 0;
     const yuzdeOn = yuzdeOnDurumu(alimlar, yil, odenek);
-    const ddAlimlari = alimlar.filter((a) => a.bent === "22/d" && a.onayTarihi.startsWith(String(yil)) && a.asama !== "iptal");
+    const ddAlimlari = alimlar.filter((a) => a.onayTarihi.startsWith(String(yil)) && a.asama !== "iptal");
     const acik = alimlar.filter((a) => asamaGrubu(a.asama) !== "Kapalı").sort((x, y) => y.onayTarihi.localeCompare(x.onayTarihi) || y.id.localeCompare(x.id));
     const bekleyenler = acik.filter((a) => gunFarki(gun, a.sonIslem) > 10);
     const odeme = acik.filter((a) => a.asama === "odeme");
@@ -123,7 +123,6 @@ export function AnaPanel() {
                 <tr>
                   <th scope="col">Dosya</th>
                   <th scope="col">Konu</th>
-                  <th scope="col">Bent</th>
                   <th scope="col" className="sag">
                     Tutar
                   </th>
@@ -136,7 +135,6 @@ export function AnaPanel() {
                   <tr key={a.id}>
                     <td className="mono"><Link to={`/dosyalar/${a.id}`}>{a.id}</Link></td>
                     <td>{a.konu}</td>
-                    <td className="mono">{a.bent}</td>
                     <td className="mono sag">{tl(a.tutar)}</td>
                     <td>
                       <span className={`etiket etiket-${asamaGrubu(a.asama)}`}>{ASAMA_ADI[a.asama]}</span>
@@ -146,7 +144,7 @@ export function AnaPanel() {
                 ))}
                 {satirlar.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="soluk bos">
+                    <td colSpan={5} className="soluk bos">
                       Bu aşamada dosya yok.
                     </td>
                   </tr>

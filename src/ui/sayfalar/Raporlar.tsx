@@ -5,7 +5,6 @@ import { olayKaydet } from "../../data/olay";
 import type { EvrakKaydi } from "../../domain/dosya";
 import type { PiyasaArastirmasi } from "../../domain/piyasa";
 import { csvOlustur, kikBildirimleri, yilAlimlari, yillar, yillikOzet } from "../../domain/raporlar";
-import type { Bent } from "../../domain/tipler";
 import { ASAMA_ADI, asamaGrubu, bugun, tl, uzunTarih, yuzde } from "../bicim";
 import type { Veri } from "../useVeri";
 
@@ -23,7 +22,6 @@ export function Raporlar() {
   const [yil, setYil] = useState(Number(gun.slice(0, 4)));
   const [piyasalar, setPiyasalar] = useState<PiyasaArastirmasi[]>([]);
   const [evraklar, setEvraklar] = useState<Record<string, Record<string, EvrakKaydi>>>({});
-  const [bent, setBent] = useState<"Tümü" | Bent>("Tümü");
   const [arama, setArama] = useState("");
   const [uzerinde, setUzerinde] = useState<number | null>(null);
   const [mesaj, setMesaj] = useState<{ tur: "tamam" | "hata"; metin: string } | null>(null);
@@ -44,10 +42,8 @@ export function Raporlar() {
 
   const q = arama.trim().toLocaleLowerCase("tr-TR");
   const liste = yilAlimlari(alimlar, yil)
-    .filter((a) => bent === "Tümü" || a.bent === bent)
     .filter((a) => !q || `${a.id} ${a.konu} ${firmaAdi(a.tedarikciId)}`.toLocaleLowerCase("tr-TR").includes(q))
     .sort((x, y) => y.onayTarihi.localeCompare(x.onayTarihi) || y.id.localeCompare(x.id));
-  const bentSecenekleri = ["Tümü", ...ozet.bentler.map((b) => b.bent)] as ("Tümü" | Bent)[];
   const enBuyukAy = Math.max(1, ...ozet.aylik.map((a) => a.tutar));
   // Eksen dört eşit aralığa bölünür; aralık 1, 2, 2,5 ya da 5'in onluk katlarından seçilir ki etiketler yuvarlak olsun.
   const kaba = enBuyukAy / 4;
@@ -61,10 +57,10 @@ export function Raporlar() {
     setMesaj(null);
     try {
       const icerik = csvOlustur(
-        ["Dosya", "EKAP kayıt no", "Onay tarihi", "Konu", "Bent", "Tedarikçi", "Ekonomik kod", "Tutar (KDV hariç, TL)", "Aşama"],
-        liste.map((a) => [a.id, a.ekapKayitNo ?? "", uzunTarih(a.onayTarihi), a.konu, a.bent, firmaAdi(a.tedarikciId), a.ekonomikKod, a.tutar / 100, ASAMA_ADI[a.asama]]),
+        ["Dosya", "EKAP kayıt no", "Onay tarihi", "Konu", "Tedarikçi", "Ekonomik kod", "Tutar (KDV hariç, TL)", "Aşama"],
+        liste.map((a) => [a.id, a.ekapKayitNo ?? "", uzunTarih(a.onayTarihi), a.konu, firmaAdi(a.tedarikciId), a.ekonomikKod, a.tutar / 100, ASAMA_ADI[a.asama]]),
       );
-      if (await metinDosyasiKaydet(`dogrudan-temin-${yil}${bent === "Tümü" ? "" : "-" + bent.replace("/", "")}.csv`, icerik)) {
+      if (await metinDosyasiKaydet(`dogrudan-temin-${yil}.csv`, icerik)) {
         setMesaj({ tur: "tamam", metin: `${liste.length} satır Excel dosyasına aktarıldı.` });
       }
     } catch (e) {
@@ -76,8 +72,8 @@ export function Raporlar() {
     setMesaj(null);
     try {
       const icerik = csvOlustur(
-        ["Dosya", "Onay tarihi", "Konu", "Bent", "Tedarikçi", "Tutar (KDV hariç, TL)", "Son gün", "Bildirim durumu", "Bildirim tarihi"],
-        kik.map((k) => [k.alim.id, uzunTarih(k.alim.onayTarihi), k.alim.konu, k.alim.bent, firmaAdi(k.alim.tedarikciId), k.alim.tutar / 100, uzunTarih(k.sonGun), k.bildirildi ? "Bildirildi" : k.gecikti ? "Gecikti" : "Bekliyor", k.tarih ? uzunTarih(k.tarih) : ""]),
+        ["Dosya", "Onay tarihi", "Konu", "Tedarikçi", "Tutar (KDV hariç, TL)", "Son gün", "Bildirim durumu", "Bildirim tarihi"],
+        kik.map((k) => [k.alim.id, uzunTarih(k.alim.onayTarihi), k.alim.konu, firmaAdi(k.alim.tedarikciId), k.alim.tutar / 100, uzunTarih(k.sonGun), k.bildirildi ? "Bildirildi" : k.gecikti ? "Gecikti" : "Bekliyor", k.tarih ? uzunTarih(k.tarih) : ""]),
       );
       if (await metinDosyasiKaydet(`kik-bildirimleri-${yil}.csv`, icerik)) setMesaj({ tur: "tamam", metin: `${kik.length} satır Excel dosyasına aktarıldı.` });
     } catch (e) {
@@ -123,7 +119,7 @@ export function Raporlar() {
         <div className="kart">
           <span className="kart-etiket">Doğrudan temin toplamı</span>
           <span className="kart-deger">{tl(ozet.toplam)}</span>
-          <span className="kart-not">{ozet.adet} alım, tüm bentler</span>
+          <span className="kart-not">{ozet.adet} alım</span>
         </div>
         <div className="kart">
           <span className="kart-etiket">22/d harcaması</span>
@@ -192,27 +188,10 @@ export function Raporlar() {
         </section>
 
         <section className="panel yan" aria-labelledby="dagilim-baslik">
-          <h2 id="dagilim-baslik">Bente göre dağılım</h2>
-          {ozet.bentler.length === 0 && <p className="soluk kucuk">Bu yıl alım yok.</p>}
-          {ozet.bentler.map((b) => (
-            <div key={b.bent} className="kod-satiri">
-              <div className="kod-ust">
-                <span>
-                  <span className="mono kalin">{b.bent}</span> · {b.ad}
-                </span>
-                <span className="mono">{tl(b.tutar)}</span>
-              </div>
-              <div className="cubuk ince">
-                <div className="cubuk-dolu" style={{ width: `${(b.tutar / (ozet.bentler[0]?.tutar || 1)) * 100}%` }} />
-              </div>
-              <span className="soluk kucuk">
-                {b.adet} alım · {yuzde(b.pay)}
-              </span>
-            </div>
-          ))}
+          <h2 id="dagilim-baslik">Ekonomik koda göre</h2>
+          {ozet.ekonomikKodlar.length === 0 && <p className="soluk kucuk">Bu yıl alım yok.</p>}
           {ozet.ekonomikKodlar.length > 0 && (
-            <div className="sutun ust-cizgi">
-              <h3 className="kucuk-baslik">Ekonomik koda göre, 22/d</h3>
+            <div className="sutun">
               {ozet.ekonomikKodlar.map((k) => (
                 <div key={k.kod} className="kod-ust">
                   <span>
@@ -245,7 +224,6 @@ export function Raporlar() {
                 <tr>
                   <th scope="col">Dosya</th>
                   <th scope="col">Konu</th>
-                  <th scope="col">Bent</th>
                   <th scope="col" className="sag">
                     Tutar
                   </th>
@@ -261,7 +239,6 @@ export function Raporlar() {
                       <Link to={`/dosyalar/${k.alim.id}`}>{k.alim.id}</Link>
                     </td>
                     <td>{k.alim.konu}</td>
-                    <td className="mono">{k.alim.bent}</td>
                     <td className="mono sag">{tl(k.alim.tutar)}</td>
                     <td className={k.gecikti ? "mono hata-yazi" : "mono soluk"}>{uzunTarih(k.sonGun)}</td>
                     <td>
@@ -299,13 +276,6 @@ export function Raporlar() {
             </button>
           </div>
         </div>
-        <div className="filtreler liste-filtreleri" role="group" aria-label="Bente göre süz">
-          {bentSecenekleri.map((b) => (
-            <button key={b} type="button" className="filtre" aria-pressed={bent === b} onClick={() => setBent(b)}>
-              {b}
-            </button>
-          ))}
-        </div>
         <div className="tablo-kutu">
           <table>
             <thead>
@@ -313,7 +283,6 @@ export function Raporlar() {
                 <th scope="col">Dosya</th>
                 <th scope="col">Onay</th>
                 <th scope="col">Konu</th>
-                <th scope="col">Bent</th>
                 <th scope="col">Tedarikçi</th>
                 <th scope="col" className="sag">
                   Tutar
@@ -329,7 +298,6 @@ export function Raporlar() {
                   </td>
                   <td className="mono soluk">{uzunTarih(a.onayTarihi)}</td>
                   <td>{a.konu}</td>
-                  <td className="mono">{a.bent}</td>
                   <td className="soluk">{firmaAdi(a.tedarikciId) || "—"}</td>
                   <td className="mono sag">{tl(a.tutar)}</td>
                   <td>
@@ -339,7 +307,7 @@ export function Raporlar() {
               ))}
               {liste.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="soluk bos">
+                  <td colSpan={6} className="soluk bos">
                     Bu süzgeçle eşleşen alım yok.
                   </td>
                 </tr>

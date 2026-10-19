@@ -1,16 +1,7 @@
 import type { EvrakKaydi } from "./dosya";
 import { yuzdeOnDurumu, type YuzdeOnDurumu } from "./kurallar";
 import { teklifVerenler, type PiyasaArastirmasi } from "./piyasa";
-import { BENTLER } from "./sihirbaz";
-import type { Alim, Ayarlar, Bent } from "./tipler";
-
-export interface BentPayi {
-  bent: Bent;
-  ad: string;
-  adet: number;
-  tutar: number;
-  pay: number;
-}
+import type { Alim, Ayarlar } from "./tipler";
 
 export interface AylikTutar {
   ay: number;
@@ -24,7 +15,6 @@ export interface YillikOzet {
   ddToplam: number;
   ddAdet: number;
   yuzdeOn: YuzdeOnDurumu | null;
-  bentler: BentPayi[];
   aylik: AylikTutar[];
   ekonomikKodlar: { kod: string; tutar: number }[];
   ortalamaTeklif: number | null;
@@ -40,15 +30,9 @@ export function yillar(alimlar: Alim[], buYil: number): number[] {
 
 export function yillikOzet(alimlar: Alim[], yil: number, ayarlar: Ayarlar, piyasalar: PiyasaArastirmasi[]): YillikOzet {
   const yilin = yilAlimlari(alimlar, yil);
-  const dd = yilin.filter((a) => a.bent === "22/d");
+  // Uygulamaya gelen liste yalnız 22/d alımlarıdır.
+  const dd = yilin;
   const toplam = yilin.reduce((s, a) => s + a.tutar, 0);
-  const bentler = BENTLER.map((b) => {
-    const grup = yilin.filter((a) => a.bent === b.kod);
-    const tutar = grup.reduce((s, a) => s + a.tutar, 0);
-    return { bent: b.kod, ad: b.ad, adet: grup.length, tutar, pay: toplam ? tutar / toplam : 0 };
-  })
-    .filter((b) => b.adet > 0)
-    .sort((x, y) => y.tutar - x.tutar);
   const aylik = Array.from({ length: 12 }, (_, i) => {
     const ay = dd.filter((a) => Number(a.onayTarihi.slice(5, 7)) === i + 1);
     return { ay: i + 1, adet: ay.length, tutar: ay.reduce((s, a) => s + a.tutar, 0) };
@@ -64,7 +48,6 @@ export function yillikOzet(alimlar: Alim[], yil: number, ayarlar: Ayarlar, piyas
     ddToplam: dd.reduce((s, a) => s + a.tutar, 0),
     ddAdet: dd.length,
     yuzdeOn: odenek ? yuzdeOnDurumu(alimlar, yil, odenek) : null,
-    bentler,
     aylik,
     ekonomikKodlar: [...kodlar.entries()].map(([kod, tutar]) => ({ kod, tutar })).sort((x, y) => y.tutar - x.tutar),
     ortalamaTeklif: arastirmalar.length ? arastirmalar.reduce((s, p) => s + teklifVerenler(p).length, 0) / arastirmalar.length : null,

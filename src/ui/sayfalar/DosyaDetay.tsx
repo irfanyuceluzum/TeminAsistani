@@ -59,7 +59,7 @@ export function DosyaDetay() {
 
   const evraklar = evrakDurumlari(alim, detay.evraklar, detay.piyasa);
   const ilerleme = asamaIlerlemesi(alim, evraklar);
-  const sira = asamaSirasi(alim.bent);
+  const sira = asamaSirasi();
   const simdi = sira.indexOf(alim.asama);
   const kapali = alim.asama === "tamamlandi" || alim.asama === "iptal";
   const tamamSayisi = evraklar.filter((e) => e.tamam).length;
@@ -137,7 +137,7 @@ export function DosyaDetay() {
           </Link>
           <h1>{alim.konu}</h1>
           <p className="soluk">
-            <span className="mono">{alim.id}</span> · <span className="mono">{alim.bent}</span>
+            <span className="mono">{alim.id}</span> · <span className="mono">22/d</span>
             {tedarikci ? ` · ${tedarikci}` : ""} · <span className="mono">{tl(alim.tutar)} + KDV</span>
           </p>
         </div>
@@ -236,7 +236,7 @@ export function DosyaDetay() {
                     {e.sistemden ? e.not : e.tamam && e.tarih ? `${uzunTarih(e.tarih)}${e.not ? ` · ${e.not}` : ""}` : `${ASAMA_ADI[e.asama]} aşamasında`}
                   </span>
                 </span>
-                {e.sistemden && e.kod !== "ekap-kaydi" && alim.bent === "22/d" && (
+                {e.sistemden && e.kod !== "ekap-kaydi" && (
                   <Link to={`/dosyalar/${alim.id}/basamak/${eskiEkranBasamagi("piyasa")}`} className="kucuk">
                     Aç
                   </Link>

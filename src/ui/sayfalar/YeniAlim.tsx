@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
-import { BENTLER, bentBilgisi, dayanakKontrolleri, engelVarMi, tutarCoz, yeniDosyaNo } from "../../domain/sihirbaz";
+import { bentBilgisi, dayanakKontrolleri, engelVarMi, tutarCoz, yeniDosyaNo } from "../../domain/sihirbaz";
 import { basamaklariTamamla } from "../../domain/basamaklar";
-import type { Bent } from "../../domain/tipler";
+import { UYGULAMA_BENDI } from "../../domain/gorunurluk";
 import { olayKaydet } from "../../data/olay";
 import { belgeGorevlileri } from "../../domain/personel";
 import { bosArastirma, bosYazi, type PiyasaKalemi } from "../../domain/piyasa";
@@ -22,7 +22,7 @@ const EKONOMIK_KODLAR: [string, string][] = [
 ];
 
 // Sihirbaz dosyayı açar; ihtiyaç onayından ödemeye kadar diğer işler basamaklı çalışma alanında yapılır.
-const ADIMLAR = ["İhtiyaç", "Dayanak ve dosyanın açılması"];
+const ADIMLAR = ["İhtiyaç", "22/d kontrolleri ve dosyanın açılması"];
 
 interface Form {
   konu: string;
@@ -46,10 +46,11 @@ function formuDenetle(f: Form): Hatalar {
 }
 
 export function YeniAlim() {
-  const { depo, alimlar, ayarlar, limitDonemleri, yenile } = useOutletContext<Veri>();
+  const { depo, alimlar, tumAlimlar, ayarlar, limitDonemleri, yenile } = useOutletContext<Veri>();
   const navigate = useNavigate();
   const tarih = bugun();
-  const dosyaNo = yeniDosyaNo(alimlar, Number(tarih.slice(0, 4)));
+  // Numara gizli eski kayıtlar dahil bütün kayıtlardan üretilir; çakışma olmaz.
+  const dosyaNo = yeniDosyaNo(tumAlimlar, Number(tarih.slice(0, 4)));
 
   const [adim, setAdim] = useState(0);
   const [form, setForm] = useState<Form>({ konu: "", nitelik: "", tutar: "", ekonomikKod: "", kalemKodu: "", birim: "" });
@@ -57,7 +58,6 @@ export function YeniAlim() {
   const [ihtiyaclar, setIhtiyaclar] = useState<PiyasaKalemi[]>(() => [yeniKalem()]);
   const [ihtiyacHatasi, setIhtiyacHatasi] = useState("");
   const [hatalar, setHatalar] = useState<Hatalar>({});
-  const [bent, setBent] = useState<Bent>("22/d");
   // Görevliler Personel ve görevler ekranındaki atamalardan gelir; dosya için değiştirilebilir.
   const gorevli = belgeGorevlileri(ayarlar);
   const [bolmeGerekcesi, setBolmeGerekcesi] = useState("");
@@ -72,10 +72,10 @@ export function YeniAlim() {
     return [...m.entries()];
   }, [alimlar]);
   const kontroller = useMemo(
-    () => dayanakKontrolleri({ onayTarihi: tarih, tutar, ekonomikKod: form.ekonomikKod, kalemKodu: form.kalemKodu.trim(), sureliIs }, bent, alimlar, ayarlar, limitDonemleri),
-    [tarih, tutar, form.ekonomikKod, form.kalemKodu, sureliIs, bent, alimlar, ayarlar, limitDonemleri],
+    () => dayanakKontrolleri({ onayTarihi: tarih, tutar, ekonomikKod: form.ekonomikKod, kalemKodu: form.kalemKodu.trim(), sureliIs }, tumAlimlar, ayarlar, limitDonemleri),
+    [tarih, tutar, form.ekonomikKod, form.kalemKodu, sureliIs, tumAlimlar, ayarlar, limitDonemleri],
   );
-  const bilgi = bentBilgisi(bent);
+  const bilgi = bentBilgisi(UYGULAMA_BENDI);
   // Kurallardaki "benzer alım" uyarısı çıktığında bölme açıklaması istenir
   const benzerAlimVar = kontroller.some((k) => /benzer alım/i.test(k.baslik));
 
@@ -114,7 +114,7 @@ export function YeniAlim() {
         id: dosyaNo,
         onayTarihi: tarih,
         konu: form.konu.trim(),
-        bent,
+        bent: UYGULAMA_BENDI,
         tutar,
         ekonomikKod: form.ekonomikKod,
         kalemKodu: form.kalemKodu.trim().toLocaleUpperCase("tr-TR"),
@@ -139,7 +139,7 @@ export function YeniAlim() {
         ayarlar,
         dosyaNo,
         "olusturuldu",
-        `Dosya açıldı, dayanak ${bent}, ${ihtiyaclar.length} kalem, tahmini tutar ${tl(tutar)}${bolmeGerekcesi.trim() ? `; bölme açıklaması: ${bolmeGerekcesi.trim()}` : ""}`,
+        `Dosya açıldı, dayanak ${UYGULAMA_BENDI}, ${ihtiyaclar.length} kalem, tahmini tutar ${tl(tutar)}${bolmeGerekcesi.trim() ? `; bölme açıklaması: ${bolmeGerekcesi.trim()}` : ""}`,
       );
       await yenile();
       navigate(`/dosyalar/${dosyaNo}`);
@@ -250,20 +250,11 @@ export function YeniAlim() {
         <div className="iki-sutun yazdirma">
           <section className="genis sutun" aria-labelledby="bent-baslik">
             <div>
-              <h2 id="bent-baslik">Bu alım hangi bende dayanıyor?</h2>
-              <p className="soluk">Seçtiğiniz bende göre kontroller ve dosyaya girecek belgeler değişir.</p>
-            </div>
-            <div className="bent-kartlari" role="radiogroup" aria-labelledby="bent-baslik">
-              {BENTLER.map((b) => (
-                <button key={b.kod} type="button" role="radio" aria-checked={bent === b.kod} className="bent-karti" onClick={() => setBent(b.kod)}>
-                  <span className="mono bent-kod">{b.kod}</span>
-                  <span className="bent-ad">{b.ad}</span>
-                  <span className="soluk kucuk">{b.ozet}</span>
-                </button>
-              ))}
+              <h2 id="bent-baslik">22/d kontrolleri</h2>
+              <p className="soluk">Parasal limit, yıllık %10 sınırı (md. 62/ı) ve bölme yasağı (md. 5) canlı denetlenir.</p>
             </div>
             <section className="panel" aria-labelledby="belge-baslik">
-              <h2 id="belge-baslik">Dosyaya eklenecek belgeler · {bent}</h2>
+              <h2 id="belge-baslik">Dosyaya eklenecek belgeler · {UYGULAMA_BENDI}</h2>
               <ul className="belge-listesi">
                 {bilgi.belgeler.map((b) => (
                   <li key={b}>{b}</li>

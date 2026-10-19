@@ -28,7 +28,8 @@ import type { PiyasaKalemi } from "./piyasa";
 const TL = 100;
 const temizlik = ornekAlimlar.find((a) => a.id === "DT-2026-041")!;
 const temizlikPiyasa = ornekPiyasa.find((p) => p.alimId === "DT-2026-041")!;
-const lisans = ornekAlimlar.find((a) => a.id === "DT-2026-035")!;
+// Gizli eski (22/d dışı) kayıtların da 22/d kuralıyla işlendiğini sınamak için test içinde kurulur
+const lisans = { ...ornekAlimlar.find((a) => a.id === "DT-2026-035")!, bent: "22/b" as const };
 
 const kalemler: PiyasaKalemi[] = [
   { id: "a", ad: "Çamaşır suyu", miktar: 40, birim: "adet" },
@@ -118,11 +119,11 @@ describe("basamak listesi", () => {
     expect(ilerleme(b)).toEqual({ biten: 4, gerekli: 11 });
   });
 
-  it("22/d dışında tutanak gerekmez, teklif evraktan gelir", () => {
+  it("22/b bentli gizli kayıtta da 6. basamak teklif mektupları, 7. basamak gerekli", () => {
     const b = basamaklar(girdi({ alim: lisans, piyasa: null }));
     expect(b[0].durum).toBe("suruyor");
-    expect(b[5]).toMatchObject({ ad: "Firmadan fiyat teklifi", evrakKodu: "fiyat-teklifi" });
-    expect(b[6].durum).toBe("gerekmiyor");
+    expect(b[5]).toMatchObject({ ad: "Teklif mektupları", evrakKodu: "fiyat-teklifi" });
+    expect(b[6].durum).not.toBe("gerekmiyor");
   });
 
   it("sözleşme gerekiyorsa 8. basamağın adı değişir", () => {

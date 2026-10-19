@@ -233,7 +233,7 @@ function CalismaAlani({ alimId }: { alimId: string }) {
           </span>
           <h1>{alim.konu}</h1>
           <p className="cipler">
-            <span className="cip cip-vurgu">{alim.bent}</span>
+            <span className="cip cip-vurgu">22/d</span>
             <span className="cip">{piyasa.kalemler.length} kalem</span>
             <span className="cip mono">{tl(alim.tutar)} + KDV</span>
             {alim.sureliIs && <span className="cip">Süreye yayılan iş</span>}

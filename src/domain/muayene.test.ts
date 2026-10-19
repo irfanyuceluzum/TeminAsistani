@@ -31,7 +31,7 @@ describe("muayene oluşturma", () => {
   it("araştırma yoksa dosyayı tek kalem sayar", () => {
     const lisans = ornekAlimlar.find((a) => a.id === "DT-2026-035")!;
     const m = muayeneOlustur(lisans, null, "2026-10-16");
-    expect(m.kalemler).toEqual([expect.objectContaining({ ad: "Lisans yenileme", siparisMiktari: 1, birimFiyat: lisans.tutar })]);
+    expect(m.kalemler).toEqual([expect.objectContaining({ ad: lisans.konu, siparisMiktari: 1, birimFiyat: lisans.tutar })]);
   });
 });
 

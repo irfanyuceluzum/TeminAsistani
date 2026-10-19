@@ -197,7 +197,7 @@ export function yaklasikKontrolleri(
   const belgesiz = y.firmalar.filter((f) => !f.belgeAlindi).map((f) => firmaAdi(f.tedarikciId));
   if (belgesiz.length) k.push({ durum: "uyari", baslik: "Kaşeli belge işaretlenmedi", detay: `${belgesiz.join(", ")} için kaşeli fiyat belgesinin alındığını işaretleyin.` });
 
-  if (alim.bent === "22/d" && sonuc.toplam > 0) {
+  if (sonuc.toplam > 0) {
     const limit = ddLimitKontrolu(sonuc.toplam, alim.onayTarihi, ayarlar.konum, donemler);
     if (limit.durum === "asiyor") k.push({ durum: "engel", baslik: "22/d limiti aşılıyor", detay: `Yaklaşık maliyet ${tl(sonuc.toplam)}, limit ${tl(limit.limit)}.` });
     else if (limit.durum === "icinde") k.push({ durum: "tamam", baslik: "22/d limiti içinde", detay: `Limitin %${((sonuc.toplam / limit.limit) * 100).toLocaleString("tr-TR", { maximumFractionDigits: 1 })} kullanılıyor.` });
@@ -225,7 +225,7 @@ export interface Basamak {
   ad: string;
   grup: string;
   durum: BasamakDurumu;
-  // Durum açıklaması: "Tamamlandı", "Gerekmiyor · 22/d dışı" gibi
+  // Durum açıklaması: "Tamamlandı", "Gerekmiyor · Tebliğ m.4/4" gibi
   not: string;
   // Elle işaretlenen evrak basamağıysa evrak kodu
   evrakKodu?: string;
@@ -242,7 +242,6 @@ export function kalemlerHazir(kalemler: PiyasaKalemi[]): boolean {
 
 export function basamaklar(g: BasamakGirdisi): Basamak[] {
   const { alim, piyasa, dosya, evraklar } = g;
-  const dd = alim.bent === "22/d";
   const evrak = (kod: string) => !!evraklar[kod]?.tamam;
   const kalemler = piyasa?.kalemler ?? [];
   const yaklasikYok = dosya.yaklasik.hesaplanmayacak;
@@ -272,10 +271,8 @@ export function basamaklar(g: BasamakGirdisi): Basamak[] {
       gerekmez: yaklasikYok ? "Tebliğ m.4/4" : undefined,
     },
     { no: 5, ad: "Onay belgesi", grup: "Fiyat ve onay", tamam: evrak("onay-belgesi"), evrakKodu: "onay-belgesi" },
-    dd
-      ? { no: 6, ad: "Teklif mektupları", grup: "Fiyat ve onay", tamam: !!piyasa?.teklifler.some((t) => t.belgeAlindi) || evrak("fiyat-teklifi"), evrakKodu: "fiyat-teklifi" }
-      : { no: 6, ad: "Firmadan fiyat teklifi", grup: "Fiyat ve onay", tamam: evrak("fiyat-teklifi"), evrakKodu: "fiyat-teklifi" },
-    { no: 7, ad: "Piyasa fiyat araştırma tutanağı", grup: "Fiyat ve onay", tamam: !!piyasa?.tamamlandi || evrak("piyasa-tutanagi"), evrakKodu: "piyasa-tutanagi", gerekmez: dd ? undefined : "22/d dışı" },
+    { no: 6, ad: "Teklif mektupları", grup: "Fiyat ve onay", tamam: !!piyasa?.teklifler.some((t) => t.belgeAlindi) || evrak("fiyat-teklifi"), evrakKodu: "fiyat-teklifi" },
+    { no: 7, ad: "Piyasa fiyat araştırma tutanağı", grup: "Fiyat ve onay", tamam: !!piyasa?.tamamlandi || evrak("piyasa-tutanagi"), evrakKodu: "piyasa-tutanagi" },
     {
       no: 8,
       ad: sozlesmeZorunlu(alim) ? "Sözleşme" : "Sipariş yazısı",
@@ -342,7 +339,7 @@ export function veriKontrolleri(kalemler: PiyasaKalemi[], d: DosyaBasamaklari, a
   }
   k.push(
     sozlesmeZorunlu(alim)
-      ? { durum: "uyari", baslik: "Sözleşme gerekli", detay: "Süreye yayılan işlerde ve 22/c'de sözleşme yapılır (Tebliğ m.4/5). 8. basamak sözleşme olur." }
+      ? { durum: "uyari", baslik: "Sözleşme gerekli", detay: "Süreye yayılan işlerde sözleşme yapılır (Tebliğ m.4/5). 8. basamak sözleşme olur." }
       : { durum: "tamam", baslik: "Sözleşme gerekmiyor", detay: "Tek seferde teslim; 8. basamakta sipariş yazısı yeterlidir." },
   );
   const bosSart = SARTLAR.filter((s) => !d.sartlar[s.kod].trim()).length;

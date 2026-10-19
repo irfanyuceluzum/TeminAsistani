@@ -19,8 +19,7 @@ export function PiyasaTutanagiBasamagi({ b }: { b: BasamakBaglami }) {
   const [onizle, setOnizle] = useState(false);
   const [mesaj, setMesaj] = useState("");
   const [form, setForm] = useState(() => evrakFormu(b.evraklar["piyasa-tutanagi"], bugun()));
-  const dd = alim.bent === "22/d";
-  const sorgusuz = dd ? yasaklilikEksikleri(piyasa) : [];
+  const sorgusuz = yasaklilikEksikleri(piyasa);
 
   const firmaAdi = (id: string) => tedarikciler.find((t) => t.id === id)?.ad || "Bilinmeyen Firma";
 
@@ -68,7 +67,7 @@ export function PiyasaTutanagiBasamagi({ b }: { b: BasamakBaglami }) {
     }
 
     // Doğrudan Temin Tebliği m.4/8: 22/d'de seçilen firmanın yasaklı olmadığı EKAP'tan sorgulanır.
-    if (dd && sonuc && sonuc.kazananlar.length > 0) {
+    if (sonuc && sonuc.kazananlar.length > 0) {
       k.push(
         sorgusuz.length
           ? {
@@ -101,7 +100,7 @@ export function PiyasaTutanagiBasamagi({ b }: { b: BasamakBaglami }) {
     if (coklu) k.push(coklu);
 
     return k;
-  }, [sonuc, piyasa, ayarlar.gorevler, tedarikciler, dd, sorgusuz.join(), form.tarih, piyasa.yazi?.sonTeklifTarihi]);
+  }, [sonuc, piyasa, ayarlar.gorevler, tedarikciler, sorgusuz.join(), form.tarih, piyasa.yazi?.sonTeklifTarihi]);
 
   const engelVar = kontroller.some((k) => k.durum === "engel");
 
@@ -205,7 +204,7 @@ export function PiyasaTutanagiBasamagi({ b }: { b: BasamakBaglami }) {
             </div>
           </div>
 
-          {dd && sonuc && sonuc.kazananlar.length > 0 && (
+          {sonuc && sonuc.kazananlar.length > 0 && (
             <fieldset className="secim-grubu" style={{ marginTop: "12px" }}>
               <legend>EKAP yasaklılık sorgusu (Doğrudan Temin Tebliği m.4/8)</legend>
               {sonuc.kazananlar.map((id) => {

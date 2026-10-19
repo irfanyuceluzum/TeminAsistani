@@ -230,11 +230,9 @@ export function piyasaKontrolleri(
       : { durum: "tamam", baslik: "Yasaklılık sorgusu", detay: "Seçilen firmaların sorgusu yapıldı." },
   );
 
-  if (alim.bent === "22/d") {
-    const limit = ddLimitKontrolu(sonuc.toplam, alim.onayTarihi, ayarlar.konum, donemler);
-    if (limit.durum === "asiyor") {
-      k.push({ durum: "engel", baslik: "22/d limiti aşılıyor", detay: `Sonuç ${tl(sonuc.toplam)}, limit ${tl(limit.limit)}.` });
-    }
+  const limit = ddLimitKontrolu(sonuc.toplam, alim.onayTarihi, ayarlar.konum, donemler);
+  if (limit.durum === "asiyor") {
+    k.push({ durum: "engel", baslik: "22/d limiti aşılıyor", detay: `Sonuç ${tl(sonuc.toplam)}, limit ${tl(limit.limit)}.` });
   }
 
   if (sonuc.toplam > alim.tutar) {

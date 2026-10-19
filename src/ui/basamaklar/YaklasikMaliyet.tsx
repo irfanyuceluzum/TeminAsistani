@@ -216,12 +216,10 @@ export function YaklasikMaliyetBasamagi({ b }: { b: BasamakBaglami }) {
           <KontrolSatiri key={k.baslik} k={k} />
         ))}
 
-        {alim.bent === "22/d" && (
-          <label className="onay-kutusu kucuk">
-            <input type="checkbox" checked={false} onChange={() => maliyetDegistir({ hesaplanmayacak: true, onaylandi: false })} />
-            Bu dosyada yaklaşık maliyet hesaplanmayacak (Tebliğ m.4/4)
-          </label>
-        )}
+        <label className="onay-kutusu kucuk">
+          <input type="checkbox" checked={false} onChange={() => maliyetDegistir({ hesaplanmayacak: true, onaylandi: false })} />
+          Bu dosyada yaklaşık maliyet hesaplanmayacak (Tebliğ m.4/4)
+        </label>
       </section>
 
       {onizleme && (

@@ -1,6 +1,6 @@
 import { degerlendir, yasaklilikEksikleri, type PiyasaArastirmasi } from "./piyasa";
-import { bentBilgisi, sozlesmeZorunlu } from "./sihirbaz";
-import type { Alim, Asama, Bent } from "./tipler";
+import { sozlesmeZorunlu } from "./sihirbaz";
+import type { Alim, Asama } from "./tipler";
 
 export interface Olay {
   id?: number;
@@ -32,12 +32,9 @@ export interface EvrakDurumu extends EvrakTanimi {
   tarih: string | null;
 }
 
-// 22/d dışındaki bentlerde piyasa araştırması yerine dayanak belgesi ve tek teklif vardır.
-export function asamaSirasi(bent: Bent): Asama[] {
-  const ortak: Asama[] = ["ihtiyac", "dayanak", "onay"];
-  return bent === "22/d"
-    ? [...ortak, "piyasa", "siparis", "muayene", "odeme", "tamamlandi"]
-    : [...ortak, "siparis", "muayene", "odeme", "tamamlandi"];
+// Uygulama yalnız 22/d içindir; aşama sırası tektir.
+export function asamaSirasi(): Asama[] {
+  return ["ihtiyac", "dayanak", "onay", "piyasa", "siparis", "muayene", "odeme", "tamamlandi"];
 }
 
 // Süreç çizelgesinin aşama tarihleri; basamaklı dosyanın evrak tarihlerinden türetilir (YYYY-AA-GG).
@@ -46,7 +43,7 @@ export function asamaTarihleri(alim: Alim, evraklar: Record<string, EvrakKaydi>)
     const t = evraklar[kod]?.tarih;
     return t ? t.slice(0, 10) : undefined;
   };
-  const sira = asamaSirasi(alim.bent);
+  const sira = asamaSirasi();
   const aday: Partial<Record<Asama, string | undefined>> = {
     ihtiyac: gun("ihtiyac-yazisi") ?? alim.onayTarihi,
     dayanak: alim.onayTarihi,
@@ -76,14 +73,9 @@ export function evrakListesi(alim: Alim): EvrakTanimi[] {
     // Doğrudan Temin Tebliği m.5/1: alım EKAP'a kaydedilir; numara dosya bilgilerinden girilir.
     e("ekap-kaydi", "EKAP doğrudan temin kaydı", "onay", true),
   ];
-  if (alim.bent === "22/d") {
-    liste.push(e("piyasa-tutanagi", "Piyasa fiyat araştırması tutanağı ve teklifler", "piyasa", true));
-    liste.push(e("yasaklilik", "Yasaklılık sorgusu çıktıları", "piyasa", true));
-  } else {
-    liste.push(e("dayanak-belgesi", bentBilgisi(alim.bent).belgeler[0], "onay"));
-    liste.push(e("fiyat-teklifi", "Firmadan fiyat teklifi", "onay"));
-  }
   liste.push(
+    e("piyasa-tutanagi", "Piyasa fiyat araştırması tutanağı ve teklifler", "piyasa", true),
+    e("yasaklilik", "Yasaklılık sorgusu çıktıları", "piyasa", true),
     e("siparis-yazisi", sozlesmeZorunlu(alim) ? "Sözleşme" : "Sipariş yazısı veya sözleşme", "siparis"),
     e("fatura", "Fatura", "muayene"),
     e("muayene-tutanagi", "Muayene ve kabul tutanağı", "muayene"),
@@ -132,7 +124,7 @@ export interface IlerlemeDurumu {
 }
 
 export function asamaIlerlemesi(alim: Alim, evraklar: EvrakDurumu[]): IlerlemeDurumu {
-  const sira = asamaSirasi(alim.bent);
+  const sira = asamaSirasi();
   const i = sira.indexOf(alim.asama);
   if (alim.asama === "iptal" || i === -1 || i === sira.length - 1) return { sonraki: null, eksikler: [], ekran: null };
   const sonraki = sira[i + 1];

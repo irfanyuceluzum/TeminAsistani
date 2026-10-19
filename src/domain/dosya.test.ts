@@ -7,9 +7,8 @@ const alim = (id: string, d: Partial<Alim> = {}): Alim => ({ ...ornekAlimlar.fin
 const tamam = (tarih = "2026-10-01") => ({ tamam: true, tarih, not: "" });
 
 describe("aşama sırası", () => {
-  it("22/d'de piyasa araştırması vardır, diğerlerinde yoktur", () => {
-    expect(asamaSirasi("22/d")).toContain("piyasa");
-    expect(asamaSirasi("22/b")).not.toContain("piyasa");
+  it("tek sıra vardır ve piyasa araştırmasını içerir", () => {
+    expect(asamaSirasi()).toEqual(["ihtiyac", "dayanak", "onay", "piyasa", "siparis", "muayene", "odeme", "tamamlandi"]);
   });
 });
 
@@ -20,11 +19,14 @@ describe("evrak listesi", () => {
     expect(l.some((e) => e.kod === "kik-bildirimi")).toBe(true);
   });
 
-  it("22/b için dayanak belgesi ve KİK bildirimi ister", () => {
-    const kodlar = evrakListesi(alim("DT-2026-035")).map((e) => e.kod);
-    expect(kodlar).toContain("dayanak-belgesi");
-    expect(kodlar).toContain("kik-bildirimi");
-    expect(kodlar).not.toContain("piyasa-tutanagi");
+  it("hangi bent kayıtlı olursa olsun 22/d evrakını üretir", () => {
+    for (const bent of ["22/b", "22/c", "22/e"] as const) {
+      const kodlar = evrakListesi(alim("DT-2026-035", { bent })).map((e) => e.kod);
+      expect(kodlar).toContain("piyasa-tutanagi");
+      expect(kodlar).toContain("yasaklilik");
+      expect(kodlar).toContain("kik-bildirimi");
+      expect(kodlar).not.toContain("dayanak-belgesi");
+    }
   });
 
   it("piyasa evrakını araştırmanın tamamlanmasından çıkarır", () => {
@@ -99,9 +101,10 @@ describe("aşama ilerlemesi", () => {
   });
 
   it("evraklar tamamsa sonraki aşamayı verir", () => {
-    const a = alim("DT-2026-035", { ekapKayitNo: "2026/123456" });
+    const a = alim("DT-2026-041", { asama: "odeme", ekapKayitNo: "2026/123456" });
     const kayit = Object.fromEntries(evrakListesi(a).map((e) => [e.kod, tamam()]));
-    expect(asamaIlerlemesi(a, evrakDurumlari(a, kayit, null))).toEqual({ sonraki: "tamamlandi", eksikler: [], ekran: null });
+    const p = { ...structuredClone(ornekPiyasa[0]), tamamlandi: true };
+    expect(asamaIlerlemesi(a, evrakDurumlari(a, kayit, p))).toEqual({ sonraki: "tamamlandi", eksikler: [], ekran: null });
   });
 
   it("22/d onay aşamasında piyasa ekranına yönlendirir", () => {
@@ -133,17 +136,18 @@ describe("EKAP kaydı ve sözleşme", () => {
     expect(dolu).toMatchObject({ tamam: true, not: "No 2026/123456" });
   });
 
-  it("EKAP kaydı yoksa onaydan siparişe geçirmez", () => {
-    const a = alim("DT-2026-035", { asama: "onay" });
+  it("EKAP kaydı yoksa sipariş aşamasından ilerletmez", () => {
+    const a = alim("DT-2026-041", { asama: "siparis", ekapKayitNo: undefined });
     const kayit = Object.fromEntries(evrakListesi(a).map((e) => [e.kod, tamam()]));
-    expect(asamaIlerlemesi(a, evrakDurumlari(a, kayit, null)).eksikler).toEqual(["EKAP doğrudan temin kaydı"]);
+    const p = { ...structuredClone(ornekPiyasa[0]), tamamlandi: true };
+    expect(asamaIlerlemesi(a, evrakDurumlari(a, kayit, p)).eksikler).toEqual(["EKAP doğrudan temin kaydı"]);
   });
 
   it("sözleşme zorunlu dosyada evrak adı sözleşmedir", () => {
     const ad = (a: Alim) => evrakListesi(a).find((e) => e.kod === "siparis-yazisi")!.ad;
     expect(ad(alim("DT-2026-039"))).toBe("Sipariş yazısı veya sözleşme");
     expect(ad(alim("DT-2026-039", { sureliIs: true }))).toBe("Sözleşme");
-    expect(ad(alim("DT-2026-038"))).toBe("Sözleşme");
+    expect(ad(alim("DT-2026-038", { bent: "22/c" }))).toBe("Sipariş yazısı veya sözleşme");
   });
 });
 
@@ -173,9 +177,9 @@ describe("aşama tarihleri", () => {
     });
   });
 
-  it("22/b dosyada piyasa anahtarı üretilmez", () => {
-    const t = asamaTarihleri(alim("DT-2026-035"), tum);
-    expect("piyasa" in t).toBe(false);
+  it("22/b bentli gizli kayıtta da 22/d kuralıyla piyasa tarihi üretilir", () => {
+    const t = asamaTarihleri(alim("DT-2026-035", { bent: "22/b" }), tum);
+    expect(t.piyasa).toBe("2026-09-05");
   });
 
   it("ihtiyaç yazısı yokken açılış gününe düşer", () => {

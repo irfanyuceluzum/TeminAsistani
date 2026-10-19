@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { SARTLAR, veriKontrolleri, type SartKodu } from "../../domain/basamaklar";
 import { butceTertibi } from "../../domain/parametreler";
-import { bentBilgisi, tutarCoz } from "../../domain/sihirbaz";
+import { tutarCoz } from "../../domain/sihirbaz";
 import { tlKurus, uzunTarih } from "../bicim";
 import { IhtiyacListesiDuzenleyici } from "../IhtiyacListesi";
 import { KontrolSatiri } from "../KontrolSatiri";
@@ -34,7 +34,7 @@ export function VeriGirisi({ b }: { b: BasamakBaglami }) {
           <div>
             <dt>Dayanak</dt>
             <dd>
-              <span className="mono">{alim.bent}</span> · {bentBilgisi(alim.bent).ad}
+              <span className="mono">4734 md. 22/d</span> · Parasal limit içi
             </dd>
           </div>
           <div>
