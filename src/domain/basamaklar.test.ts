@@ -209,7 +209,10 @@ describe("kayıt ve kontroller", () => {
   it("ekonomik koda göre işin türünü doğru tespit eder", () => {
     expect(isinTuruBul("03.2.1.01")).toBe("Mal Alımı");
     expect(isinTuruBul("03.5.5.01")).toBe("Hizmet Alımı");
-    expect(isinTuruBul("06.1.1.01")).toBe("Yapım İşi");
+    // 06.1 mamul mal alımıdır; Yapım İşi değil
+    expect(isinTuruBul("06.1.2.01")).toBe("Mal Alımı");
+    expect(isinTuruBul("06.5.1.01")).toBe("Yapım İşi");
+    expect(isinTuruBul("06.7.1.01")).toBe("Yapım İşi");
   });
 });
 

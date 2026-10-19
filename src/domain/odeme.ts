@@ -1,4 +1,4 @@
-import { damgaVergisi, type DamgaSonucu } from "./kurallar";
+import { damgaVergisi, malAlimiMi, type DamgaSonucu } from "./kurallar";
 import type { EvrakDurumu } from "./dosya";
 import { muayeneOzeti, type Muayene } from "./muayene";
 import { sozlesmeZorunlu, type Kontrol } from "./sihirbaz";
@@ -11,13 +11,14 @@ export interface TevkifatTuru {
   payda: number;
 }
 
-// KDV GUT I/C-2.1.3.2 oranları; doğrulama durumu docs/mevzuat-varsayimlari.md. İleride Parametreler'den yönetilecek.
+// KDV GUT I/C-2.1.3.2 hizmet oranları ve I/C-2.1.3.3.7 "diğer teslimler" (mal teslimi 2/10); doğrulama durumu docs/mevzuat-varsayimlari.md. İleride Parametreler'den yönetilecek.
 export const TEVKIFAT_TURLERI: TevkifatTuru[] = [
   { kod: "yok", ad: "Tevkifat yok", pay: 0, payda: 10 },
   { kod: "bakim-onarim", ad: "Makine, teçhizat, demirbaş ve taşıt bakım onarımı", pay: 7, payda: 10 },
   { kod: "temizlik", ad: "Temizlik, çevre ve bahçe bakım hizmetleri", pay: 9, payda: 10 },
   { kod: "yemek", ad: "Yemek servis ve organizasyon hizmetleri", pay: 5, payda: 10 },
   { kod: "personel", ad: "İşgücü temin hizmetleri", pay: 9, payda: 10 },
+  { kod: "mal-teslimi", ad: "Mal teslimleri (belirlenmiş alıcılara diğer teslimler)", pay: 2, payda: 10 },
 ];
 
 export type SorguDurumu = "yapilmadi" | "borcsuz" | "borclu" | "gerekmiyor";
@@ -61,11 +62,18 @@ const VARSAYILAN_VERGI_SORGU_ESIGI = 5_000 * 100;
 
 const bosSorgu =(): BorcSorgusu => ({ durum: "yapilmadi", tarih: "", belgeNo: "", borc: 0 });
 
+// Yeni ödeme kaydının varsayılan tevkifat türü; kullanıcı ödeme basamağında değiştirebilir.
+function varsayilanTevkifat(ekonomikKod: string): string {
+  if (ekonomikKod.startsWith("03.7")) return "bakim-onarim";
+  if (malAlimiMi(ekonomikKod)) return "mal-teslimi";
+  return "yok";
+}
+
 export function odemeOlustur(alim: Alim): Odeme {
   return {
     alimId: alim.id,
     kdvOrani: 20,
-    tevkifatTuru: alim.ekonomikKod.startsWith("03.7") ? "bakim-onarim" : "yok",
+    tevkifatTuru: varsayilanTevkifat(alim.ekonomikKod),
     sozlesmeVar: sozlesmeZorunlu(alim),
     komisyonKarariVar: false,
     vergiSorgusu: bosSorgu(),

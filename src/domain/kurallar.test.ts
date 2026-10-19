@@ -5,6 +5,7 @@ import {
   damgaVergisi,
   ddLimitKontrolu,
   limitDonemiBul,
+  malAlimiMi,
   yuzdeOnDurumu,
 } from "./kurallar";
 import type { Alim, BolmeKurallari, DamgaAyarlari, LimitDonemi } from "./tipler";
@@ -33,6 +34,20 @@ function alim(p: Partial<Alim>): Alim {
 }
 
 const kurallar: BolmeKurallari = { pencereGun: 60, ayniEkonomikKod: false, ayniKalem: true, ayniTedarikci: false };
+
+describe("mal alımı tanıma", () => {
+  it("03.2 ve 06.1 kodlarını mal alımı sayar", () => {
+    expect(malAlimiMi("03.2.2.01")).toBe(true);
+    expect(malAlimiMi("03.2.1.01")).toBe(true);
+    expect(malAlimiMi("06.1.2.01")).toBe(true);
+  });
+
+  it("hizmet ve yapım kodlarını mal alımı saymaz", () => {
+    expect(malAlimiMi("03.5.5.01")).toBe(false);
+    expect(malAlimiMi("03.7.1.02")).toBe(false);
+    expect(malAlimiMi("06.5.1.01")).toBe(false);
+  });
+});
 
 describe("limit dönemi", () => {
   it("ocak ayındaki alımda önceki dönemin limitini seçer", () => {

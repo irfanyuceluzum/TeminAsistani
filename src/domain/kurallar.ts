@@ -8,6 +8,12 @@ import type {
 
 const SAYILMAYAN_ASAMALAR = new Set(["iptal"]);
 
+// Mal alımı ekonomik kodları: 03.2 (tüketime yönelik mal ve malzeme alımları) ve 06.1 (mamul mal alımları).
+// Tevkifat varsayılanı ve işin türü sınıflandırması bu tek işlevi kullanır.
+export function malAlimiMi(ekonomikKod: string): boolean {
+  return ekonomikKod.startsWith("03.2") || ekonomikKod.startsWith("06.1");
+}
+
 function gunFarki(a: string, b: string): number {
   const ms = Date.parse(a + "T00:00:00Z") - Date.parse(b + "T00:00:00Z");
   return Math.round(ms / 86_400_000);

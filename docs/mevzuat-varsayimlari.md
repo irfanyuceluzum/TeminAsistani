@@ -23,7 +23,7 @@ Durum anlamları:
 | 8 | Yasaklılık kontrolü | Yalnızca 22/d'de zorunlu; seçilen firmanın sorgu tarihi girilmeden tutanak onaylanmaz; evrak listesi tutanağın onayından değil sorgu tarihinden hesaplanır | Doğrudan Temin Tebliği m.4/8 (RG 11.07.2023 değişikliği metnine göre yalnız 22/d) | Doğrulandı | `piyasa.ts` `yasaklilikEksikleri`, `dosya.ts` `evrakDurumlari`, 7. basamak (`PiyasaTutanagi.tsx`) |
 | 9 | Yaklaşık maliyet | Onay belgesinde isteğe bağlı | Tebliğ m.4/4 (yapım işlerinde zorunlu) | Doğrulandı | 4. basamak (`YaklasikMaliyet.tsx`, `basamaklar.ts` `yaklasikHesapla`) |
 | 10 | Sözleşme zorunluluğu | 22/c'de ve "süreye yayılan iş" işaretli dosyalarda sözleşme istenir: dayanak kontrolünde hatırlatılır, evrak adı "Sözleşme" olur, ödeme ekranı sözleşmeyi varsayılan yapar ve yoksa uyarır | Tebliğ m.4/5 | Doğrulandı, uygulandı | `sihirbaz.ts` `sozlesmeZorunlu` |
-| 11 | KDV tevkifat oranları | Bakım onarım 7/10, temizlik 9/10, yemek 5/10, işgücü 9/10 | KDV GUT I/C-2.1.3.2.3, .10, .4, .5 (Seri No: 35 değişikliği, 2021) | İkincil kaynak | `odeme.ts` `TEVKIFAT_TURLERI` |
+| 11 | KDV tevkifat oranları | Bakım onarım 7/10, temizlik 9/10, yemek 5/10, işgücü 9/10, mal teslimi 2/10 | KDV GUT I/C-2.1.3.2.3, .10, .4, .5 (Seri No: 35 değişikliği, 2021); mal teslimi için KDV GUT I/C-2.1.3.3.7 | İkincil kaynak; mal teslimi 2/10: idarenin uygulaması, kullanıcı teyidi (19.10.2026); birincil metin açılamadı | `odeme.ts` `TEVKIFAT_TURLERI`, `odemeOlustur` |
 | 12 | Tevkifat sınırı | KDV dahil bedel sınırı aşarsa tevkifat; varsayılan ₺12.000 (2026) | Fatura düzenleme sınırı; 2025'te ₺9.900 | İkincil kaynak | `odeme.ts` `odemeHesabi`, Parametreler |
 | 13 | Sözleşme damga vergisi | Binde 9,48, yalnızca sözleşme varsa | 488 sayılı Kanun, 1 sayılı tablo I | Doğrulandı | `kurallar.ts` `damgaVergisi` |
 | 14 | Makbuz damga vergisi | Binde 9,48, her ödemede, KDV hariç bedele | 1 sayılı tablo IV: resmi dairelerin mal ve hizmet alımı ödemelerinde verilen makbuzlar | Doğrulandı (GİB tablosu, Ekim 2025) | `kurallar.ts` `damgaVergisi` |
@@ -57,7 +57,6 @@ Durum anlamları:
 
 ## Açık işler
 
-- **Mal alımlarında tevkifat:** Kamu idarelerinin (okul müdürlükleri dahil) MAL alımlarında KDV Genel Uygulama Tebliği I/C-2.1.3.3.7 "diğer teslimler" kapsamında 2/10 tevkifat uygulanıp uygulanmadığı birincil metinden doğrulanmadı; kodda mal teslimi için tevkifat türü yok.
 - **Hizmet tevkifat oranları:** Oranların (7/10, 9/10, 5/10, 9/10) güncel konsolide metinle teyidi.
 - **Yetkililerin görevi:** Yetkililerin piyasa araştırması/muayene komisyonunda yer alamayacağı kuralının dayanağı.
 - **Vergi borcu eşiği:** Eşiğin KDV dahil/hariç uygulanışı muhasebe biriminden teyit edilmeli.
@@ -70,6 +69,10 @@ Durum anlamları:
 - 22/f, g, h, ı ve i bentleri eklendi. `alimlar` tablosu yeniden kuruldu (şema göçü 7). Göç, masaüstü veritabanının bir kopyasında yabancı anahtarlar açıkken denendi.
 - EKAP doğrudan temin kayıt numarası alanı eklendi.
 - Süreye yayılan işlerde sözleşme zorunluluğu uygulandı.
+
+### Kapatılanlar (19.10.2026)
+
+- **Mal alımlarında tevkifat:** Kamu idaresi mal alımlarında KDV GUT I/C-2.1.3.3.7 "diğer teslimler" 2/10 tevkifatı, kullanıcı teyidiyle uygulandı; birincil metin teyidi açık.
 
 ## Kaynaklar
 

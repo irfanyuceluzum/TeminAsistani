@@ -234,3 +234,38 @@ describe("KBS alanları", () => {
     expect(kbsAlanlari(klima, h, ad, "x")[4].deger).toBe("0,00");
   });
 });
+
+describe("mal teslimi tevkifatı (2/10)", () => {
+  const alimKodu = (ekonomikKod: string) => ({ ...klima, ekonomikKod });
+
+  it("varsayılan tevkifat türünü ekonomik koda göre seçer", () => {
+    expect(odemeOlustur(alimKodu("03.7.1.02")).tevkifatTuru).toBe("bakim-onarim");
+    expect(odemeOlustur(alimKodu("03.2.2.01")).tevkifatTuru).toBe("mal-teslimi");
+    expect(odemeOlustur(alimKodu("06.1.2.01")).tevkifatTuru).toBe("mal-teslimi");
+    expect(odemeOlustur(alimKodu("03.5.5.01")).tevkifatTuru).toBe("yok");
+  });
+
+  it("sınırı aşan alımda KDV'nin 2/10'unu keser, kuruşu yuvarlar", () => {
+    const o = odeme({ tevkifatTuru: "mal-teslimi" });
+    const h = odemeHesabi(15_000 * TL, o, ornekAyarlar);
+    expect(h.tevkifatUygulandi).toBe(true);
+    expect(h.tevkifat).toBe(600 * TL);
+    // KDV 2.000.11 TL (200011 kuruş) -> 2/10 = 40002,2 -> 40002 kuruş
+    const k = odemeHesabi(1_000_055, o, ornekAyarlar);
+    expect(k.kdv).toBe(200_011);
+    expect(k.tevkifat).toBe(40_002);
+  });
+
+  it("KDV dahil bedel sınırı aşmıyorsa tevkifat uygulamaz", () => {
+    const h = odemeHesabi(9_000 * TL, odeme({ tevkifatTuru: "mal-teslimi" }), ornekAyarlar);
+    expect(h.tevkifatUygulandi).toBe(false);
+    expect(h.tevkifat).toBe(0);
+  });
+
+  it("ödeme emri belgesinde 2/10 satırı çıkar", () => {
+    const o = odeme({ tevkifatTuru: "mal-teslimi" });
+    const h = odemeHesabi(15_000 * TL, o, ornekAyarlar);
+    const s = oebSatirlari(h, o, ornekAyarlar);
+    expect(s.find((x) => x.aciklama === "KDV tevkifatı (2/10)")).toEqual({ aciklama: "KDV tevkifatı (2/10)", borc: null, alacak: 600 * TL });
+  });
+});

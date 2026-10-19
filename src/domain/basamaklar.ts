@@ -1,5 +1,5 @@
 import type { EvrakKaydi } from "./dosya";
-import { ddLimitKontrolu } from "./kurallar";
+import { ddLimitKontrolu, malAlimiMi } from "./kurallar";
 import type { Muayene } from "./muayene";
 import { kikSonGunu } from "./raporlar";
 import type { Odeme } from "./odeme";
@@ -378,8 +378,9 @@ export function ihtiyacOnayiKontrolleri(d: DosyaBasamaklari, imzacilarVar: boole
 }
 
 export function isinTuruBul(ekonomikKod: string): string {
-  if (ekonomikKod.startsWith("03.2")) return "Mal Alımı";
+  if (malAlimiMi(ekonomikKod)) return "Mal Alımı";
   if (ekonomikKod.startsWith("03.5") || ekonomikKod.startsWith("03.7") || ekonomikKod.startsWith("03.8")) return "Hizmet Alımı";
+  // 06.1 yukarıda mal sayıldı; 06.5 (gayrimenkul sermaye üretimi) ve 06.7 (büyük onarım) dahil kalan 06'lar Yapım İşi
   if (ekonomikKod.startsWith("06")) return "Yapım İşi";
   return "Mal Alımı";
 }
