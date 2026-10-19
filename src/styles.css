@@ -696,5 +696,10 @@ th:last-child, td:last-child { padding-right: 20px; }
   gap: 2pt;
 }
 
+/* İhtiyaç listesi: Excel'den aktarma bölümü */
+.aktar-bolumu { display: flex; flex-direction: column; gap: 12px; padding: 16px; border: 1px solid var(--cizgi); border-radius: 12px; background: #fbfcfd; }
+.aktar-bolumu .alan textarea { width: 100%; font-family: inherit; }
+.aktar-bolumu .tablo-kutu { border: 1px solid var(--cizgi-acik); border-radius: 8px; }
+
 
 
