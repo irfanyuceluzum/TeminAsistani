@@ -9,7 +9,7 @@ import type { Kontrol } from "../../domain/sihirbaz";
 import { evrakFormu, evrakKaydiYap } from "../../domain/basamaklar";
 import { bugun } from "../bicim";
 import { BOS_GOREVLER, belgeGorevlileri } from "../../domain/personel";
-import { dosyaKomisyonuKontrolleri, kabulSonucu, muayeneKalemKontrolleri, muayeneOlustur, muayeneSonrasiDosya, type KomisyonUyesi, type Muayene } from "../../domain/muayene";
+import { dosyaKomisyonuKontrolleri, kabulSonucu, muayeneKalemKontrolleri, muayeneOlustur, muayeneSonrasiDosya, teslimSiparisKontrolu, type KomisyonUyesi, type Muayene } from "../../domain/muayene";
 
 export function MuayeneBasamagi({ b }: { b: BasamakBaglami }) {
   const navigate = useNavigate();
@@ -70,10 +70,8 @@ export function MuayeneBasamagi({ b }: { b: BasamakBaglami }) {
       k.push(...dosyaKomisyonuKontrolleri(aktifMuayene.uyeler, ayarlar.personel ?? [], g ?? BOS_GOREVLER));
 
       k.push(...muayeneKalemKontrolleri(aktifMuayene));
-      const siparis = b.evraklar["siparis-yazisi"]?.tarih?.slice(0, 10);
-      if (siparis && teslimTarihi < siparis) {
-        k.push({ durum: "engel", baslik: "Teslim siparişten önce", detay: `Teslim tarihi sipariş yazısının tarihinden (${siparis.split("-").reverse().join(".")}) önce olamaz.` });
-      }
+      const teslim = teslimSiparisKontrolu(teslimTarihi, b.evraklar["siparis-yazisi"]?.tarih);
+      if (teslim) k.push(teslim);
     }
 
     return k;

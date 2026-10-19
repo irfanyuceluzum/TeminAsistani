@@ -132,6 +132,18 @@ export function muayeneKalemKontrolleri(m: Muayene): Kontrol[] {
   return k;
 }
 
+// Teslim, sipariş yazısından önce olamaz. Boş teslim tarihi engel değil, girilmesi gereken bilgidir
+// (boş metin karşılaştırmada her tarihten küçük sayıldığı için ayrıca ele alınır).
+export function teslimSiparisKontrolu(teslimTarihi: string | null | undefined, siparisTarihi: string | null | undefined): Kontrol | null {
+  const teslim = teslimTarihi?.slice(0, 10) ?? "";
+  if (!teslim) return { durum: "yapilacak", baslik: "Teslim tarihi girilmedi", detay: "Malın teslim edildiği tarihi girin; tutanağa yazılır." };
+  const siparis = siparisTarihi?.slice(0, 10);
+  if (siparis && teslim < siparis) {
+    return { durum: "engel", baslik: "Teslim siparişten önce", detay: `Teslim tarihi sipariş yazısının tarihinden (${siparis.split("-").reverse().join(".")}) önce olamaz.` };
+  }
+  return null;
+}
+
 export type KabulSonucu = "tam" | "kismi" | "ret";
 
 // Tutanakta ve ekranda aynı ifade kullanılır; sonuç kabul miktarlarından çıkar.

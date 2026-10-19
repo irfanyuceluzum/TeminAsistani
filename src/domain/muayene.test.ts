@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { GorevAtamalari, Personel } from "./tipler";
 import { BOS_GOREVLER } from "./personel";
 import { ornekAlimlar, ornekPiyasa } from "../data/ornekVeri";
-import { dosyaKomisyonuKontrolleri, muayeneSonrasiDosya, kabulSonucu, muayeneKalemKontrolleri, muayeneKontrolleri, muayeneOlustur, muayeneOzeti, type Muayene } from "./muayene";
+import { dosyaKomisyonuKontrolleri, muayeneSonrasiDosya, kabulSonucu, muayeneKalemKontrolleri, muayeneKontrolleri, muayeneOlustur, muayeneOzeti, teslimSiparisKontrolu, type Muayene } from "./muayene";
 
 const TL = 100;
 const klima = ornekAlimlar.find((a) => a.id === "DT-2026-040")!;
@@ -105,6 +105,15 @@ describe("teslim ve muayene tarihi", () => {
     const m = { ...dolu(), teslimTarihi: "2026-10-20", muayeneTarihi: "2026-10-18" };
     expect(muayeneKalemKontrolleri(m).find((x) => x.durum === "engel")?.baslik).toBe("Muayene teslimden önce");
     expect(muayeneKalemKontrolleri({ ...m, muayeneTarihi: "2026-10-21" }).some((x) => x.durum === "engel")).toBe(false);
+  });
+
+  it("teslim sipariş yazısından önce olamaz; boş teslim engel değil, girilecek bilgidir", () => {
+    expect(teslimSiparisKontrolu("2026-10-09", "2026-10-10")).toMatchObject({ durum: "engel", baslik: "Teslim siparişten önce" });
+    expect(teslimSiparisKontrolu("2026-10-10", "2026-10-10")).toBeNull();
+    expect(teslimSiparisKontrolu("2026-10-12", "2026-10-10T09:00:00.000Z")).toBeNull();
+    expect(teslimSiparisKontrolu("2026-10-12", undefined)).toBeNull();
+    expect(teslimSiparisKontrolu("", "2026-10-10")).toMatchObject({ durum: "yapilacak", baslik: "Teslim tarihi girilmedi" });
+    expect(teslimSiparisKontrolu(undefined, "2026-10-10")?.durum).toBe("yapilacak");
   });
 
   it("kalem kontrolleri komisyonu denetlemez", () => {
