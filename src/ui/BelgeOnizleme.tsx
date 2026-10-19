@@ -1,8 +1,11 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { useParams } from "react-router-dom";
+import { pdfDosyaAdi } from "./bicim";
 
 // Belgeyi tam ekran, A4 kâğıtlar hâlinde öne getirir. Her sayfa ayrı kâğıttır; yazdırırken de ayrı sayfaya düşer.
 // Esc ve "Geri dön" kapatır. Uygulamanın geri kalanı yazdırılmaz.
+// PDF, sistemin yazdırma penceresinden kaydedilir; pencere açıkken sayfa başlığı önerilen dosya adı olur.
 export function BelgeOnizleme({
   baslik,
   sayfalar,
@@ -18,6 +21,26 @@ export function BelgeOnizleme({
   // Üst bileşen her çizimde yeni kapat işlevi verebilir; odak ve kaydırma kilidi yalnızca açılışta kurulur.
   const kapatRef = useRef(kapat);
   kapatRef.current = kapat;
+  const { alimId } = useParams();
+  const dosyaAdi = pdfDosyaAdi(baslik, alimId);
+  const [pdfIpucu, setPdfIpucu] = useState(false);
+  // Yazdırma bitince (ya da önizleme kapanınca) asıl sayfa başlığı geri gelir.
+  const asilBaslik = useRef<string | null>(null);
+  const basligiGeriAl = () => {
+    if (asilBaslik.current !== null) document.title = asilBaslik.current;
+    asilBaslik.current = null;
+  };
+
+  const yazdir = (pdf: boolean) => {
+    setPdfIpucu(pdf);
+    // İpucu çizilsin diye yazdırma penceresi bir sonraki karede açılır; pencere açıkken sayfa donar.
+    window.setTimeout(() => {
+      if (asilBaslik.current === null) asilBaslik.current = document.title;
+      document.title = dosyaAdi;
+      window.addEventListener("afterprint", basligiGeriAl, { once: true });
+      window.print();
+    }, 50);
+  };
 
   useEffect(() => {
     const onceki = document.activeElement as HTMLElement | null;
@@ -31,6 +54,8 @@ export function BelgeOnizleme({
     window.addEventListener("keydown", tus);
     return () => {
       window.removeEventListener("keydown", tus);
+      window.removeEventListener("afterprint", basligiGeriAl);
+      basligiGeriAl();
       document.body.style.overflow = eskiTasma;
       document.body.classList.remove("onizleme-acik");
       onceki?.focus();
@@ -54,10 +79,15 @@ export function BelgeOnizleme({
         <span className="onizleme-baslik">
           {baslik}
           <span className="onizleme-bilgi">
-            {yatay ? "A4 Yatay" : "A4"} · {sayfalar.length} sayfa
+            {pdfIpucu
+              ? `Yazıcı olarak "PDF olarak kaydet" (Windows'ta "Microsoft Print to PDF") seçin · Dosya adı: ${dosyaAdi}`
+              : `${yatay ? "A4 Yatay" : "A4"} · ${sayfalar.length} sayfa`}
           </span>
         </span>
-        <button type="button" className="onizleme-dugme onizleme-yazdir" onClick={() => window.print()}>
+        <button type="button" className="onizleme-dugme" onClick={() => yazdir(true)} title={`${dosyaAdi}.pdf`}>
+          PDF olarak kaydet
+        </button>
+        <button type="button" className="onizleme-dugme onizleme-yazdir" onClick={() => yazdir(false)}>
           Yazdır
         </button>
       </div>

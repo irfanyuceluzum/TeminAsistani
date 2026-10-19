@@ -52,3 +52,16 @@ export function asamaGrubu(a: Asama): AsamaGrubu {
   if (a === "tamamlandi" || a === "iptal") return "Kapalı";
   return "Hazırlık";
 }
+
+// Yazdırma penceresinin önerdiği PDF adı: "DT-2026-041 Onay belgesi". Başlıktaki dosya numarası öne alınır;
+// Windows'ta dosya adında geçemeyen karakterler (\ / : * ? " < > |) tireye döner, sondaki nokta ve boşluk atılır.
+export function pdfDosyaAdi(baslik: string, dosyaNo?: string): string {
+  let ad = baslik;
+  if (dosyaNo) ad = ad.split(` · ${dosyaNo}`).join("").split(dosyaNo).join("");
+  ad = ad
+    .replace(/\s*[\\/:*?"<>|][\\/:*?"<>|\s]*/g, " - ")
+    .replace(/\s+/g, " ")
+    .replace(/^[\s·-]+|[\s·.-]+$/g, "");
+  const tam = [dosyaNo, ad].filter(Boolean).join(" ");
+  return tam || "Belge";
+}
