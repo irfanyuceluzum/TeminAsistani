@@ -56,7 +56,10 @@ export interface OdemeHesabi {
   sgkya: number;
 }
 
-const bosSorgu = (): BorcSorgusu => ({ durum: "yapilmadi", tarih: "", belgeNo: "", borc: 0 });
+// Kuruş; tanımsızsa ₺5.000
+const VARSAYILAN_VERGI_SORGU_ESIGI = 5_000 * 100;
+
+const bosSorgu =(): BorcSorgusu => ({ durum: "yapilmadi", tarih: "", belgeNo: "", borc: 0 });
 
 export function odemeOlustur(alim: Alim): Odeme {
   return {
@@ -137,16 +140,34 @@ export function oebSatirlari(h: OdemeHesabi, o: Odeme, ayarlar: Ayarlar): OebSat
   return s;
 }
 
+// Vergi borcu sorgusu yalnızca eşiği aşan ödemelerde gerekir; odemeTutari KDV dahil brüt, kuruş.
+// SGK sorgusunda tutar sınırı yoktur.
+export function vergiSorguEsigi(ayarlar: Ayarlar): number {
+  return ayarlar.vergiBorcuSorguEsigi ?? VARSAYILAN_VERGI_SORGU_ESIGI;
+}
+
+export function borcSorgusuGerekli(odemeTutari: number, ayarlar: Ayarlar): { vergi: boolean; sgk: boolean } {
+  const esik = vergiSorguEsigi(ayarlar);
+  // 5510 md. 90 ve SGK hakediş mahsup yönetmeliği (RG 29.09.2008) tutar sınırı koymuyor
+  return { vergi: odemeTutari > esik, sgk: true };
+}
+
+// Gerekmeyen sorgu tamam sayılır; gerekli olan sorgu "yapilmadi" kalmamalıdır.
+export function borcSorgulariTamam(o: Odeme, brut: number, ayarlar: Ayarlar): boolean {
+  const g = borcSorgusuGerekli(brut, ayarlar);
+  return (!g.vergi || o.vergiSorgusu.durum !== "yapilmadi") && (!g.sgk || o.sgkSorgusu.durum !== "yapilmadi");
+}
+
 // Ödeme emrine eklenecek belgeler: önceki aşamaların evrakları ve borç sorgusu. Ödeme emri ve KİK bildirimi ödemeden sonra gelir.
-export function ekListesi(evraklar: EvrakDurumu[], o: Odeme): { ad: string; tamam: boolean; not: string }[] {
+export function ekListesi(evraklar: EvrakDurumu[], o: Odeme, brut: number, ayarlar: Ayarlar): { ad: string; tamam: boolean; not: string }[] {
   const liste = evraklar
     .filter((e) => e.asama !== "odeme")
     .map((e) => ({ ad: e.ad, tamam: e.tamam, not: e.tamam ? (e.tarih ? e.tarih.split("-").reverse().join(".") : e.not) : "Eksik" }));
-  const sorguTamam = (s: BorcSorgusu) => s.durum !== "yapilmadi";
+  const tamam = borcSorgulariTamam(o, brut, ayarlar);
   liste.push({
     ad: "Vergi ve SGK borç sorgusu",
-    tamam: sorguTamam(o.vergiSorgusu) && sorguTamam(o.sgkSorgusu),
-    not: sorguTamam(o.vergiSorgusu) && sorguTamam(o.sgkSorgusu) ? "Bu ekrandan" : "Sorgular işaretlenmeli",
+    tamam,
+    not: tamam ? "Bu ekrandan" : "Sorgular işaretlenmeli",
   });
   return liste;
 }
@@ -199,6 +220,14 @@ export function odemeKontrolleri(o: Odeme, h: OdemeHesabi, ekler: { ad: string; 
   ] as const) {
     if (s.durum === "borclu" && s.borc <= 0) k.push({ durum: "engel", baslik: `${ad} borcu tutarı`, detay: "Borçlu işaretlenen sorgunun tutarını girin." });
     if ((s.durum === "borcsuz" || s.durum === "borclu") && !s.tarih) k.push({ durum: "uyari", baslik: `${ad} sorgu tarihi`, detay: "Sorgunun yapıldığı tarihi girin." });
+  }
+  const gerekli = borcSorgusuGerekli(h.brut, ayarlar);
+  if (gerekli.vergi && o.vergiSorgusu.durum === "gerekmiyor") {
+    const esik = vergiSorguEsigi(ayarlar);
+    k.push({ durum: "engel", baslik: "Vergi borcu sorgusu gerekli", detay: `Ödeme ${tl(h.brut)}; ${tl(esik)} eşiğini aştığı için vergi borcu sorgulanmalı.` });
+  }
+  if (o.sgkSorgusu.durum === "gerekmiyor") {
+    k.push({ durum: "uyari", baslik: "SGK borç sorgusunda tutar sınırı yok", detay: "SGK borç sorgusu ödeme tutarına bakılmadan yapılır; \"gerekmiyor\" yerine sonucu işaretleyin." });
   }
   const borcToplami = (o.vergiSorgusu.durum === "borclu" ? o.vergiSorgusu.borc : 0) + (o.sgkSorgusu.durum === "borclu" ? o.sgkSorgusu.borc : 0);
   if (borcToplami > h.vergiMahsubu + h.sgkMahsubu) {

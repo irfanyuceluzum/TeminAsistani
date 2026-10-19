@@ -79,6 +79,9 @@ export interface Ayarlar {
   damga: DamgaAyarlari;
   // KDV dahil bedel bu tutarı aşarsa tevkifat uygulanır; kuruş. Tanımsızsa her tutara uygulanır.
   tevkifatSiniri?: number;
+  // Kuruş. 6183 md. 22/A; Tahsilat Genel Tebliği Seri A No 1, değişik Seri A No 12 (RG 03.03.2020) ve No 17 (RG 05.09.2024):
+  // bu tutarı aşan ödemelerde vergi borcu sorgulanır; tanımsızsa ₺5.000.
+  vergiBorcuSorguEsigi?: number;
   idare?: IdareBilgisi;
   // Analitik bütçe sınıflandırmasının idareye ait kodları; belgelerde ekonomik kodun önüne yazılır.
   // Biçimler: kurumsal 18.01.31.00, fonksiyonel 09.1.2.00, finansman tipi 1 (uydurma örnekler).

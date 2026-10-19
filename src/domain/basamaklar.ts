@@ -418,14 +418,14 @@ export function onayBelgesiKontrolleri(
       detay: "Onay belgesinde ödenek tutarının görünmesi için 1. basamakta ödenek miktarını girmeniz önerilir.",
     });
   } else {
-    // Ödenek KDV dahil tutarı karşılamalı (5018 md. 31: ödeneği olmayan harcama yapılamaz)
+    // Ödenek KDV dahil tutarı karşılamalı (5018 md. 20/(d); Doğrudan Temin Tebliği m.3/1-g)
     const kdvDahil = alim.tutar + Math.round((alim.tutar * dosya.yaklasik.kdvOrani) / 100);
     k.push(
       kdvDahil > dosya.odenek
         ? {
             durum: "engel",
             baslik: "Ödenek yetersiz",
-            detay: `KDV dahil ${tl(kdvDahil)}, kullanılabilir ödenek ${tl(dosya.odenek)}; ${tl(kdvDahil - dosya.odenek)} eksik.`,
+            detay: `KDV dahil ${tl(kdvDahil)}, kullanılabilir ödenek ${tl(dosya.odenek)}; ${tl(kdvDahil - dosya.odenek)} eksik (5018 md. 20/(d); Doğrudan Temin Tebliği m.3/1-g).`,
           }
         : {
             durum: "tamam",

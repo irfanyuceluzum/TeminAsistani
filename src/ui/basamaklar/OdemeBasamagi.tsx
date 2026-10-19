@@ -8,6 +8,8 @@ import { odemeEmriBelgesiSayfalari } from "./belgeler";
 import { evrakFormu, evrakKaydiYap } from "../../domain/basamaklar";
 import { evrakDurumlari, kapanisEksikleri, type EvrakKaydi } from "../../domain/dosya";
 import {
+  borcSorgusuGerekli,
+  borcSorgulariTamam,
   ekListesi,
   kbsAlanlari,
   odemeHesabi,
@@ -16,6 +18,7 @@ import {
   odemeOlustur,
   oebSatirlari,
   TEVKIFAT_TURLERI,
+  vergiSorguEsigi,
   type BorcSorgusu,
   type Odeme,
   type SorguDurumu,
@@ -27,10 +30,8 @@ const SORGU_DURUMLARI: [SorguDurumu, string][] = [
   ["yapilmadi", "Sorgu yapılmadı"],
   ["borcsuz", "Borcu yok"],
   ["borclu", "Borçlu"],
-  ["gerekmiyor", "Tutar sınırın altında, gerekmiyor"],
+  ["gerekmiyor", "Gerekmiyor (eşik altında)"],
 ];
-
-const sorguTamam = (s: BorcSorgusu) => s.durum !== "yapilmadi";
 
 export function OdemeBasamagi({ b }: { b: BasamakBaglami }) {
   const navigate = useNavigate();
@@ -58,17 +59,18 @@ export function OdemeBasamagi({ b }: { b: BasamakBaglami }) {
   const aktif = { ...o, oebNo: oeb.sayi.trim() };
   const h = odemeHesabi(matrah, aktif, ayarlar);
   const satirlar = oebSatirlari(h, aktif, ayarlar);
+  const sorguGerekli = borcSorgusuGerekli(h.brut, ayarlar);
 
   // Bu basamağın kaydedeceği evraklarla birlikte dosyanın kapanıp kapanamayacağı
   const buBasamaginEvraklari = useMemo((): Record<string, EvrakKaydi> => {
     const e: Record<string, EvrakKaydi> = {};
     if (oeb.sayi.trim() && oeb.tarih) e["odeme-emri"] = { tamam: true, tarih: oeb.tarih, not: oeb.sayi.trim() };
-    if (sorguTamam(o.vergiSorgusu) && sorguTamam(o.sgkSorgusu)) {
+    if (borcSorgulariTamam(o, h.brut, ayarlar)) {
       e["borc-sorgusu"] = { tamam: true, tarih: o.vergiSorgusu.tarih || o.sgkSorgusu.tarih || oeb.tarih, not: "" };
     }
     if (kikTarihi) e["kik-bildirimi"] = { tamam: true, tarih: kikTarihi, not: "" };
     return e;
-  }, [oeb, o.vergiSorgusu, o.sgkSorgusu, kikTarihi]);
+  }, [oeb, o, kikTarihi, h.brut, ayarlar]);
   const kapanisEksik = kapanisEksikleri(alim, { ...evraklar, ...buBasamaginEvraklari }, piyasa);
 
   const kontroller = useMemo((): Kontrol[] => {
@@ -80,7 +82,7 @@ export function OdemeBasamagi({ b }: { b: BasamakBaglami }) {
     if (!yuklenici?.iban) {
       k.push({ durum: "uyari", baslik: "Yüklenicinin IBAN'ı yok", detay: "Ödeme banka hesabına yapılır; IBAN'ı Tedarikçiler ekranından girin." });
     }
-    const ekler = ekListesi(evrakDurumlari(alim, evraklar, piyasa), aktif);
+    const ekler = ekListesi(evrakDurumlari(alim, evraklar, piyasa), aktif, h.brut, ayarlar);
     k.push(...odemeKontrolleri(aktif, h, ekler, ayarlar, sozlesmeZorunlu(alim)));
     return k;
   }, [ayarlar, yuklenici, alim, evraklar, piyasa, aktif, h]);
@@ -213,6 +215,13 @@ export function OdemeBasamagi({ b }: { b: BasamakBaglami }) {
                       </option>
                     ))}
                   </select>
+                  {alan === "vergiSorgusu" && (
+                    <span className="soluk kucuk">
+                      {sorguGerekli.vergi
+                        ? `Ödeme ${tlKurus(h.brut)}; ${tlKurus(vergiSorguEsigi(ayarlar))} eşiğini aştığı için sorgu gerekli`
+                        : "Ödeme eşiğin altında; sorgu gerekmez"}
+                    </span>
+                  )}
                   {(o[alan].durum === "borcsuz" || o[alan].durum === "borclu") && (
                     <>
                       <label className="gizli" htmlFor={`${kisa}-tarih`}>

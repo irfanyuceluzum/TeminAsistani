@@ -26,6 +26,7 @@ function tlYazisi(kurus: number): string {
 interface Metinler {
   odenekler: Record<string, string>;
   tevkifatSiniri: string;
+  vergiBorcuSorguEsigi: string;
   pencere: string;
   makbuz: string;
   sozlesme: string;
@@ -36,6 +37,7 @@ function metinleriKur(a: Ayarlar): Metinler {
   return {
     odenekler: Object.fromEntries(Object.entries(a.odenekler).map(([y, k]) => [y, tlYazisi(k)])),
     tevkifatSiniri: a.tevkifatSiniri ? tlYazisi(a.tevkifatSiniri) : "",
+    vergiBorcuSorguEsigi: a.vergiBorcuSorguEsigi ? tlYazisi(a.vergiBorcuSorguEsigi) : "",
     pencere: String(a.bolme.pencereGun),
     makbuz: bindeYazisi(a.damga.makbuzOrani),
     sozlesme: bindeYazisi(a.damga.sozlesmeOrani),
@@ -68,10 +70,17 @@ function taslaktanAyar(taslak: Ayarlar, m: Metinler): { ayar: Ayarlar; hatalar: 
     if (v === null) hatalar.push("Tevkifat sınırını 12.000,00 biçiminde yazın.");
     else tevkifatSiniri = v;
   }
+  let vergiBorcuSorguEsigi: number | undefined;
+  if (m.vergiBorcuSorguEsigi.trim()) {
+    const v = tutarCoz(m.vergiBorcuSorguEsigi);
+    if (v === null) hatalar.push("Vergi borcu sorgu eşiğini 5.000,00 biçiminde yazın.");
+    else vergiBorcuSorguEsigi = v;
+  }
   const ayar: Ayarlar = {
     ...taslak,
     odenekler,
     tevkifatSiniri,
+    vergiBorcuSorguEsigi,
     bolme: { ...taslak.bolme, pencereGun: Number(m.pencere) },
     damga: {
       ...taslak.damga,
@@ -430,6 +439,19 @@ export function Parametreler() {
             placeholder="Güncel tebliğdeki tutar"
           />
           <span className="ipucu">KDV dahil bedel bu tutarı aşarsa tevkifat uygulanır. Boş bırakılırsa her tutara uygulanır.</span>
+        </div>
+        <div className="alan">
+          <label htmlFor="vergi-sorgu-esigi">Vergi borcu sorgu eşiği (₺)</label>
+          <input
+            id="vergi-sorgu-esigi"
+            className="mono"
+            inputMode="decimal"
+            value={metin.vergiBorcuSorguEsigi}
+            aria-invalid={metin.vergiBorcuSorguEsigi.trim() !== "" && tutarCoz(metin.vergiBorcuSorguEsigi) === null}
+            onChange={(e) => metinDegistir({ vergiBorcuSorguEsigi: e.target.value })}
+            placeholder="5.000,00"
+          />
+          <span className="ipucu">KDV dahil ödeme bu tutarı aşarsa vergi borcu sorgulanır (6183 md. 22/A). Boş bırakılırsa ₺5.000 kullanılır. SGK sorgusunda tutar sınırı yoktur.</span>
         </div>
       </section>
 

@@ -1,6 +1,6 @@
 # Mevzuat varsayımları ve doğrulama durumu
 
-Son kontrol: 17.10.2026. Bu liste, kural motorunun dayandığı mevzuat varsayımlarını, kaynağını ve doğrulama durumunu tutar. Yıllık değişen tutarlar koda yazılmaz, Parametreler'den girilir.
+Son kontrol: 19.10.2026. Bu liste, kural motorunun dayandığı mevzuat varsayımlarını, kaynağını ve doğrulama durumunu tutar. Yıllık değişen tutarlar koda yazılmaz, Parametreler'den girilir.
 
 Durum anlamları:
 
@@ -20,17 +20,24 @@ Durum anlamları:
 | 5 | %10 ödenek sınırı | 22/d yıllık toplamı ödeneğin %10'unu aşamaz | 4734 md. 62/ı: 21 ve 22. maddelerdeki parasal limitli harcamaların toplamı; aşmak için Kamu İhale Kurulu'nun uygun görüşü | Doğrulandı | `kurallar.ts` `yuzdeOnDurumu` |
 | 6 | KİK bildirimi | **Tüm** doğrudan temin alımları; son gün, alım ayını izleyen ayın 10'u | Doğrudan Temin Tebliği m.4/9 | Düzeltildi: 22/d bildirimden hariç tutuluyordu | `raporlar.ts` `kikBildirimleri`, `dosya.ts` |
 | 7 | EKAP kaydı | Kayıt numarası onay belgesinde ya da dosyada girilir; girilmeden onaydan siparişe geçilmez, ödeme eki listesinde aranır | Tebliğ m.5/1 | Doğrulandı, uygulandı | `dosya.ts` `evrakListesi` |
-| 8 | Yasaklılık kontrolü | Yalnızca 22/d'de zorunlu, piyasa araştırmasında kazanan için engel | Tebliğ m.4/8 | Doğrulandı | `piyasa.ts` `piyasaKontrolleri` |
-| 9 | Yaklaşık maliyet | Onay belgesinde isteğe bağlı | Tebliğ m.4/4 (yapım işlerinde zorunlu) | Doğrulandı | `YeniAlim.tsx` |
+| 8 | Yasaklılık kontrolü | Yalnızca 22/d'de zorunlu; seçilen firmanın sorgu tarihi girilmeden tutanak onaylanmaz; evrak listesi tutanağın onayından değil sorgu tarihinden hesaplanır | Doğrudan Temin Tebliği m.4/8 (RG 11.07.2023 değişikliği metnine göre yalnız 22/d) | Doğrulandı | `piyasa.ts` `yasaklilikEksikleri`, `dosya.ts` `evrakDurumlari`, 7. basamak (`PiyasaTutanagi.tsx`) |
+| 9 | Yaklaşık maliyet | Onay belgesinde isteğe bağlı | Tebliğ m.4/4 (yapım işlerinde zorunlu) | Doğrulandı | 4. basamak (`YaklasikMaliyet.tsx`, `basamaklar.ts` `yaklasikHesapla`) |
 | 10 | Sözleşme zorunluluğu | 22/c'de ve "süreye yayılan iş" işaretli dosyalarda sözleşme istenir: dayanak kontrolünde hatırlatılır, evrak adı "Sözleşme" olur, ödeme ekranı sözleşmeyi varsayılan yapar ve yoksa uyarır | Tebliğ m.4/5 | Doğrulandı, uygulandı | `sihirbaz.ts` `sozlesmeZorunlu` |
 | 11 | KDV tevkifat oranları | Bakım onarım 7/10, temizlik 9/10, yemek 5/10, işgücü 9/10 | KDV GUT I/C-2.1.3.2.3, .10, .4, .5 (Seri No: 35 değişikliği, 2021) | İkincil kaynak | `odeme.ts` `TEVKIFAT_TURLERI` |
 | 12 | Tevkifat sınırı | KDV dahil bedel sınırı aşarsa tevkifat; varsayılan ₺12.000 (2026) | Fatura düzenleme sınırı; 2025'te ₺9.900 | İkincil kaynak | `odeme.ts` `odemeHesabi`, Parametreler |
 | 13 | Sözleşme damga vergisi | Binde 9,48, yalnızca sözleşme varsa | 488 sayılı Kanun, 1 sayılı tablo I | Doğrulandı | `kurallar.ts` `damgaVergisi` |
 | 14 | Makbuz damga vergisi | Binde 9,48, her ödemede, KDV hariç bedele | 1 sayılı tablo IV: resmi dairelerin mal ve hizmet alımı ödemelerinde verilen makbuzlar | Doğrulandı (GİB tablosu, Ekim 2025) | `kurallar.ts` `damgaVergisi` |
 | 15 | Karar pulu | Binde 5,69; uygulanıp uygulanmayacağı ayar (varsayılan: uygulanmaz) | Oran 1 sayılı tablo II'de var. Doğrudan teminde uygulanması tartışmalı: Sayıştay 5. Daire (2008) gerekmediği görüşünde, bazı yazarlar onay belgesinin karar sayılacağı görüşünde | Doğrulanamadı | Parametreler |
-| 16 | Vergi borcu sorgusu | Eşik yok; "Gerekmiyor" elle seçilir | 6183 md. 22/A; bir tebliğde ₺5.000 eşiği geçiyor ama güncelliği belirsiz | Doğrulanamadı | `odeme.ts` |
-| 17 | SGK borç sorgusu | Eşik yok; "Gerekmiyor" elle seçilir | 5510 md. 90; 2026 eşiği bulunamadı | Doğrulanamadı | `odeme.ts` |
+| 16 | Vergi borcu sorgusu | KDV dahil ödeme ₺5.000'i aşarsa sorgu gerekli; eşik Parametreler'den (`vergiBorcuSorguEsigi`) | 6183 md. 22/A; Tahsilat Genel Tebliği Seri A No 1, değişik Seri A No 12 (RG 03.03.2020, 2.000→5.000) ve Seri A No 17 (RG 05.09.2024, yürürlük 01.10.2024) | İkincil kaynak (tebliğ metni açılamadı; 2025–2026'da artış bulunamadı; KDV dahil/hariç tebliğde açık değil, uygulama KDV dahil brütü esas alır) | `odeme.ts` `borcSorgusuGerekli` |
+| 17 | SGK borç sorgusu | Tutar sınırı yok; her ödemede sorgu; "gerekmiyor" seçilirse uyarı | 5510 md. 90; SGK Prim ve İdari Para Cezası Borçlarının Hakedişlerden Mahsubu... Yönetmeliği (RG 29.09.2008) md. 6 parasal sınır koymuyor. Not: RG 16.10.2026'da Kamu İhale Genel Tebliği 17.3.2/17.4.1'deki 5.000→50.000 TL değişikliği (yürürlük 15.11.2026) isteklinin değerlendirilmesine ilişkindir, ödeme sorgusuna değil | İkincil kaynak (yönetmelik özetinden) | `odeme.ts` `borcSorgusuGerekli` |
 | 18 | Yasaklılık sorgusunun eskimesi | 90 günden eski sorgu uyarılır | Mevzuat değil, uygulama tercihi. Tebliğ m.4/8 kontrolü her 22/d alımında ister | Uygulama kuralı | `tedarikci.ts` `SORGU_ESKIME_GUNU` |
+| 19 | Ödenek yeterliliği | KDV dahil tutar kullanılabilir ödeneği aşarsa onay belgesi onaylanmaz | 5018 md. 20/(d) ("bütçelerinde yer alan ödeneklerin üzerinde harcama yapamaz"); onay belgesinin ödenek ve tertibi göstermesi Doğrudan Temin Tebliği m.3/1-g tanımından. 4734 md. 5'teki "ödeneği bulunmayan hiçbir iş için ihaleye çıkılamaz" hükmünün doğrudan temine uygulanması yorumdur | Doğrulandı (md. 20/d) | `basamaklar.ts` `onayBelgesiKontrolleri` |
+| 20 | Dosyanın kapanışı | Evrak listesi eksiksiz değilse dosya tamamlandı yapılmaz; ödeme kaydedilir, dosya ödeme aşamasında kalır | Uygulama kuralı (denetim dosyası bütünlüğü) | Uygulama kuralı | `dosya.ts` `kapanisEksikleri`, `OdemeBasamagi.tsx` |
+| 21 | Belge tarih sırası | İhtiyaç onayından KİK bildirimine 11 çiftlik zincir; ihlal uyarıdır, engel değil | Uygulama kuralı | Uygulama kuralı | `basamaklar.ts` `tarihSirasiKontrolleri` |
+| 22 | KİK bildirimi süresi | Bildirim tarihi sipariş ayını izleyen ayın 10'unu geçerse uyarı | Doğrudan Temin Tebliği m.4/9 | Doğrulandı (#6 ile aynı kaynak) | `basamaklar.ts` `tarihSirasiKontrolleri`, `raporlar.ts` `kikSonGunu` |
+| 23 | Görev çakışması (muayene) | Piyasa görevlisi muayene komisyonundaysa uyarı; harcama yetkilisi/gerçekleştirme görevlisi komisyondaysa engel | Görev ayrılığı ilkesi; harcama yetkilisi/gerçekleştirme görevlisinin komisyonda yer alamayacağına dair doğrudan temin özelinde açık hüküm bu turda doğrulanmadı | Doğrulanamadı (uygulama kuralı) | `muayene.ts` `dosyaKomisyonuKontrolleri`, `personel.ts` `gorevKontrolleri` |
+| 24 | Yetkililer piyasa araştırmasında | Harcama yetkilisi ve gerçekleştirme görevlisi piyasa araştırmasında yer alırsa engel | Kodda "5018 ve 4734 gereği" deniyor; açık hüküm bulunamadı | Doğrulanamadı | `PiyasaTutanagi.tsx`, `personel.ts` |
+| 25 | Bütçe tertibi | "kurumsal · fonksiyonel · finansman · ekonomik" sırası (analitik bütçe sınıflandırması) | Uygulama kuralı | Uygulama kuralı | `parametreler.ts` `butceTertibi` |
 
 ## Bu kontrolde koda yapılan düzeltmeler
 
@@ -40,9 +47,20 @@ Durum anlamları:
 4. **22/c sözleşmesi:** Sözleşme işaretlenmemiş 22/c ödemelerinde uyarı gösteriliyor.
 5. **Tevkifat sınırı:** Örnek ayarlara 2026 için ₺12.000 girildi. Bu değer, daha önce kurulmuş veritabanlarında Parametreler'den elle girilmeli.
 
+### 19.10.2026
+
+6. **Ödenek atfı:** Ödenek yeterliliği atfı md. 31'den 5018 md. 20/(d)'ye düzeltildi.
+7. **Ödeme emrinde KDV:** Ödeme emrinde KDV'nin hesaba katılması sağlandı (`odemeHesabi`/`oebSatirlari`).
+8. **Yasaklılık evrakı:** Yasaklılık evrakı tutanağın onayından değil, sorgu tarihinden hesaplanıyor.
+9. **Eksik evrakla kapanma:** Evrak listesi eksikken dosyanın tamamlandı yapılması engellendi.
+10. **Vergi borcu sorgusu eşiği:** Vergi borcu sorgusu eşiği (`vergiBorcuSorguEsigi`) Parametreler'den uygulanıyor.
+
 ## Açık işler
 
-- **Borç sorgusu eşikleri:** Vergi ve SGK sorgu eşikleri resmi kaynaktan bulunup Parametreler'e eklenmeli.
+- **Mal alımlarında tevkifat:** Kamu idarelerinin (okul müdürlükleri dahil) MAL alımlarında KDV Genel Uygulama Tebliği I/C-2.1.3.3.7 "diğer teslimler" kapsamında 2/10 tevkifat uygulanıp uygulanmadığı birincil metinden doğrulanmadı; kodda mal teslimi için tevkifat türü yok.
+- **Hizmet tevkifat oranları:** Oranların (7/10, 9/10, 5/10, 9/10) güncel konsolide metinle teyidi.
+- **Yetkililerin görevi:** Yetkililerin piyasa araştırması/muayene komisyonunda yer alamayacağı kuralının dayanağı.
+- **Vergi borcu eşiği:** Eşiğin KDV dahil/hariç uygulanışı muhasebe biriminden teyit edilmeli.
 - **Resmi metinlerle teyit:** Tevkifat oranları ve sınırı GİB'in güncel KDV Genel Uygulama Tebliği metninden doğrulanmalı.
 - **Karar pulu:** Muhasebe birimiyle netleştirilmeli. Gerekirse GİB'den özelge istenmeli.
 - **Bende özgü kurallar:** 22/f'den 22/i'ye kadar eklenen bentlerin her biri için şimdilik yalnızca dayanak belgesi isteniyor. Bentlerin kendi ayrıntıları (örneğin 22/i'deki seçim malzemesi süreci) ileride eklenebilir.
@@ -65,3 +83,7 @@ Durum anlamları:
 - Tevkifat oranı değişiklikleri (2021): https://cottgroup.com/tr/mevzuat/item/kdv-kismi-tevkifat-uygulamasinda-oran-ve-kapsam-degisiklikleri-yapildi
 - Tevkifat sınırı 2026: https://kobitime.com/nakliye-tevkifat-orani-ve-tevkifat-kodu-2026/
 - Borcu yoktur yazısı (6183 md. 22/A): https://www.muhasebetr.com/yazarlarimiz/ibrahimcakir/002/
+- Doğrudan Temin Tebliği değişikliği (RG 11.07.2023): https://resmigazete.gov.tr/eskiler/2023/07/20230711-10.htm
+- SGK hakediş mahsup yönetmeliği (RG 29.09.2008): https://www.resmigazete.gov.tr/eskiler/2008/09/20080929M2-3.htm
+- KDV GUT Seri No 35 (RG 16.02.2021): https://www.resmigazete.gov.tr/eskiler/2021/02/20210216-6.htm
+- 5018 sayılı Kanun: https://www.mevzuat.gov.tr/anasayfa/MevzuatFihristDetayIframe?MevzuatTur=1&MevzuatNo=5018&MevzuatTertip=5

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { ornekAlimlar, ornekAyarlar } from "../data/ornekVeri";
 import { evrakDurumlari, evrakListesi } from "./dosya";
 import { muayeneOlustur } from "./muayene";
-import { ekListesi, kbsAlanlari, odemeHesabi, odemeKontrolleri, odemeMatrahi, odemeOlustur, oebSatirlari, type Odeme } from "./odeme";
+import { borcSorgusuGerekli, ekListesi, kbsAlanlari, odemeHesabi, odemeKontrolleri, odemeMatrahi, odemeOlustur, oebSatirlari, type Odeme } from "./odeme";
 
 const TL = 100;
 const klima = ornekAlimlar.find((a) => a.id === "DT-2026-040")!;
@@ -59,7 +59,7 @@ describe("ek listesi ve kontroller", () => {
 
   it("önceki aşamaların evrakı tamamsa engel çıkarmaz", () => {
     const o = odeme({ oebNo: "2026/1234" });
-    const ekler = ekListesi(evrakDurumlari({ ...klima, ekapKayitNo: "2026/123456" }, tumu, piyasa), o);
+    const ekler = ekListesi(evrakDurumlari({ ...klima, ekapKayitNo: "2026/123456" }, tumu, piyasa), o, 56_280 * TL, ornekAyarlar);
     expect(ekler.map((e) => e.ad)).not.toContain("Ödeme emri belgesi");
     const k = odemeKontrolleri(o, odemeHesabi(matrah, o, ornekAyarlar), ekler, ornekAyarlar);
     expect(k.filter((x) => x.durum === "engel")).toEqual([]);
@@ -70,7 +70,7 @@ describe("ek listesi ve kontroller", () => {
     expect(o.sozlesmeVar).toBe(false);
     expect(odemeOlustur({ ...klima, sureliIs: true }).sozlesmeVar).toBe(true);
     const { fatura: _, ...faturasiz } = tumu;
-    const ekler = ekListesi(evrakDurumlari(klima, faturasiz, piyasa), o);
+    const ekler = ekListesi(evrakDurumlari(klima, faturasiz, piyasa), o, 56_280 * TL, ornekAyarlar);
     const engel = odemeKontrolleri(o, odemeHesabi(matrah, o, ornekAyarlar), ekler, ornekAyarlar).find((x) => x.durum === "engel");
     expect(engel?.detay).toContain("Fatura");
     expect(engel?.detay).toContain("borç sorgusu");
@@ -89,6 +89,65 @@ describe("ek listesi ve kontroller", () => {
     const k = odemeKontrolleri({ ...o, sozlesmeVar: false }, odemeHesabi(matrah, o, ornekAyarlar), [], ornekAyarlar, true);
     expect(k[0]).toMatchObject({ durum: "uyari", baslik: "Sözleşme zorunlu" });
     expect(odemeKontrolleri({ ...o, sozlesmeVar: true }, odemeHesabi(matrah, o, ornekAyarlar), [], ornekAyarlar, true).some((x) => x.baslik === "Sözleşme zorunlu")).toBe(false);
+  });
+});
+
+describe("borç sorgusu gerekliliği", () => {
+  const varsayilan = { ...ornekAyarlar, vergiBorcuSorguEsigi: undefined };
+  const sorgusuz = (v: Odeme["vergiSorgusu"]["durum"], s: Odeme["sgkSorgusu"]["durum"] = "borcsuz") =>
+    odeme({
+      vergiSorgusu: { durum: v, tarih: "", belgeNo: "", borc: 0 },
+      sgkSorgusu: { durum: s, tarih: "", belgeNo: "", borc: 0 },
+    });
+  const brutlu = (brut: number, o: Odeme, ayarlar = ornekAyarlar) => ({ ...odemeHesabi(brut, o, ayarlar), brut });
+
+  it("vergi sorgusu eşiği aşınca gerekir; eşit ve altında gerekmez", () => {
+    expect(borcSorgusuGerekli(5_000 * TL - 1, ornekAyarlar).vergi).toBe(false);
+    expect(borcSorgusuGerekli(5_000 * TL, ornekAyarlar).vergi).toBe(false);
+    expect(borcSorgusuGerekli(5_000 * TL + 1, ornekAyarlar).vergi).toBe(true);
+  });
+
+  it("eşik tanımsızsa 5.000 TL, parametreyle değişir", () => {
+    expect(borcSorgusuGerekli(5_000 * TL + 1, varsayilan).vergi).toBe(true);
+    expect(borcSorgusuGerekli(5_000 * TL, varsayilan).vergi).toBe(false);
+    const yuksek = { ...ornekAyarlar, vergiBorcuSorguEsigi: 10_000 * TL };
+    expect(borcSorgusuGerekli(8_000 * TL, yuksek).vergi).toBe(false);
+    expect(borcSorgusuGerekli(10_000 * TL + 1, yuksek).vergi).toBe(true);
+  });
+
+  it("SGK sorgusu tutardan bağımsız her zaman gerekir", () => {
+    expect(borcSorgusuGerekli(0, ornekAyarlar).sgk).toBe(true);
+    expect(borcSorgusuGerekli(100, ornekAyarlar).sgk).toBe(true);
+    expect(borcSorgusuGerekli(1_000_000 * TL, ornekAyarlar).sgk).toBe(true);
+  });
+
+  it("vergi gerekliyken 'gerekmiyor' seçilirse engeller", () => {
+    const o = sorgusuz("gerekmiyor");
+    const e = odemeKontrolleri(o, brutlu(56_280 * TL, o), [], ornekAyarlar).find((x) => x.baslik === "Vergi borcu sorgusu gerekli");
+    expect(e?.durum).toBe("engel");
+    expect(e?.detay).toContain("56.280,00");
+    expect(e?.detay).toContain("5.000,00");
+  });
+
+  it("vergi gerekmiyorsa 'gerekmiyor' engel değildir", () => {
+    const o = sorgusuz("gerekmiyor");
+    const k = odemeKontrolleri(o, brutlu(4_000 * TL, o), [], ornekAyarlar);
+    expect(k.some((x) => x.baslik === "Vergi borcu sorgusu gerekli")).toBe(false);
+  });
+
+  it("vergi gerekmiyorsa 'yapilmadi' ek listesini engellemez; gerekiyorsa engeller", () => {
+    const o = sorgusuz("yapilmadi");
+    const sorguSatiri = (brut: number) => ekListesi([], o, brut, ornekAyarlar).find((e) => e.ad === "Vergi ve SGK borç sorgusu")!;
+    expect(sorguSatiri(4_000 * TL).tamam).toBe(true);
+    expect(sorguSatiri(6_000 * TL).tamam).toBe(false);
+    // SGK yapılmadıysa vergi gerekmese de eksik
+    expect(ekListesi([], sorgusuz("yapilmadi", "yapilmadi"), 4_000 * TL, ornekAyarlar)[0].tamam).toBe(false);
+  });
+
+  it("SGK 'gerekmiyor' seçilirse uyarır", () => {
+    const o = sorgusuz("borcsuz", "gerekmiyor");
+    const u = odemeKontrolleri(o, brutlu(4_000 * TL, o), [], ornekAyarlar).find((x) => x.baslik === "SGK borç sorgusunda tutar sınırı yok");
+    expect(u?.durum).toBe("uyari");
   });
 });
 
