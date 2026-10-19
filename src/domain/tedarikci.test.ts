@@ -25,7 +25,8 @@ describe("firma geçmişi", () => {
   });
 
   it("fiyat vermeyen firmanın teklifi sayılmaz ama sorgusu görünmez", () => {
-    const g = firmaGecmisi("kaya", piyasalar, ornekAlimlar);
+    // Kaya Ticaret DT-2026-037'de fiyat verdi (örnek dosya eklendi); bu durum yalnız fiyatsız kaldığı DT-2026-041 araştırmasıyla sınanır
+    const g = firmaGecmisi("kaya", piyasalar.filter((p) => p.alimId === "DT-2026-041"), ornekAlimlar);
     expect(g.teklifSayisi).toBe(0);
     expect(g.sorgular).toEqual([]);
   });

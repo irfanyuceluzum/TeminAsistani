@@ -6,7 +6,7 @@ import type { Odeme } from "../domain/odeme";
 import type { PiyasaArastirmasi } from "../domain/piyasa";
 import type { Alim, Asama, Ayarlar, Bent, LimitDonemi, Tedarikci } from "../domain/tipler";
 import type { AlimDegisikligi, Depo } from "./depo";
-import { ornekAlimlar, ornekAyarlar, ornekBasamaklar, ornekEvraklar, ornekLimitDonemleri, ornekOlaylar, ornekPiyasa, ornekTedarikciler } from "./ornekVeri";
+import { ornekAlimlar, ornekAyarlar, ornekBasamaklar, ornekEvraklar, ornekLimitDonemleri, ornekMuayeneler, ornekOdemeler, ornekOlaylar, ornekPiyasa, ornekTedarikciler } from "./ornekVeri";
 
 // Şema src-tauri/migrations altındaki SQL dosyalarıyla Rust tarafında kurulur.
 const ADRES = "sqlite:temin.db";
@@ -99,6 +99,16 @@ async function ornekleriYaz(db: Database): Promise<void> {
   for (const d of ornekBasamaklar) {
     if (await alimVar(d.alimId)) {
       await db.execute("INSERT OR IGNORE INTO dosya_basamaklari (alim_id, belge, guncelleme) VALUES ($1, $2, datetime('now'))", [d.alimId, JSON.stringify(d)]);
+    }
+  }
+  for (const m of ornekMuayeneler) {
+    if (await alimVar(m.alimId)) {
+      await db.execute("INSERT OR IGNORE INTO muayeneler (alim_id, belge, guncelleme) VALUES ($1, $2, datetime('now'))", [m.alimId, JSON.stringify(m)]);
+    }
+  }
+  for (const o of ornekOdemeler) {
+    if (await alimVar(o.alimId)) {
+      await db.execute("INSERT OR IGNORE INTO odemeler (alim_id, belge, guncelleme) VALUES ($1, $2, datetime('now'))", [o.alimId, JSON.stringify(o)]);
     }
   }
   const [{ olayAdet }] = await db.select<{ olayAdet: number }[]>("SELECT COUNT(*) AS olayAdet FROM olaylar");

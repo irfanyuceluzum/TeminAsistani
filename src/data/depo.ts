@@ -5,7 +5,7 @@ import type { Muayene } from "../domain/muayene";
 import type { Odeme } from "../domain/odeme";
 import type { PiyasaArastirmasi } from "../domain/piyasa";
 import type { Alim, Ayarlar, LimitDonemi, Tedarikci } from "../domain/tipler";
-import { ornekAlimlar, ornekAyarlar, ornekBasamaklar, ornekEvraklar, ornekLimitDonemleri, ornekOlaylar, ornekPiyasa, ornekTedarikciler } from "./ornekVeri";
+import { ornekAlimlar, ornekAyarlar, ornekBasamaklar, ornekEvraklar, ornekLimitDonemleri, ornekMuayeneler, ornekOdemeler, ornekOlaylar, ornekPiyasa, ornekTedarikciler } from "./ornekVeri";
 
 export type AlimDegisikligi = Partial<Pick<Alim, "asama" | "tutar" | "tedarikciId" | "sonIslem" | "ekapKayitNo" | "sureliIs">>;
 
@@ -47,8 +47,8 @@ export function bellekDepo(): Depo {
   let ayarlar = structuredClone(ornekAyarlar);
   const olaylar: Olay[] = ornekOlaylar.map((o, i) => ({ ...o, id: i + 1 }));
   const evraklar: Record<string, Record<string, EvrakKaydi>> = structuredClone(ornekEvraklar);
-  const muayeneler = new Map<string, Muayene>();
-  const odemeler = new Map<string, Odeme>();
+  const muayeneler = new Map(ornekMuayeneler.map((m) => [m.alimId, structuredClone(m)]));
+  const odemeler = new Map(ornekOdemeler.map((o) => [o.alimId, structuredClone(o)]));
   const basamakKayitlari = new Map(ornekBasamaklar.map((d) => [d.alimId, structuredClone(d)]));
   return {
     tur: "bellek",

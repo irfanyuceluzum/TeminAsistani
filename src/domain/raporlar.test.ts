@@ -8,25 +8,30 @@ describe("yıllık özet", () => {
   const o = yillikOzet(ornekAlimlar, 2026, ornekAyarlar, ornekPiyasa);
 
   it("tüm bentlerin ve 22/d'nin toplamını verir", () => {
-    expect(o.adet).toBe(18);
-    expect(o.ddAdet).toBe(12);
-    expect(o.ddToplam).toBe(330_880 * TL);
+    // 19 alım: DT-2026-037 (tamamlanmış örnek dosya, ₺32.200) eklendi; önceki değerler 18, 12 ve ₺330.880
+    expect(o.adet).toBe(19);
+    expect(o.ddAdet).toBe(13);
+    expect(o.ddToplam).toBe((330_880 + 32_200) * TL);
     expect(o.toplam).toBe(o.bentler.reduce((s, b) => s + b.tutar, 0));
   });
 
   it("bentleri tutara göre sıralar ve payları bire tamamlar", () => {
-    expect(o.bentler[0].bent).toBe("22/e");
+    // 22/d toplamı ₺363.080 ile ₺360.000'lik 22/e kirasını geçti (önceden 22/e ilkti)
+    expect(o.bentler[0].bent).toBe("22/d");
+    expect(o.bentler[1].bent).toBe("22/e");
     expect(o.bentler.reduce((s, b) => s + b.pay, 0)).toBeCloseTo(1);
   });
 
   it("22/d'yi aylara dağıtır", () => {
     expect(o.aylik).toHaveLength(12);
+    expect(o.aylik[8].adet).toBeGreaterThanOrEqual(1);
     expect(o.aylik[9]).toEqual({ ay: 10, adet: 3, tutar: (19_800 + 25_380 + 38_500) * TL });
     expect(o.aylik.reduce((s, a) => s + a.tutar, 0)).toBe(o.ddToplam);
   });
 
   it("tamamlanan araştırmalardan ortalama teklif sayısını çıkarır", () => {
-    expect(o.ortalamaTeklif).toBe(1);
+    // DT-2026-040 (1 teklif) ve DT-2026-037 (3 teklif) tamamlandı; önceki değer 1
+    expect(o.ortalamaTeklif).toBe(2);
   });
 
   it("ödeneği olmayan yılda %10 durumu vermez", () => {
@@ -43,7 +48,8 @@ describe("KİK bildirimleri", () => {
   const k = kikBildirimleri(ornekAlimlar, 2026, evraklar, "2026-10-17");
 
   it("siparişi verilmiş tüm alımları bentten bağımsız listeler", () => {
-    expect(k).toHaveLength(16);
+    // DT-2026-037 eklendi; önceki değer 16
+    expect(k).toHaveLength(17);
     expect(k.some((x) => x.alim.bent === "22/d")).toBe(true);
     expect(k.some((x) => x.alim.id === "DT-2026-041")).toBe(false);
   });

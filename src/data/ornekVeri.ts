@@ -1,5 +1,7 @@
 import type { DosyaBasamaklari } from "../domain/basamaklar";
 import type { EvrakKaydi, Olay } from "../domain/dosya";
+import type { Muayene } from "../domain/muayene";
+import type { Odeme } from "../domain/odeme";
 import type { PiyasaArastirmasi } from "../domain/piyasa";
 import type { Alim, Asama, Ayarlar, Bent, LimitDonemi, Tedarikci } from "../domain/tipler";
 
@@ -47,6 +49,8 @@ const satirlar: Satir[] = [
   ["DT-2026-032", "2026-08-20", "Fotokopi kâğıdı A4", "22/d", 21_600, "03.2.1.01", "A4", "anka", "tamamlandi", "2026-09-01"],
   ["DT-2026-035", "2026-09-01", "Lisans yenileme", "22/b", 58_300, "03.5.9.90", "LIS", null, "odeme", "2026-10-03"],
   ["DT-2026-034", "2026-09-15", "Fotokopi kâğıdı A4", "22/d", 19_800, "03.2.1.01", "A4", "anka", "tamamlandi", "2026-09-26"],
+  // 13 basamağın hepsi tamamlanmış örnek dosya (tutar, piyasa tutanağındaki kazanan toplamı ve muayenede kabul edilen toplamdır)
+  ["DT-2026-037", "2026-09-08", "Sınıf panosu ve kırtasiye malzemesi", "22/d", 32_200, "03.2.1.01", "PNO", "anka", "tamamlandi", "2026-10-05"],
   ["DT-2026-038", "2026-09-18", "Yazıcı toneri", "22/c", 31_640, "03.2.1.01", "TNR", null, "odeme", "2026-10-09"],
   ["DT-2026-039", "2026-09-24", "Hizmet aracı kiralama", "22/d", 84_000, "03.5.5.02", "ARC", null, "siparis", "2026-10-11"],
   ["DT-2026-040", "2026-09-30", "Klima bakım hizmeti", "22/d", 46_900, "03.7.1.02", "KLM", "serin", "muayene", "2026-10-14"],
@@ -70,6 +74,9 @@ export const ornekAlimlar: Alim[] = satirlar.map(
   }),
 );
 
+// Tamamlanmış örnek dosyanın EKAP doğrudan temin kayıt numarası (uydurma); satır üretimi ortak kaldığı için burada atanır.
+ornekAlimlar.find((a) => a.id === "DT-2026-037")!.ekapKayitNo = "2026/123037";
+
 export const ornekAyarlar: Ayarlar = {
   konum: "buyuksehir",
   kullanici: "Satın alma birimi",
@@ -89,6 +96,8 @@ export const ornekAyarlar: Ayarlar = {
     { id: "p4", ad: "Fatma Kaya", unvan: "Öğretmen" },
     { id: "p5", ad: "Hasan Çelik", unvan: "Öğretmen" },
     { id: "p6", ad: "Zeynep Aksoy", unvan: "Memur" },
+    // Görevi olmayan öğretmen; tamamlanmış örnek dosyanın muayene komisyonunda yer alır
+    { id: "p7", ad: "Emine Şahin", unvan: "Öğretmen" },
   ],
   gorevler: { harcamaYetkilisi: "p1", gerceklestirme: "p2", piyasaGorevlileri: ["p3", "p6"], muayeneBaskani: "p4", muayeneUyeleri: ["p5", "p3"] },
 };
@@ -127,6 +136,25 @@ export const ornekPiyasa: PiyasaArastirmasi[] = [
     gorevliler: "A. Yılmaz (Şef), M. Kaya (Memur)",
     tamamlandi: true,
   },
+  // DT-2026-037: üç teklif, en düşük toplam Anka Kırtasiye (₺32.200); tutanak onaylı.
+  {
+    alimId: "DT-2026-037",
+    kalemler: [
+      { id: "k1", ad: "Mantar pano, 120×180 cm", miktar: 6, birim: "adet" },
+      { id: "k2", ad: "Fotokopi kâğıdı A4, 80 g (500 yaprak)", miktar: 100, birim: "paket" },
+      { id: "k3", ad: "Renkli karton, 50×70 cm", miktar: 200, birim: "adet" },
+      { id: "k4", ad: "Zımba teli, No. 10", miktar: 100, birim: "kutu" },
+    ],
+    teklifler: [
+      { tedarikciId: "anka", teklifTarihi: "2026-09-10", yasaklilikSorgusu: "2026-09-15", fiyatlar: { k1: 1_850 * TL, k2: 165 * TL, k3: 14 * TL, k4: 18 * TL }, belgeAlindi: true },
+      { tedarikciId: "ece", teklifTarihi: "2026-09-11", yasaklilikSorgusu: null, fiyatlar: { k1: 1_950 * TL, k2: 172 * TL, k3: 15 * TL, k4: 19 * TL }, belgeAlindi: true },
+      { tedarikciId: "kaya", teklifTarihi: "2026-09-14", yasaklilikSorgusu: null, fiyatlar: { k1: 1_900 * TL, k2: 170 * TL, k3: 16 * TL, k4: 17 * TL }, belgeAlindi: true },
+    ],
+    yazi: { sayi: "2026/37-2", tarih: "2026-09-09", sonTeklifTarihi: "2026-09-15", teslimYeri: "Okul deposu", teslimSuresi: "Siparişten itibaren 7 takvim günü", aciklama: "" },
+    degerlendirme: "toplam",
+    gorevliler: "A. Yılmaz (Şef), Z. Aksoy (Memur)",
+    tamamlandi: true,
+  },
 ];
 
 // Her örnek dosya için açılış kaydı; DT-2026-040 için ayrıntılı geçmiş.
@@ -143,6 +171,13 @@ export const ornekOlaylar: Olay[] = [
   { alimId: "DT-2026-040", zaman: "2026-10-06T11:02:00", kim: "A. Yılmaz", tur: "evrak", aciklama: "Sipariş yazısı veya sözleşme: tamamlandı" },
   { alimId: "DT-2026-040", zaman: "2026-10-14T17:30:00", kim: "S. Demir", tur: "asama:muayene", aciklama: "Aşama: Muayene kabul" },
   { alimId: "DT-2026-040", zaman: "2026-10-15T16:05:00", kim: "M. Kaya", tur: "evrak", aciklama: "Fatura: tamamlandı" },
+  { alimId: "DT-2026-037", zaman: "2026-09-08T14:10:00", kim: "M. Kaya", tur: "evrak", aciklama: "Doğrudan temin onay belgesi, imzalı: tamamlandı" },
+  { alimId: "DT-2026-037", zaman: "2026-09-16T11:30:00", kim: "A. Yılmaz", tur: "piyasa-tamamlandi", aciklama: "Piyasa araştırması tamamlandı: Anka Kırtasiye, ₺32.200" },
+  { alimId: "DT-2026-037", zaman: "2026-09-17T10:15:00", kim: "A. Yılmaz", tur: "evrak", aciklama: "Sipariş yazısı veya sözleşme: tamamlandı" },
+  { alimId: "DT-2026-037", zaman: "2026-09-25T15:40:00", kim: "F. Kaya", tur: "asama:muayene", aciklama: "Muayene ve kabul tamamlandı: eksiksiz kabul, ₺32.200 + KDV" },
+  { alimId: "DT-2026-037", zaman: "2026-09-29T16:20:00", kim: "M. Kaya", tur: "evrak", aciklama: "Ödeme emri belgesi: tamamlandı" },
+  { alimId: "DT-2026-037", zaman: "2026-10-05T09:45:00", kim: "M. Kaya", tur: "evrak", aciklama: "KİK bildirimi: tamamlandı" },
+  { alimId: "DT-2026-037", zaman: "2026-10-05T09:50:00", kim: "M. Kaya", tur: "asama:tamamlandi", aciklama: "Aşama: Tamamlandı" },
 ];
 
 // Tamamlanmış örnek dosyaların KİK bildirimi, alım ayını izleyen ayın 5'inde yapılmış sayılır.
@@ -164,6 +199,22 @@ export const ornekEvraklar: Record<string, Record<string, EvrakKaydi>> = {
     "onay-belgesi": { tamam: true, tarih: "2026-09-30", not: "" },
     "siparis-yazisi": { tamam: true, tarih: "2026-10-06", not: "Sözleşme düzenlenmedi" },
     fatura: { tamam: true, tarih: "2026-10-15", not: "e-Fatura" },
+  },
+  // DT-2026-037: evrak listesi ve 13 basamağın evrakları eksiksiz; "not" alanı belge sayısını taşır.
+  "DT-2026-037": {
+    "ihtiyac-yazisi": { tamam: true, tarih: "2026-09-02", not: "2026/37-1" },
+    "onay-belgesi": { tamam: true, tarih: "2026-09-08", not: "2026/37-OB" },
+    "fiyat-teklifi": { tamam: true, tarih: "2026-09-14", not: "3 firma, kaşeli teklif belgeleri" },
+    "piyasa-tutanagi": { tamam: true, tarih: "2026-09-16", not: "2026/37-PT" },
+    "siparis-yazisi": { tamam: true, tarih: "2026-09-17", not: "2026/37-3" },
+    "muayene-talebi": { tamam: true, tarih: "2026-09-24", not: "2026/37-4" },
+    "muayene-raporu": { tamam: true, tarih: "2026-09-25", not: "2026/37-MR" },
+    fatura: { tamam: true, tarih: "2026-09-24", not: "e-Fatura ANK-2026-000418" },
+    "muayene-tutanagi": { tamam: true, tarih: "2026-09-25", not: "2026/37-MK" },
+    "tasinir-fisi": { tamam: true, tarih: "2026-09-25", not: "TİF 2026/118" },
+    "borc-sorgusu": { tamam: true, tarih: "2026-09-28", not: "Vergi ve SGK borcu yok" },
+    "odeme-emri": { tamam: true, tarih: "2026-09-29", not: "2026/0412" },
+    "kik-bildirimi": { tamam: true, tarih: "2026-10-05", not: "EKAP" },
   },
 };
 
@@ -197,5 +248,76 @@ export const ornekBasamaklar: DosyaBasamaklari[] = [
         { tedarikciId: "kaya", belgeAlindi: false, fiyatlar: {} },
       ],
     },
+  },
+  // DT-2026-037: bütün basamaklar tamam; yaklaşık maliyet onaylı, ödenek KDV dahil tutarı (₺38.640) karşılıyor.
+  {
+    alimId: "DT-2026-037",
+    talepEden: "Sınıf öğretmenleri ve okul aile birliği",
+    nitelik: "",
+    bolmeGerekcesi: "",
+    teslimYeri: "Okul deposu",
+    odenek: 45_000 * TL,
+    sartlar: {
+      teslimSuresi: "Sipariş yazısının tebliğinden itibaren 7 takvim günü.",
+      parti: "Tamamı tek partide, okul deposuna teslim edilir.",
+      nakliye: "Nakliye, yükleme ve boşaltma yükleniciye aittir.",
+      ozel: "Ürünler orijinal ambalajında teslim edilir.",
+      standart: "TSE veya eşdeğer kalite belgesi bulunmalıdır.",
+      teknik: "Gerek görülmedi; özellikler ihtiyaç listesinde yazılıdır.",
+      diger: "Muayenede uygun bulunmayan ürünler değiştirilir.",
+    },
+    ihtiyacOnayi: { tarih: "2026-09-02", sayi: "2026/37-1", gerekce: "Yeni eğitim yılı için sınıf panolarının ve kırtasiye ihtiyacının karşılanması gerekmektedir.", imzali: true },
+    fiyatIsteme: { tarih: "2026-09-04", sayi: "2026/37-FI", sonTarih: "2026-09-07" },
+    yaklasik: {
+      hesaplanmayacak: false,
+      yontem: "ortalama",
+      kdvOrani: 20,
+      firmalar: [
+        { tedarikciId: "anka", belgeAlindi: true, fiyatlar: { k1: 1_900 * TL, k2: 168 * TL, k3: 15 * TL, k4: 18 * TL } },
+        { tedarikciId: "ece", belgeAlindi: true, fiyatlar: { k1: 1_980 * TL, k2: 175 * TL, k3: 16 * TL, k4: 20 * TL } },
+        { tedarikciId: "kaya", belgeAlindi: true, fiyatlar: { k1: 1_920 * TL, k2: 170 * TL, k3: 15 * TL, k4: 19 * TL } },
+      ],
+      onaylandi: true,
+    },
+    onayBelgesi: { fiyatFarki: "Verilmeyecektir", avans: "Verilmeyecektir", dokuman: "İhtiyaç Listesi ve Şartlar hazırlanmıştır" },
+  },
+];
+
+// DT-2026-037: dört kalemin tamamı sipariş, fatura ve kabulde aynı; komisyonda yetkili ve piyasa görevlisi yok.
+export const ornekMuayeneler: Muayene[] = [
+  {
+    alimId: "DT-2026-037",
+    muayeneTarihi: "2026-09-25",
+    teslimTarihi: "2026-09-24",
+    yer: "Okul deposu",
+    faturaNo: "ANK-2026-000418",
+    faturaTarihi: "2026-09-24",
+    kalemler: [
+      { kalemId: "k1", ad: "Mantar pano, 120×180 cm", birim: "adet", siparisMiktari: 6, faturaMiktari: 6, kabulMiktari: 6, birimFiyat: 1_850 * TL },
+      { kalemId: "k2", ad: "Fotokopi kâğıdı A4, 80 g (500 yaprak)", birim: "paket", siparisMiktari: 100, faturaMiktari: 100, kabulMiktari: 100, birimFiyat: 165 * TL },
+      { kalemId: "k3", ad: "Renkli karton, 50×70 cm", birim: "adet", siparisMiktari: 200, faturaMiktari: 200, kabulMiktari: 200, birimFiyat: 14 * TL },
+      { kalemId: "k4", ad: "Zımba teli, No. 10", birim: "kutu", siparisMiktari: 100, faturaMiktari: 100, kabulMiktari: 100, birimFiyat: 18 * TL },
+    ],
+    uyeler: [
+      { ad: "Fatma Kaya", unvan: "Öğretmen", rol: "baskan" },
+      { ad: "Hasan Çelik", unvan: "Öğretmen", rol: "uye" },
+      { ad: "Emine Şahin", unvan: "Öğretmen", rol: "uye" },
+    ],
+    tamamlandi: true,
+  },
+];
+
+// DT-2026-037: mal alımı için varsayılan tevkifat türü, vergi ve SGK sorgusu borçsuz.
+export const ornekOdemeler: Odeme[] = [
+  {
+    alimId: "DT-2026-037",
+    kdvOrani: 20,
+    tevkifatTuru: "mal-teslimi",
+    sozlesmeVar: false,
+    komisyonKarariVar: false,
+    vergiSorgusu: { durum: "borcsuz", tarih: "2026-09-28", belgeNo: "VB-2026-0937", borc: 0 },
+    sgkSorgusu: { durum: "borcsuz", tarih: "2026-09-28", belgeNo: "SGK-2026-1184", borc: 0 },
+    oebNo: "2026/0412",
+    tamamlandi: true,
   },
 ];
