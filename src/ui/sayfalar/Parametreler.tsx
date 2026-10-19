@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { limitDonemiBul } from "../../domain/kurallar";
 import { ayarHatalari, limitDonemiHatalari, onerilenDonem } from "../../domain/parametreler";
 import { tutarCoz } from "../../domain/sihirbaz";
 import type { Ayarlar, KararPulu, Konum } from "../../domain/tipler";
-import { bugun, tl, uzunTarih } from "../bicim";
+import type { Depo } from "../../data/depo";
+import { elleYedekAl, yedegiDenetle, yedekSec, yedektenGeriYukle } from "../../data/yedek";
+import { bugun, tl, uzunTarih, yedekOzeti, yolDosyaAdi } from "../bicim";
 import { IdareBasligi } from "../IdareBasligi";
 import type { Veri } from "../useVeri";
 
@@ -98,6 +100,114 @@ interface DonemFormu {
   buyuksehir: string;
   diger: string;
   dayanak: string;
+}
+
+interface GeriYuklemeOnayi {
+  yol: string;
+  alimSayisi: number;
+  tedarikciSayisi: number;
+}
+
+// Yedek işlemleri ayarlar formundan bağımsızdır; kendi durumunu taşır.
+function YedekPaneli({ depo }: { depo: Depo }) {
+  const masaustu = depo.tur === "sqlite";
+  const [calisiyor, setCalisiyor] = useState<"yedek" | "denetim" | "geri" | null>(null);
+  const [tamam, setTamam] = useState<string | null>(null);
+  const [hata, setHata] = useState<string | null>(null);
+  const [onay, setOnay] = useState<GeriYuklemeOnayi | null>(null);
+  const vazgecDugmesi = useRef<HTMLButtonElement>(null);
+
+  // Onay adımı açılınca odak güvenli seçenek olan "Vazgeç"e gider.
+  useEffect(() => {
+    if (onay) vazgecDugmesi.current?.focus();
+  }, [onay]);
+
+  async function yedekAl() {
+    setCalisiyor("yedek");
+    setTamam(null);
+    setHata(null);
+    try {
+      const yol = await elleYedekAl(depo, bugun());
+      if (yol) setTamam(`Yedek kaydedildi: ${yol}`);
+    } catch (e) {
+      setHata(`Yedek alınamadı. ${String(e)}`);
+    } finally {
+      setCalisiyor(null);
+    }
+  }
+
+  async function yedekSecVeDenetle() {
+    setTamam(null);
+    setHata(null);
+    setOnay(null);
+    setCalisiyor("denetim");
+    try {
+      const yol = await yedekSec();
+      if (!yol) return;
+      const ozet = await yedegiDenetle(depo, yol);
+      setOnay({ yol, alimSayisi: ozet.alimSayisi, tedarikciSayisi: ozet.tedarikciSayisi });
+    } catch (e) {
+      setHata(String(e instanceof Error ? e.message : e));
+    } finally {
+      setCalisiyor(null);
+    }
+  }
+
+  async function geriYukle() {
+    if (!onay) return;
+    setCalisiyor("geri");
+    setHata(null);
+    try {
+      await yedektenGeriYukle(depo, onay.yol);
+    } catch (e) {
+      setHata(`Geri yüklenemedi. ${String(e instanceof Error ? e.message : e)}`);
+      setOnay(null);
+    } finally {
+      setCalisiyor(null);
+    }
+  }
+
+  const mesgul = calisiyor !== null;
+
+  return (
+    <section className="panel" aria-labelledby="yedek-baslik">
+      <h2 id="yedek-baslik">Yedekleme</h2>
+      <p className="soluk kucuk">Veritabanı her gün ilk açılışta otomatik yedeklenir; son 10 otomatik yedek saklanır.</p>
+      {!masaustu && <p className="soluk kucuk">Yedekleme yalnız masaüstü uygulamasında çalışır.</p>}
+      <div className="satir">
+        <button type="button" className="dugme" disabled={!masaustu || mesgul} onClick={yedekAl}>
+          {calisiyor === "yedek" ? "Yedekleniyor…" : "Yedek al"}
+        </button>
+        <button type="button" className="dugme" disabled={!masaustu || mesgul || onay !== null} onClick={yedekSecVeDenetle}>
+          Yedekten geri yükle…
+        </button>
+      </div>
+      {onay && (
+        <div className="bant bant-uyari">
+          <p>
+            <span className="kalin">{yolDosyaAdi(onay.yol)}</span>
+            <br />
+            {yedekOzeti(onay.alimSayisi, onay.tedarikciSayisi)}
+          </p>
+          <p>Şu anki veriler bu yedekle değiştirilecek. Değiştirmeden önce mevcut veriler otomatik olarak yedeklenir. Uygulama yeniden başlayacak.</p>
+          <div className="satir">
+            <button type="button" className="dugme dugme-tehlike" disabled={mesgul} onClick={geriYukle}>
+              {calisiyor === "geri" ? "Geri yükleniyor…" : "Geri yükle ve yeniden başlat"}
+            </button>
+            <button ref={vazgecDugmesi} type="button" className="dugme" disabled={mesgul} onClick={() => setOnay(null)}>
+              Vazgeç
+            </button>
+          </div>
+        </div>
+      )}
+      <div role="status">{tamam && <span className="basari-yazi">{tamam}</span>}</div>
+      {hata && (
+        <div className="bant bant-hata" role="alert">
+          {hata}
+        </div>
+      )}
+    </section>
+  );
 }
 
 export function Parametreler() {
@@ -490,6 +600,8 @@ export function Parametreler() {
           </div>
         </div>
       </section>
+
+      <YedekPaneli depo={depo} />
 
       <div className="kaydet-cubugu" role="region" aria-label="Ayarları kaydet">
         <div className="sutun-dar">

@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { depoAc, type Depo } from "../data/depo";
 import { gorunurAlimlar } from "../domain/gorunurluk";
+import { otomatikYedekAl } from "../data/yedek";
 import type { Alim, Ayarlar, LimitDonemi, Tedarikci } from "../domain/tipler";
+import { bugun } from "./bicim";
+
+// Açılışta bir kez; yenile() çağrıları yeniden yedek denemez.
+let yedekDenendi = false;
 
 export interface Veri {
   depo: Depo;
@@ -33,6 +38,11 @@ export function useVeri(): VeriDurumu {
         durum: "hazir",
         veri: { depo, alimlar: gorunurAlimlar(alimlar), tumAlimlar: alimlar, tedarikciler, limitDonemleri, ayarlar, yenile: yukle },
       });
+      // Yüklemeyi beklemez; hatası arayüze yansımaz (günde bir kez, aynı gün tekrar alınmaz).
+      if (!yedekDenendi) {
+        yedekDenendi = true;
+        void otomatikYedekAl(depo, bugun());
+      }
     } catch (e) {
       setSonuc({ durum: "hata", mesaj: String(e) });
     }

@@ -36,6 +36,11 @@ export interface Depo {
   odemeKaydet(o: Odeme): Promise<void>;
   basamaklarGetir(alimId: string): Promise<DosyaBasamaklari | null>;
   basamaklarKaydet(d: DosyaBasamaklari): Promise<void>;
+  // Tutarlı anlık görüntüyü (VACUUM INTO) var olmayan hedef dosyaya yazar.
+  yedekAl(hedefYol: string): Promise<void>;
+  kapat(): Promise<void>;
+  // Canlı veritabanının uygulanmış göçleri; checksum hex string.
+  gocler(): Promise<{ version: number; checksum: string }[]>;
 }
 
 // Tarayıcıda (vite dev, testler) veritabanı yoktur; örnek verilerle bellekte çalışır, kayıtlar sayfa yenilenince kaybolur.
@@ -122,6 +127,13 @@ export function bellekDepo(): Depo {
     basamaklarKaydet: async (d) => {
       basamakKayitlari.set(d.alimId, structuredClone(d));
     },
+    yedekAl: async () => {
+      throw new Error("Tarayıcı önizlemesinde yedekleme yok.");
+    },
+    kapat: async () => {
+      throw new Error("Tarayıcı önizlemesinde yedekleme yok.");
+    },
+    gocler: async () => [],
   };
 }
 

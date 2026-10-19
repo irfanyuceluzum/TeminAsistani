@@ -1,5 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { pdfDosyaAdi } from "./bicim";
+import { pdfDosyaAdi, yedekOzeti, yolDosyaAdi } from "./bicim";
+
+describe("yolDosyaAdi", () => {
+  it("Unix ve Windows yollarından dosya adını alır", () => {
+    expect(yolDosyaAdi("/home/u/yedek/a.db")).toBe("a.db");
+    expect(yolDosyaAdi("C:\\Yedek\\b.db")).toBe("b.db");
+    expect(yolDosyaAdi("c.db")).toBe("c.db");
+  });
+});
+
+describe("yedekOzeti", () => {
+  it("alım ve tedarikçi sayısını yazar", () => {
+    expect(yedekOzeti(12, 3)).toBe("12 alım dosyası, 3 tedarikçi");
+  });
+});
 
 describe("pdfDosyaAdi", () => {
   it("dosya numarasını başa alır, başlıktaki tekrarını atar", () => {

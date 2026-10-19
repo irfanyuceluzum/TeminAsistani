@@ -53,6 +53,16 @@ export function asamaGrubu(a: Asama): AsamaGrubu {
   return "Hazırlık";
 }
 
+// Yedek geri yükleme onayında gösterilen dosya adı; hem / hem \ ayracını tanır.
+export function yolDosyaAdi(yol: string): string {
+  const parcalar = yol.split(/[\\/]/);
+  return parcalar[parcalar.length - 1] || yol;
+}
+
+export function yedekOzeti(alimSayisi: number, tedarikciSayisi: number): string {
+  return `${alimSayisi.toLocaleString("tr-TR")} alım dosyası, ${tedarikciSayisi.toLocaleString("tr-TR")} tedarikçi`;
+}
+
 // Yazdırma penceresinin önerdiği PDF adı: "DT-2026-041 Onay belgesi". Başlıktaki dosya numarası öne alınır;
 // Windows'ta dosya adında geçemeyen karakterler (\ / : * ? " < > |) tireye döner, sondaki nokta ve boşluk atılır.
 export function pdfDosyaAdi(baslik: string, dosyaNo?: string): string {

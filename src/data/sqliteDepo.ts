@@ -6,6 +6,7 @@ import type { Odeme } from "../domain/odeme";
 import type { PiyasaArastirmasi } from "../domain/piyasa";
 import type { Alim, Asama, Ayarlar, Bent, LimitDonemi, Tedarikci } from "../domain/tipler";
 import type { AlimDegisikligi, Depo } from "./depo";
+import { gocSatirlariniCevir } from "./yedek";
 import { ornekAlimlar, ornekAyarlar, ornekBasamaklar, ornekEvraklar, ornekLimitDonemleri, ornekMuayeneler, ornekOdemeler, ornekOlaylar, ornekPiyasa, ornekTedarikciler } from "./ornekVeri";
 
 // Şema src-tauri/migrations altındaki SQL dosyalarıyla Rust tarafında kurulur.
@@ -292,6 +293,16 @@ export async function sqliteDepo(): Promise<Depo> {
          ON CONFLICT(alim_id) DO UPDATE SET belge = excluded.belge, guncelleme = excluded.guncelleme`,
         [d.alimId, JSON.stringify(d)],
       );
+    },
+    async yedekAl(hedefYol) {
+      await db.execute("VACUUM INTO $1", [hedefYol]);
+    },
+    async kapat() {
+      await db.close();
+    },
+    async gocler() {
+      const satirlar = await db.select<{ version: number; checksum: unknown }[]>("SELECT version, checksum FROM _sqlx_migrations ORDER BY version");
+      return gocSatirlariniCevir(satirlar);
     },
   };
 }

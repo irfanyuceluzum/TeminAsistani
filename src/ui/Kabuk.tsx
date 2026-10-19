@@ -1,5 +1,7 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
+import { isTauri } from "@tauri-apps/api/core";
 import { NavLink, Outlet } from "react-router-dom";
+import { sonYedegeDon } from "../data/yedek";
 import type { VeriDurumu } from "./useVeri";
 
 function Ikon({ d }: { d: ReactNode }) {
@@ -27,6 +29,33 @@ const MENU: { yol: string; ad: string; ikon: ReactNode }[] = [
     ikon: <><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1" /><circle cx="15" cy="6" r="2" /><circle cx="9" cy="12" r="2" /><circle cx="17" cy="18" r="2" /></>,
   },
 ];
+
+function SonYedegeDonDugmesi() {
+  const [calisiyor, setCalisiyor] = useState(false);
+  const [hata, setHata] = useState<string | null>(null);
+
+  async function don() {
+    setCalisiyor(true);
+    setHata(null);
+    try {
+      await sonYedegeDon();
+    } catch (e) {
+      setHata(String(e instanceof Error ? e.message : e));
+    } finally {
+      setCalisiyor(false);
+    }
+  }
+
+  return (
+    <div>
+      <p className="kucuk">Veritabanı az önce bir yedekten geri yüklendiyse, geri yüklemeden önceki hâline döndürür; uygulama yeniden başlar.</p>
+      <button type="button" className="dugme" disabled={calisiyor} onClick={don}>
+        Geri yükleme öncesi verilere dön
+      </button>
+      {hata && <p>{hata}</p>}
+    </div>
+  );
+}
 
 export function Kabuk({ veri }: { veri: VeriDurumu }) {
   const hazir = veri.durum === "hazir" ? veri.veri : null;
@@ -64,6 +93,7 @@ export function Kabuk({ veri }: { veri: VeriDurumu }) {
         {veri.durum === "hata" && (
           <div className="bant bant-hata" role="alert">
             Veritabanı açılamadı. Uygulamayı yeniden başlatın. Ayrıntı: {veri.mesaj}
+            {isTauri() && <SonYedegeDonDugmesi />}
           </div>
         )}
         {hazir && <Outlet context={hazir} />}

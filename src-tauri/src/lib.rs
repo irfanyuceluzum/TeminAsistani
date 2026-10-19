@@ -1,3 +1,5 @@
+mod yedek;
+
 use tauri_plugin_sql::{Migration, MigrationKind};
 
 fn gocler() -> Vec<Migration> {
@@ -64,6 +66,15 @@ pub fn run() {
                 .add_migrations("sqlite:temin.db", gocler())
                 .build(),
         )
+        .invoke_handler(tauri::generate_handler![
+            yedek::yedek_dizini_hazirla,
+            yedek::eski_yedekleri_sil,
+            yedek::yedegi_yerlestir,
+            yedek::yedek_dogrula,
+            yedek::geri_yukleme_on_denetim,
+            yedek::yedekten_don,
+            yedek::son_yedege_don,
+        ])
         .run(tauri::generate_context!())
         .expect("Temin Asistanı başlatılamadı");
 }
