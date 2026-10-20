@@ -26,7 +26,8 @@ export default defineConfig(async () => ({
       : undefined,
     watch: {
       // 3. tell Vite to ignore watching `src-tauri`
-      ignored: ["**/src-tauri/**"],
+      // e2e/sonuclar: Playwright iz dosyaları yazıldıkça açık sayfa yeniden yüklenmesin
+      ignored: ["**/src-tauri/**", "**/e2e/sonuclar/**"],
     },
   },
 }));
