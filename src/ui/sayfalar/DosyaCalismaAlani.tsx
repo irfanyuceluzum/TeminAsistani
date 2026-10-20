@@ -13,7 +13,6 @@ import {
 } from "../../domain/basamaklar";
 import type { EvrakKaydi } from "../../domain/dosya";
 import type { Muayene } from "../../domain/muayene";
-import type { Odeme } from "../../domain/odeme";
 import { bosArastirma, type PiyasaArastirmasi, type PiyasaKalemi } from "../../domain/piyasa";
 import type { Alim } from "../../domain/tipler";
 import { olayKaydet } from "../../data/olay";
@@ -26,8 +25,7 @@ import { TeklifMektuplariBasamagi } from "../basamaklar/TeklifMektuplari";
 import { PiyasaTutanagiBasamagi } from "../basamaklar/PiyasaTutanagi";
 import { SiparisBasamagi } from "../basamaklar/SiparisBasamagi";
 import { MuayeneBasamagi } from "../basamaklar/MuayeneBasamagi";
-import { TasinirBasamagi } from "../basamaklar/TasinirBasamagi";
-import { OdemeBasamagi } from "../basamaklar/OdemeBasamagi";
+import { KontrolBasamagi } from "../basamaklar/KontrolBasamagi";
 import { VeriGirisi } from "../basamaklar/VeriGirisi";
 import { YaklasikMaliyetBasamagi } from "../basamaklar/YaklasikMaliyet";
 
@@ -44,7 +42,6 @@ export interface BasamakBaglami {
   kalemler: PiyasaKalemi[];
   evraklar: Record<string, EvrakKaydi>;
   muayene: Muayene | null;
-  odeme: Odeme | null;
   basamak: Basamak;
   dosyaDegistir: (f: (d: DosyaBasamaklari) => DosyaBasamaklari) => void;
   kalemleriDegistir: (k: PiyasaKalemi[]) => void;
@@ -104,7 +101,6 @@ const KAYIT_YAZISI: Record<KayitDurumu, string> = {
 interface Yuk {
   evraklar: Record<string, EvrakKaydi>;
   muayene: Muayene | null;
-  odeme: Odeme | null;
 }
 
 export function DosyaCalismaAlani() {
@@ -124,8 +120,8 @@ function CalismaAlani({ alimId }: { alimId: string }) {
   const [hata, setHata] = useState("");
 
   const kayitlariYukle = useCallback(async () => {
-    const [evraklar, muayene, odeme] = await Promise.all([depo.evraklar(alimId), depo.muayeneGetir(alimId), depo.odemeGetir(alimId)]);
-    setYuk({ evraklar, muayene, odeme });
+    const [evraklar, muayene] = await Promise.all([depo.evraklar(alimId), depo.muayeneGetir(alimId)]);
+    setYuk({ evraklar, muayene });
   }, [depo, alimId]);
 
   useEffect(() => {
@@ -232,8 +228,7 @@ function CalismaAlani({ alimId }: { alimId: string }) {
   else if (secili.no === 7) icerik = <PiyasaTutanagiBasamagi b={baglam} />;
   else if (secili.no === 8) icerik = <SiparisBasamagi b={baglam} />;
   else if (secili.no === 9 || secili.no === 10 || secili.no === 11) icerik = <MuayeneBasamagi b={baglam} />;
-  else if (secili.no === 12) icerik = <TasinirBasamagi b={baglam} />;
-  else if (secili.no === 13) icerik = <OdemeBasamagi b={baglam} />;
+  else if (secili.no === 12) icerik = <KontrolBasamagi b={baglam} />;
   else icerik = null;
 
 

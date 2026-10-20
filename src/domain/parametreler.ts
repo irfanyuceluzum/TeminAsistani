@@ -52,14 +52,6 @@ export function ayarHatalari(a: Ayarlar): string[] {
   const p = a.bolme.pencereGun;
   if (!Number.isInteger(p) || p < 1 || p > 366) h.push("Bölme kontrolünün süresi 1 ile 366 gün arasında olmalı.");
   if (!a.bolme.ayniKalem && !a.bolme.ayniEkonomikKod && !a.bolme.ayniTedarikci) h.push("Bölme kontrolü için en az bir benzerlik ölçütü seçin.");
-  const oranlar: [string, number][] = [
-    ["Makbuz", a.damga.makbuzOrani],
-    ["Sözleşme", a.damga.sozlesmeOrani],
-    ["Karar pulu", a.damga.kararOrani],
-  ];
-  for (const [ad, oran] of oranlar) {
-    if (!Number.isInteger(oran) || oran < 0 || oran > 100_000) h.push(`${ad} oranı binde 0 ile 1.000 arasında olmalı.`);
-  }
   for (const [yil, odenek] of Object.entries(a.odenekler)) {
     if (!Number.isInteger(odenek) || odenek < 0) h.push(`${yil} ödeneği geçerli bir tutar olmalı.`);
   }

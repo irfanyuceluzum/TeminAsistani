@@ -6,7 +6,7 @@ import type { PiyasaKalemi } from "../../domain/piyasa";
 import type { PiyasaArastirmasi } from "../../domain/piyasa";
 import { degerlendir, firmaToplami, kalemTutari } from "../../domain/piyasa";
 import { kabulSonucu, type Muayene } from "../../domain/muayene";
-import type { Odeme, OebSatiri } from "../../domain/odeme";
+import type { DizinSatiri } from "../../domain/kapanis";
 import { bentBilgisi } from "../../domain/sihirbaz";
 import type { Alim, Ayarlar, Tedarikci } from "../../domain/tipler";
 import { belgeTutari, BOS_DEGER, bosIse, tutarMetni, uzunTarih } from "../bicim";
@@ -1064,182 +1064,93 @@ export function muayeneKabulTutanagiSayfalari(
   ];
 }
 
-// 12. Basamak: Taşınır İşlem Fişi (TİF)
-export function tasinirIslemFisiSayfalari(
+// 12. Basamak (Kontrol ve kapanış): dosya kapağı ve dizini. Kapak ilk sayfa, dizin ikinci sayfadır.
+export function kapakVeDizinSayfalari(
   b: BelgeBilgisi,
-  tif?: { no?: string; tarih?: string },
-  muayene?: Muayene | null,
+  satirlar: DizinSatiri[],
+  yuklenici: Tedarikci | null,
+  kapanisTarihi: string | null,
 ): ReactNode[] {
-  // Taşınıra giren miktar muayenede kabul edilen miktardır; muayene yoksa ihtiyaç listesi miktarı yazılır.
-  const satirlar = muayene
-    ? muayene.kalemler.filter((k) => k.kabulMiktari > 0).map((k) => ({ ad: k.ad, birim: k.birim, miktar: k.kabulMiktari, birimFiyat: k.birimFiyat as number | null }))
-    : b.kalemler.map((k) => ({ ad: k.ad, birim: k.birim, miktar: k.miktar, birimFiyat: null as number | null }));
-  const toplam = satirlar.reduce((t, x) => t + (x.birimFiyat === null ? 0 : Math.round(x.miktar * x.birimFiyat)), 0);
+  const ustIdare = (b.ayarlar.idare?.ustIdare || "T.C. İDARE MÜDÜRLÜĞÜ").toLocaleUpperCase("tr-TR");
+  const birim = b.ayarlar.idare?.birim || "";
+  const makam = makamBasligi(birim).toLocaleUpperCase("tr-TR");
   return [
-    <div key="tif-belgesi" className="onay-sablon-kapsayici">
+    <div key="dosya-kapagi" className="onay-sablon-kapsayici">
       <IdareBasligi ayarlar={b.ayarlar} />
-      <div style={{ textAlign: "center", fontWeight: "bold", fontSize: "12pt", margin: "16pt 0 8pt 0" }}>
-        TAŞINIR İŞLEM FİŞİ BİLGİ FORMU
-      </div>
-      <table className="onay-sablon-tablo" style={{ margin: "12pt 0" }}>
+      <div style={{ textAlign: "center", fontWeight: "bold", fontSize: "16pt", margin: "48pt 0 6pt 0" }}>DOĞRUDAN TEMİN DOSYASI</div>
+      <div style={{ textAlign: "center", fontSize: "10pt", marginBottom: "24pt" }}>4734 sayılı Kanun md. 22/d</div>
+      <table className="onay-sablon-tablo">
         <tbody>
           <tr>
-            <th className="onay-th-etiket" style={{ width: "30%" }}>Taşınır İşlem Fişi (TİF) No</th>
-            <td className="onay-td-deger kalin">{tif?.no || "—"}</td>
+            <th className="onay-th-etiket" style={{ width: "34%" }}>İdare</th>
+            <td className="onay-td-deger">
+              <div className="kalin">{ustIdare}</div>
+              {birim && <div>{birim}</div>}
+            </td>
           </tr>
           <tr>
-            <th className="onay-th-etiket">TİF Düzenleme Tarihi</th>
-            <td className="onay-td-deger">{tif?.tarih ? uzunTarih(tif.tarih) : "…/…/20…"}</td>
+            <th className="onay-th-etiket">Makam</th>
+            <td className="onay-td-deger">{makam}</td>
           </tr>
           <tr>
-            <th className="onay-th-etiket">İşin Adı</th>
-            <td className="onay-td-deger">{b.alim.konu}</td>
+            <th className="onay-th-etiket">Dosya no</th>
+            <td className="onay-td-deger kalin">{b.alim.id}</td>
           </tr>
           <tr>
-            <th className="onay-th-etiket">Giriş Türü</th>
-            <td className="onay-td-deger">Satın Alma Yoluyla Giriş</td>
+            <th className="onay-th-etiket">İşin adı</th>
+            <td className="onay-td-deger kalin">{b.alim.konu}</td>
+          </tr>
+          <tr>
+            <th className="onay-th-etiket">Dayanak</th>
+            <td className="onay-td-deger">4734 sayılı Kanun md. 22/{bentBilgisi(b.alim.bent).harf}</td>
+          </tr>
+          <tr>
+            <th className="onay-th-etiket">Onay tarihi</th>
+            <td className="onay-td-deger">{tarihYazisi(b.alim.onayTarihi)}</td>
+          </tr>
+          <tr>
+            <th className="onay-th-etiket">Yüklenici</th>
+            <td className="onay-td-deger">{yuklenici ? yuklenici.ad : BOS_DEGER}</td>
+          </tr>
+          <tr>
+            <th className="onay-th-etiket">Sipariş tutarı (KDV hariç)</th>
+            <td className="onay-td-deger kalin">{belgeTutari(b.alim.tutar)}</td>
+          </tr>
+          <tr>
+            <th className="onay-th-etiket">Dosya kapanış tarihi</th>
+            <td className="onay-td-deger">{kapanisTarihi ? uzunTarih(kapanisTarihi) : BOS_DEGER}</td>
           </tr>
         </tbody>
       </table>
+    </div>,
+    <div key="dosya-dizini" className="onay-sablon-kapsayici">
+      <IdareBasligi ayarlar={b.ayarlar} />
+      <div style={{ textAlign: "center", fontWeight: "bold", fontSize: "12pt", margin: "16pt 0 4pt 0" }}>DOSYA DİZİNİ</div>
+      <div style={{ textAlign: "center", fontSize: "9pt", marginBottom: "10pt" }}>
+        {b.alim.id} · {b.alim.konu}
+      </div>
       <table className="belge-tablo ek-tablo" style={{ margin: "0 0 12pt 0" }}>
         <thead>
           <tr>
             <th scope="col">Sıra</th>
-            <th scope="col">Taşınırın adı</th>
-            <th scope="col">Miktar</th>
-            <th scope="col">Birim</th>
-            <th scope="col">Birim fiyat (KDV hariç)</th>
-            <th scope="col">Tutar (KDV hariç)</th>
+            <th scope="col">Evrak</th>
+            <th scope="col">Tarih</th>
+            <th scope="col">Sayı</th>
+            <th scope="col">Açıklama</th>
           </tr>
         </thead>
         <tbody>
-          {satirlar.map((x, i) => (
-            <tr key={i}>
-              <td>{i + 1}</td>
-              <td>{x.ad}</td>
-              <td>{miktarYazisi(x.miktar)}</td>
-              <td>{x.birim}</td>
-              <td style={{ textAlign: "right" }}>{bosIse(x.birimFiyat, tutarMetni)}</td>
-              <td style={{ textAlign: "right" }}>{bosIse(x.birimFiyat, (f) => tutarMetni(Math.round(x.miktar * f)))}</td>
+          {satirlar.map((s) => (
+            <tr key={s.sira}>
+              <td>{s.sira}</td>
+              <td>{s.ad}</td>
+              <td>{bosIse(s.tarih, uzunTarih)}</td>
+              <td>{bosIse(s.sayi, (x) => x)}</td>
+              <td>{s.not}</td>
             </tr>
           ))}
-          {muayene && (
-            <tr>
-              <th scope="row" colSpan={5} style={{ textAlign: "right" }}>
-                Toplam (KDV hariç)
-              </th>
-              <td style={{ textAlign: "right", fontWeight: "bold" }}>{tutarMetni(toplam)}</td>
-            </tr>
-          )}
         </tbody>
       </table>
-      <p style={{ fontSize: "8.5pt", lineHeight: 1.5, textAlign: "justify" }}>
-        İdaremizce satın alınan malzemelerin Taşınır Kayıt ve Yönetim Sistemi (TKYS) üzerinden giriş kaydı yapılmış ve yukarıdaki fiş numarası ile kayıtlara intikal ettirilmiştir.
-      </p>
-    </div>,
-  ];
-}
-
-// 13. Basamak: Ödeme Emri Belgesi (ÖEB)
-export function odemeEmriBelgesiSayfalari(
-  b: BelgeBilgisi,
-  odeme: Odeme | null,
-  satirlar: OebSatiri[],
-  oebTarihi: string,
-  firmaAdi: (id: string) => string,
-  iban = "",
-): ReactNode[] {
-  const ustIdare = (b.ayarlar.idare?.ustIdare || "T.C. İDARE MÜDÜRLÜĞÜ").toLocaleUpperCase("tr-TR");
-  const birim = b.ayarlar.idare?.birim || "";
-  const g = b.ayarlar.gorevler;
-  const gg = imzaci(b.ayarlar, g?.gerceklestirme);
-  const hy = imzaci(b.ayarlar, g?.harcamaYetkilisi);
-  const borcToplami = satirlar.reduce((t, x) => t + (x.borc ?? 0), 0);
-  const alacakToplami = satirlar.reduce((t, x) => t + (x.alacak ?? 0), 0);
-  // "Kırtasiye malzemesi alımı" gibi konular zaten "alımı" ile biter; ikinci kez eklenmez.
-  const konu = /alımı$/i.test(b.alim.konu.trim()) ? b.alim.konu.trim() : `${b.alim.konu.trim()} alımı`;
-
-  return [
-    <div key="odeme-emri" className="onay-sablon-kapsayici">
-      <div style={{ textAlign: "center", fontWeight: "bold", fontSize: "12pt", marginBottom: "4pt" }}>
-        ÖDEME EMRİ BELGESİ
-      </div>
-      <div style={{ textAlign: "center", fontSize: "8.5pt", marginBottom: "8pt" }}>
-        {ustIdare} {birim && `· ${birim}`}
-      </div>
-
-      <table className="onay-sablon-tablo" style={{ marginBottom: "8pt" }}>
-        <tbody>
-          <tr>
-            <th className="onay-th-etiket" style={{ width: "25%" }}>ÖEB NUMARASI</th>
-            <td className="onay-td-deger kalin">{odeme?.oebNo || "…"}</td>
-            <th className="onay-th-etiket" style={{ width: "20%" }}>ÖEB TARİHİ</th>
-            <td className="onay-td-deger">{oebTarihi ? uzunTarih(oebTarihi) : "…/…/20…"}</td>
-          </tr>
-          <tr>
-            <th className="onay-th-etiket">HAK SAHİBİ (ALACAKLI)</th>
-            <td className="onay-td-deger kalin" colSpan={3}>
-              {b.alim.tedarikciId ? firmaAdi(b.alim.tedarikciId) : "—"}
-              {iban && <span style={{ fontWeight: "normal" }}> · IBAN {iban}</span>}
-            </td>
-          </tr>
-          <tr>
-            <th className="onay-th-etiket">BÜTÇE TERTİBİ</th>
-            <td className="onay-td-deger">{butceTertibi(b.ayarlar, b.alim.ekonomikKod)}</td>
-            <th className="onay-th-etiket">ÖDEME TÜRÜ</th>
-            <td className="onay-td-deger">Doğrudan temin, 4734 md. 22/{bentBilgisi(b.alim.bent).harf}</td>
-          </tr>
-          <tr>
-            <th className="onay-th-etiket">İŞİN ADI VE AÇIKLAMASI</th>
-            <td className="onay-td-deger" colSpan={3}>{konu} bedelinin ödenmesi.</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <table className="onay-sablon-tablo" style={{ marginBottom: "10pt" }}>
-        <thead>
-          <tr>
-            <th style={{ width: "50%", textAlign: "left" }}>HESAP AÇIKLAMASI</th>
-            <th style={{ width: "25%", textAlign: "right" }}>BORÇ (TL)</th>
-            <th style={{ width: "25%", textAlign: "right" }}>ALACAK (TL)</th>
-          </tr>
-        </thead>
-        <tbody>
-          {satirlar.map((x) => (
-            <tr key={x.aciklama} style={x.aciklama.startsWith("Yükleniciye") ? { fontWeight: "bold" } : undefined}>
-              <td>{x.aciklama}</td>
-              <td style={{ textAlign: "right" }}>{bosIse(x.borc, tutarMetni)}</td>
-              <td style={{ textAlign: "right" }}>{bosIse(x.alacak, tutarMetni)}</td>
-            </tr>
-          ))}
-          <tr style={{ fontWeight: "bold" }}>
-            <td>TOPLAM</td>
-            <td style={{ textAlign: "right" }}>{tutarMetni(borcToplami)}</td>
-            <td style={{ textAlign: "right" }}>{tutarMetni(alacakToplami)}</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <div style={{ fontSize: "8pt", marginBottom: "12pt" }}>
-        <strong>EKLER:</strong> Onay Belgesi, Piyasa Fiyat Araştırma Tutanağı, Fatura, Muayene ve Kabul Tutanağı, TİF.
-      </div>
-
-      <div style={{ display: "flex", justifyContent: "space-between", marginTop: "16pt" }}>
-        <div className="onay-imza-kutu" style={{ width: "45%" }}>
-          <span className="kalin">DÜZENLEYEN</span>
-          <span>Gerçekleştirme Görevlisi</span>
-          <span className="kalin">{imzaAdi(gg.ad)}</span>
-          <span>{gg.unvan}</span>
-          <span className="imza-cizgi" />
-        </div>
-        <div className="onay-imza-kutu" style={{ width: "45%" }}>
-          <span className="kalin">HARCAMA YETKİLİSİ</span>
-          <span>ÖDENMESİNİ UYGUN BULDUM</span>
-          <span className="kalin">{imzaAdi(hy.ad)}</span>
-          <span>{hy.unvan}</span>
-          <span className="imza-cizgi" />
-        </div>
-      </div>
     </div>,
   ];
 }

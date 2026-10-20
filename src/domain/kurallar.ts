@@ -2,7 +2,6 @@ import { gunFarki } from "./tarih";
 import type {
   Alim,
   BolmeKurallari,
-  DamgaAyarlari,
   Konum,
   LimitDonemi,
 } from "./tipler";
@@ -10,7 +9,7 @@ import type {
 const SAYILMAYAN_ASAMALAR = new Set(["iptal"]);
 
 // Mal alımı ekonomik kodları: 03.2 (tüketime yönelik mal ve malzeme alımları) ve 06.1 (mamul mal alımları).
-// Tevkifat varsayılanı ve işin türü sınıflandırması bu tek işlevi kullanır.
+// İşin türü sınıflandırması bu tek işlevi kullanır.
 export function malAlimiMi(ekonomikKod: string): boolean {
   return ekonomikKod.startsWith("03.2") || ekonomikKod.startsWith("06.1");
 }
@@ -126,30 +125,4 @@ export function bolmeRiskleri(
       toplam: g.reduce((t, a) => t + a.tutar, 0),
     }))
     .sort((x, y) => y.toplam - x.toplam);
-}
-
-export interface DamgaSonucu {
-  makbuz: number;
-  sozlesme: number;
-  karar: number;
-  toplam: number;
-}
-
-function yuzBinde(matrah: number, oran: number): number {
-  return Math.round((matrah * oran) / 100_000);
-}
-
-// Matrah KDV hariç bedeldir. Karar pulu doğrudan teminde tartışmalı olduğundan idare ayarına bırakılır.
-export function damgaVergisi(
-  matrah: number,
-  ayar: DamgaAyarlari,
-  durum: { sozlesmeVar: boolean; komisyonKarariVar: boolean },
-): DamgaSonucu {
-  const makbuz = yuzBinde(matrah, ayar.makbuzOrani);
-  const sozlesme = durum.sozlesmeVar ? yuzBinde(matrah, ayar.sozlesmeOrani) : 0;
-  const kararUygulanir =
-    ayar.kararPulu === "onay-karar-sayilir" ||
-    (ayar.kararPulu === "yalnizca-komisyon" && durum.komisyonKarariVar);
-  const karar = kararUygulanir ? yuzBinde(matrah, ayar.kararOrani) : 0;
-  return { makbuz, sozlesme, karar, toplam: makbuz + sozlesme + karar };
 }

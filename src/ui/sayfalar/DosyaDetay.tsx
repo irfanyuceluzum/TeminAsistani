@@ -177,9 +177,9 @@ export function DosyaDetay() {
               {eskiEkranBasamagi("muayene")}. basamağa git: muayene raporu ve kabul
             </Link>
           )}
-          {!kapali && ilerleme.ekran === "odeme" && (
+          {!kapali && ilerleme.ekran === "kontrol" && (
             <Link to={`/dosyalar/${alim.id}/basamak/${eskiEkranBasamagi("odeme")}`} className="dugme dugme-ana">
-              {eskiEkranBasamagi("odeme")}. basamağa git: ödeme emri belgesi
+              {eskiEkranBasamagi("odeme")}. basamak: kontrol ve kapanış
             </Link>
           )}
           {!kapali && ilerleme.sonraki && ilerleme.ekran === null && (
@@ -241,9 +241,9 @@ export function DosyaDetay() {
                     Aç
                   </Link>
                 )}
-                {(e.kod === "borc-sorgusu" || e.kod === "odeme-emri") && (alim.asama === "odeme" || e.tamam) && (
+                {e.kod === "odeme-emri" && (alim.asama === "odeme" || e.tamam) && (
                   <Link to={`/dosyalar/${alim.id}/basamak/${eskiEkranBasamagi("odeme")}`} className="kucuk">
-                    Aç
+                    12. basamak: kontrol ve kapanış
                   </Link>
                 )}
                 {e.kod === "muayene-tutanagi" && (alim.asama === "muayene" || e.tamam) && (

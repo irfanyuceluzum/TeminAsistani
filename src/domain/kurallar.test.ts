@@ -2,14 +2,13 @@ import { describe, expect, it } from "vitest";
 import {
   benzerAlimlar,
   bolmeRiskleri,
-  damgaVergisi,
   ddLimitKontrolu,
   limitDonemiBul,
   malAlimiMi,
   odenekSiniri,
   yuzdeOnDurumu,
 } from "./kurallar";
-import type { Alim, BolmeKurallari, DamgaAyarlari, LimitDonemi } from "./tipler";
+import type { Alim, BolmeKurallari, LimitDonemi } from "./tipler";
 
 const TL = 100;
 
@@ -125,30 +124,5 @@ describe("kısımlara bölme", () => {
     expect(benzerAlimlar(aday, alimlar, kurallar).map((a) => a.id)).toEqual(["1", "2", "3"]);
     const kodla = { ...kurallar, ayniKalem: false, ayniEkonomikKod: true };
     expect(benzerAlimlar(aday, alimlar, kodla).map((a) => a.id)).toEqual(["1", "2", "3", "5"]);
-  });
-});
-
-describe("damga vergisi", () => {
-  const ayar: DamgaAyarlari = { makbuzOrani: 948, sozlesmeOrani: 948, kararOrani: 569, kararPulu: "uygulanmaz" };
-  const matrah = 46_900 * TL;
-
-  it("sözleşmesiz alımda yalnızca makbuz vergisi keser", () => {
-    expect(damgaVergisi(matrah, ayar, { sozlesmeVar: false, komisyonKarariVar: false })).toEqual({
-      makbuz: 44_461,
-      sozlesme: 0,
-      karar: 0,
-      toplam: 44_461,
-    });
-  });
-
-  it("karar pulunu idare ayarına göre uygular", () => {
-    const onay = damgaVergisi(matrah, { ...ayar, kararPulu: "onay-karar-sayilir" }, { sozlesmeVar: false, komisyonKarariVar: false });
-    expect(onay.karar).toBe(26_686);
-    const komisyonsuz = damgaVergisi(matrah, { ...ayar, kararPulu: "yalnizca-komisyon" }, { sozlesmeVar: false, komisyonKarariVar: false });
-    expect(komisyonsuz.karar).toBe(0);
-  });
-
-  it("sözleşme varsa sözleşme vergisini ekler", () => {
-    expect(damgaVergisi(matrah, ayar, { sozlesmeVar: true, komisyonKarariVar: false }).toplam).toBe(88_922);
   });
 });

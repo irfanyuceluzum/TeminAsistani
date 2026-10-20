@@ -51,7 +51,7 @@ function maliyet(d: Partial<YaklasikMaliyet> = {}): YaklasikMaliyet {
 }
 
 function girdi(d: Partial<BasamakGirdisi> = {}): BasamakGirdisi {
-  return { alim: temizlik, piyasa: temizlikPiyasa, dosya: bosBasamaklar(temizlik.id, "2026-10-17"), evraklar: {}, muayene: null, odeme: null, ...d };
+  return { alim: temizlik, piyasa: temizlikPiyasa, dosya: bosBasamaklar(temizlik.id, "2026-10-17"), evraklar: {}, muayene: null, ...d };
 }
 
 describe("yaklaşık maliyet", () => {
@@ -98,9 +98,10 @@ describe("yaklaşık maliyet", () => {
 });
 
 describe("basamak listesi", () => {
-  it("13 basamak çıkarır; ilk eksik basamak sürüyor olur", () => {
+  it("12 basamak çıkarır; ilk eksik basamak sürüyor olur", () => {
     const b = basamaklar(girdi());
-    expect(b).toHaveLength(13);
+    expect(b).toHaveLength(12);
+    expect(b[11]).toMatchObject({ no: 12, ad: "Kontrol ve kapanış", grup: "Kapanış", durum: "bekliyor" });
     expect(b[0].durum).toBe("tamam"); // örnek araştırmada kalemler hazır
     expect(b[1]).toMatchObject({ no: 2, durum: "suruyor" });
     expect(b.filter((x) => x.durum === "suruyor")).toHaveLength(1);
@@ -116,7 +117,7 @@ describe("basamak listesi", () => {
     expect(b[4].durum).toBe("tamam");
     expect(b[5]).toMatchObject({ ad: "Teklif mektupları", durum: "tamam" });
     expect(b[6]).toMatchObject({ no: 7, durum: "suruyor" });
-    expect(ilerleme(b)).toEqual({ biten: 4, gerekli: 11 });
+    expect(ilerleme(b)).toEqual({ biten: 4, gerekli: 10 });
   });
 
   it("22/b bentli gizli kayıtta da 6. basamak teklif mektupları, 7. basamak gerekli", () => {
@@ -287,7 +288,7 @@ describe("eskiEkranBasamagi", () => {
   it("eski ekranları karşılığı olan basamağa eşler", () => {
     expect(eskiEkranBasamagi("piyasa")).toBe(7);
     expect(eskiEkranBasamagi("muayene")).toBe(10);
-    expect(eskiEkranBasamagi("odeme")).toBe(13);
+    expect(eskiEkranBasamagi("odeme")).toBe(12);
   });
 });
 
@@ -320,7 +321,7 @@ describe("tarih sırası zinciri", () => {
     const g = duzenliGirdi();
     g.dosya.ihtiyacOnayi.tarih = "2026-10-05"; // 2 > 3
     g.piyasa!.yazi!.sonTeklifTarihi = "2026-10-20"; // 6 > 7
-    g.evraklar["odeme-emri"] = ev("2026-10-12"); // 10 > 13
+    g.evraklar["odeme-emri"] = ev("2026-10-12"); // 10 > 12
     const k = tarihSirasiKontrolleri(g);
     expect(k.every((x) => x.durum === "uyari")).toBe(true);
     expect(k).toHaveLength(3);
@@ -331,7 +332,22 @@ describe("tarih sırası zinciri", () => {
     expect(k[1].baslik).toContain("Son teklif günü (6. basamak)");
     expect(k[1].baslik).toContain("Piyasa tutanağı (7. basamak)");
     expect(k[2].baslik).toContain("Muayene (10. basamak)");
-    expect(k[2].baslik).toContain("Ödeme emri (13. basamak)");
+    expect(k[2].baslik).toContain("Ödeme emri (12. basamak)");
+  });
+
+  it("TİF ve ödeme emri tarihi girilmemişse sıra denetimi sessiz geçer", () => {
+    const g = duzenliGirdi();
+    delete g.evraklar["tasinir-fisi"];
+    delete g.evraklar["odeme-emri"];
+    expect(tarihSirasiKontrolleri(g)).toEqual([]);
+  });
+
+  it("taşınır işlem fişi muayeneden önceyse 12. basamak olarak uyarır", () => {
+    const g = duzenliGirdi();
+    g.evraklar["tasinir-fisi"] = ev("2026-10-12"); // 10 > 12
+    const k = tarihSirasiKontrolleri(g);
+    expect(k).toHaveLength(1);
+    expect(k[0].baslik).toContain("Taşınır işlem fişi (12. basamak)");
   });
 
   it("tarihi boş olan çifti atlar", () => {

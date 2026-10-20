@@ -19,6 +19,15 @@ describe("evrak listesi", () => {
     expect(l.some((e) => e.kod === "kik-bildirimi")).toBe(true);
   });
 
+  it("borç sorgusu listede yok; TİF (TKYS) ve ödeme emri (MYS) dış sistem, KİK zorunlu değil", () => {
+    const l = evrakListesi(alim("DT-2026-040"));
+    expect(l.some((e) => e.kod === "borc-sorgusu")).toBe(false);
+    expect(l.find((e) => e.kod === "tasinir-fisi")).toMatchObject({ ad: "Taşınır işlem fişi", disSistem: "TKYS", zorunlu: false, sistemden: false });
+    expect(l.find((e) => e.kod === "odeme-emri")).toMatchObject({ ad: "Ödeme emri belgesi", disSistem: "MYS", zorunlu: false });
+    expect(l.find((e) => e.kod === "kik-bildirimi")!.zorunlu).toBe(false);
+    expect(l.filter((e) => !e.zorunlu).map((e) => e.kod)).toEqual(["tasinir-fisi", "odeme-emri", "kik-bildirimi"]);
+  });
+
   it("hangi bent kayıtlı olursa olsun 22/d evrakını üretir", () => {
     for (const bent of ["22/b", "22/c", "22/e"] as const) {
       const kodlar = evrakListesi(alim("DT-2026-035", { bent })).map((e) => e.kod);
@@ -73,14 +82,16 @@ describe("dosyanın kapanışı", () => {
     expect(kapanisEksikleri(a, hepsi(a), p)).toEqual([]);
   });
 
-  it("fatura, ödeme emri ve KİK bildirimi eksikse adlarını verir", () => {
+  it("yalnız zorunlu evrak eksikse adını verir; TİF, ödeme emri ve KİK eksikliği engellemez", () => {
     const a = alim("DT-2026-041", { ekapKayitNo: "26DT1" });
     const p = { ...structuredClone(ornekPiyasa[0]), tamamlandi: true };
     const k = hepsi(a);
-    delete k["fatura"];
+    delete k["tasinir-fisi"];
     delete k["odeme-emri"];
     delete k["kik-bildirimi"];
-    expect(kapanisEksikleri(a, k, p)).toEqual(["Fatura", "Ödeme emri belgesi", "KİK bildirimi"]);
+    expect(kapanisEksikleri(a, k, p)).toEqual([]);
+    delete k["fatura"];
+    expect(kapanisEksikleri(a, k, p)).toEqual(["Fatura"]);
   });
 
   it("yasaklılık sorgusu yapılmadan kapanmaz", () => {
@@ -104,7 +115,17 @@ describe("aşama ilerlemesi", () => {
     const a = alim("DT-2026-041", { asama: "odeme", ekapKayitNo: "2026/123456" });
     const kayit = Object.fromEntries(evrakListesi(a).map((e) => [e.kod, tamam()]));
     const p = { ...structuredClone(ornekPiyasa[0]), tamamlandi: true };
-    expect(asamaIlerlemesi(a, evrakDurumlari(a, kayit, p))).toEqual({ sonraki: "tamamlandi", eksikler: [], ekran: null });
+    // Ödeme aşamasında kapanış kontrol ekranında yapılır
+    expect(asamaIlerlemesi(a, evrakDurumlari(a, kayit, p))).toEqual({ sonraki: "tamamlandi", eksikler: [], ekran: "kontrol" });
+  });
+
+  it("ödeme aşamasında yalnız zorunlu eksikleri bildirir; TİF/ödeme emri/KİK eksikliği sayılmaz", () => {
+    const a = alim("DT-2026-041", { asama: "odeme", ekapKayitNo: "2026/123456" });
+    const p = { ...structuredClone(ornekPiyasa[0]), tamamlandi: true };
+    const kayit = Object.fromEntries(evrakListesi(a).filter((e) => e.zorunlu).map((e) => [e.kod, tamam()]));
+    expect(asamaIlerlemesi(a, evrakDurumlari(a, kayit, p))).toEqual({ sonraki: "tamamlandi", eksikler: [], ekran: "kontrol" });
+    delete kayit["fatura"];
+    expect(asamaIlerlemesi(a, evrakDurumlari(a, kayit, p)).eksikler).toEqual(["Fatura"]);
   });
 
   it("22/d onay aşamasında piyasa ekranına yönlendirir", () => {
@@ -117,9 +138,9 @@ describe("aşama ilerlemesi", () => {
     expect(asamaIlerlemesi(a, evrakDurumlari(a, {}, null))).toMatchObject({ sonraki: "odeme", ekran: "muayene" });
   });
 
-  it("ödeme evrakı eksikse ödeme ekranına yönlendirir", () => {
+  it("ödeme aşamasında kontrol ekranına yönlendirir", () => {
     const a = alim("DT-2026-038");
-    expect(asamaIlerlemesi(a, evrakDurumlari(a, {}, null)).ekran).toBe("odeme");
+    expect(asamaIlerlemesi(a, evrakDurumlari(a, {}, null)).ekran).toBe("kontrol");
   });
 
   it("tamamlanan dosyada ilerleme yoktur", () => {
@@ -195,6 +216,20 @@ describe("aşama tarihleri", () => {
   it("ISO zaman damgalı evrak tarihini güne indirger", () => {
     const a = alim("DT-2026-040");
     expect(asamaTarihleri(a, { "onay-belgesi": kayit("2026-09-03T14:25:00.000Z") }).onay).toBe("2026-09-03");
+  });
+
+  it("kapanış günü dosya-kapanisi kaydından, yoksa ödeme emri ve KİK tarihlerinin en geçinden gelir", () => {
+    const a = alim("DT-2026-040", { asama: "tamamlandi" });
+    expect(asamaTarihleri(a, { ...tum, "dosya-kapanisi": kayit("2026-09-25") }).tamamlandi).toBe("2026-09-25");
+    expect(asamaTarihleri(a, tum).tamamlandi).toBe("2026-09-20");
+    expect("tamamlandi" in asamaTarihleri(a, {})).toBe(false);
+  });
+
+  it("ödeme emri tarihi yoksa ödeme aşaması muayene tutanağı gününe düşer", () => {
+    const a = alim("DT-2026-040", { asama: "odeme" });
+    const { "odeme-emri": _oe, ...oeSiz } = tum;
+    expect(asamaTarihleri(a, oeSiz).odeme).toBe("2026-09-12");
+    expect(asamaTarihleri(a, {}).odeme).toBeUndefined();
   });
 
   it("tarihi boş evrakı dikkate almaz", () => {

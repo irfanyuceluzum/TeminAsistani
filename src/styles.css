@@ -111,7 +111,7 @@ th:last-child, td:last-child { padding-right: 20px; }
 .etiket { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; white-space: nowrap; }
 .etiket-Hazırlık { background: var(--vurgu-zemin); color: var(--vurgu-koyu); }
 .etiket-Teslim { background: var(--basari-zemin); color: var(--basari); }
-.etiket-Ödeme { background: var(--uyari-zemin); color: var(--uyari); }
+.etiket-Ödeme, .etiket-Kapanış { background: var(--uyari-zemin); color: var(--uyari); }
 .etiket-Kapalı { background: #e7ebef; color: #33424e; }
 
 .bekleyen { display: flex; gap: 12px; align-items: flex-start; }

@@ -1,7 +1,6 @@
 import type { DosyaBasamaklari } from "../domain/basamaklar";
 import type { EvrakKaydi, Olay } from "../domain/dosya";
 import type { Muayene } from "../domain/muayene";
-import type { Odeme } from "../domain/odeme";
 import type { PiyasaArastirmasi } from "../domain/piyasa";
 import type { Alim, Asama, Ayarlar, Bent, LimitDonemi, Tedarikci } from "../domain/tipler";
 
@@ -95,7 +94,7 @@ const satirlar: Satir[] = [
   ["DT-2026-032", "2026-08-20", "Fotokopi kâğıdı A4", "22/d", 21_600, "03.2.1.01", "A4", "anka", "tamamlandi", "2026-09-01"],
   ["DT-2026-035", "2026-09-01", "Güvenlik kamerası bakım hizmeti", "22/d", 58_300, "03.7.1.02", "KMR", null, "odeme", "2026-10-03"],
   ["DT-2026-034", "2026-09-15", "Fotokopi kâğıdı A4", "22/d", 19_800, "03.2.1.01", "A4", "anka", "tamamlandi", "2026-09-26"],
-  // 13 basamağın hepsi tamamlanmış örnek dosya (tutar, piyasa tutanağındaki kazanan toplamı ve muayenede kabul edilen toplamdır)
+  // 12 basamağın hepsi tamamlanmış örnek dosya (tutar, piyasa tutanağındaki kazanan toplamı ve muayenede kabul edilen toplamdır)
   ["DT-2026-037", "2026-09-08", "Sınıf panosu ve kırtasiye malzemesi", "22/d", 32_200, "03.2.1.01", "PNO", "anka", "tamamlandi", "2026-10-05"],
   ["DT-2026-038", "2026-09-18", "Yangın söndürme tüpü dolum ve bakımı", "22/d", 31_640, "03.7.1.02", "YNG", null, "odeme", "2026-10-09"],
   ["DT-2026-039", "2026-09-24", "Hizmet aracı kiralama", "22/d", 84_000, "03.5.5.02", "ARC", null, "siparis", "2026-10-11"],
@@ -128,10 +127,6 @@ export const ornekAyarlar: Ayarlar = {
   kullanici: "Satın alma birimi",
   odenekler: { 2026: 20_000_000 * TL },
   bolme: { pencereGun: 60, ayniEkonomikKod: false, ayniKalem: true, ayniTedarikci: false },
-  damga: { makbuzOrani: 948, sozlesmeOrani: 948, kararOrani: 569, kararPulu: "uygulanmaz" },
-  // 2026 için KDV dahil 12.000 TL (fatura düzenleme sınırı); ikincil kaynaktan, docs/mevzuat-varsayimlari.md
-  tevkifatSiniri: 12_000 * TL,
-  vergiBorcuSorguEsigi: 5_000 * TL,
   idare: { ustIdare: "Karataş Kaymakamlığı", birim: "Kırmızıdağ İlkokulu Müdürlüğü" },
   // Uydurma ama biçime uygun kodlar; gerçek kurum kodu değil
   butce: { kurumsal: "18.01.31.00", fonksiyonel: "09.1.2.00", finansman: "1" },
@@ -246,7 +241,7 @@ export const ornekEvraklar: Record<string, Record<string, EvrakKaydi>> = {
     "siparis-yazisi": { tamam: true, tarih: "2026-10-06", not: "Sözleşme düzenlenmedi" },
     fatura: { tamam: true, tarih: "2026-10-15", not: "e-Fatura" },
   },
-  // DT-2026-037: evrak listesi ve 13 basamağın evrakları eksiksiz; "not" alanı belge sayısını taşır.
+  // DT-2026-037: evrak listesi ve 12 basamağın evrakları eksiksiz; "not" alanı belge sayısını taşır.
   "DT-2026-037": {
     "ihtiyac-yazisi": { tamam: true, tarih: "2026-09-02", not: "2026/37-1" },
     "onay-belgesi": { tamam: true, tarih: "2026-09-08", not: "2026/37-OB" },
@@ -258,7 +253,6 @@ export const ornekEvraklar: Record<string, Record<string, EvrakKaydi>> = {
     fatura: { tamam: true, tarih: "2026-09-24", not: "e-Fatura ANK-2026-000418" },
     "muayene-tutanagi": { tamam: true, tarih: "2026-09-25", not: "2026/37-MK" },
     "tasinir-fisi": { tamam: true, tarih: "2026-09-25", not: "TİF 2026/118" },
-    "borc-sorgusu": { tamam: true, tarih: "2026-09-28", not: "Vergi ve SGK borcu yok" },
     "odeme-emri": { tamam: true, tarih: "2026-09-29", not: "2026/0412" },
     "kik-bildirimi": { tamam: true, tarih: "2026-10-05", not: "EKAP" },
   },
@@ -349,21 +343,6 @@ export const ornekMuayeneler: Muayene[] = [
       { ad: "Hasan Çelik", unvan: "Öğretmen", rol: "uye" },
       { ad: "Emine Şahin", unvan: "Öğretmen", rol: "uye" },
     ],
-    tamamlandi: true,
-  },
-];
-
-// DT-2026-037: mal alımı için varsayılan tevkifat türü, vergi ve SGK sorgusu borçsuz.
-export const ornekOdemeler: Odeme[] = [
-  {
-    alimId: "DT-2026-037",
-    kdvOrani: 20,
-    tevkifatTuru: "mal-teslimi",
-    sozlesmeVar: false,
-    komisyonKarariVar: false,
-    vergiSorgusu: { durum: "borcsuz", tarih: "2026-09-28", belgeNo: "VB-2026-0937", borc: 0 },
-    sgkSorgusu: { durum: "borcsuz", tarih: "2026-09-28", belgeNo: "SGK-2026-1184", borc: 0 },
-    oebNo: "2026/0412",
     tamamlandi: true,
   },
 ];

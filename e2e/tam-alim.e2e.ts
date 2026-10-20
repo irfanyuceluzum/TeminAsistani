@@ -12,7 +12,6 @@ import {
   tlKurus,
   belgeTutari,
   tutarGirdisi,
-  tutarMetni,
 } from "./yardimcilar";
 
 // Uygulamanın tarayıcı sürümü (bellekDepo, örnek veri) üzerinde yeni bir 22/d alımını baştan sona yürütür.
@@ -44,7 +43,6 @@ function teklifToplami(f: (typeof FIRMALAR)[number]): number {
 
 const KAZANAN = FIRMALAR.reduce((en, f) => (teklifToplami(f) < teklifToplami(en) ? f : en));
 const SIPARIS_TUTARI = teklifToplami(KAZANAN);
-const KDV = Math.round((SIPARIS_TUTARI * 20) / 100);
 
 const TARIH = {
   ihtiyac: "2026-10-01",
@@ -61,7 +59,6 @@ const TARIH = {
   fatura: "2026-10-12",
   muayene: "2026-10-13",
   tif: "2026-10-14",
-  borcSorgusu: "2026-10-14",
   odemeEmri: "2026-10-15",
   kik: "2026-10-16",
 };
@@ -272,35 +269,34 @@ test("yeni alım baştan sona", async ({ page }) => {
   await expect(rayBagi(page, 11)).toContainText("Tamamlandı");
   await engelYok(page);
 
-  // ---- 12. basamak: taşınır işlem fişi ----
+  // ---- 12. basamak: kontrol ve kapanış ----
   await basamagaGit(page, 12);
-  await page.getByLabel("Taşınır İşlem Fişi (TİF) No", { exact: true }).fill("2026/901");
-  await page.getByLabel("TİF Düzenleme Tarihi", { exact: true }).fill(TARIH.tif);
-  await engelYok(page);
-  await page.getByRole("button", { name: /Taşınır Fişini Onayla ve Sonraki Adıma Geç/ }).click();
-  await expect(page).toHaveURL(new RegExp(`#/dosyalar/${no}/basamak/13$`));
+  await expect(page.getByText("Engel yok.", { exact: true })).toBeVisible();
+  await page.getByLabel("Taşınır işlem fişi (TKYS) sayısı", { exact: true }).fill("2026/901");
+  await page.getByLabel("Taşınır işlem fişi (TKYS) tarihi", { exact: true }).fill(TARIH.tif);
+  await page.getByLabel("Ödeme emri belgesi (MYS) sayısı", { exact: true }).fill("2026/0901");
+  await page.getByLabel("Ödeme emri belgesi (MYS) tarihi", { exact: true }).fill(TARIH.odemeEmri);
+  await page.getByRole("checkbox", { name: "KİK bildirimi yapıldı" }).check();
+  await page.getByLabel("KİK bildirim tarihi", { exact: true }).fill(TARIH.kik);
+  await page.getByRole("button", { name: "Dış sistem bilgilerini kaydet" }).click();
+  await expect(page.getByText("Kaydedildi.", { exact: true })).toBeVisible();
+  await expect(page.getByText("KİK bildirimi yapıldı", { exact: true }).first()).toBeVisible();
 
-  // ---- 13. basamak: ödeme emri belgesi ve kapanış ----
-  await page.getByLabel("Ödeme emri belgesi no", { exact: true }).fill("2026/0901");
-  await page.getByLabel("Ödeme emri tarihi", { exact: true }).fill(TARIH.odemeEmri);
-  for (const ad of ["Vergi borcu", "SGK borcu"]) {
-    await page.getByLabel(ad, { exact: true }).selectOption({ label: "Borcu yok" });
-    await page.getByLabel(`${ad} sorgu tarihi`, { exact: true }).fill(TARIH.borcSorgusu);
-    await page.getByLabel(`${ad} sorgu belge numarası`, { exact: true }).fill("BS-1");
-  }
-  await page.getByLabel("KİK bildirim tarihi (EKAP)", { exact: true }).fill(TARIH.kik);
-  await expect(page.getByText("Evrak listesi tam")).toBeVisible();
-  await engelYok(page);
+  // (c) Kapak ve dizin: sipariş tutarı kapakta, TİF ve ÖEB sayıları dizinde
+  await page.getByRole("button", { name: "Kapak ve dizin önizlemesi" }).click();
+  await expect(page.getByText("DOĞRUDAN TEMİN DOSYASI")).toBeVisible();
+  await expect(page.getByText(belgeTutari(SIPARIS_TUTARI), { exact: true }).first()).toBeVisible();
+  const tifSatiri = page.getByRole("row").filter({ hasText: "Taşınır işlem fişi" });
+  await expect(tifSatiri).toContainText("2026/901");
+  const oebSatiri = page.getByRole("row").filter({ hasText: "Ödeme emri belgesi" });
+  await expect(oebSatiri).toContainText("2026/0901");
+  await page.keyboard.press("Escape");
 
-  // (c) Ödeme matrahı sipariş toplamıdır; KDV dahil brüt tutar KDV hariç tutara oranla tutarlı
-  const bedel = page.getByRole("row", { name: /Mal \/ hizmet bedeli \(KDV hariç\)/ });
-  await expect(bedel).toContainText(tlKurus(SIPARIS_TUTARI));
-  await expect(page.getByRole("row", { name: /Katma değer vergisi \(%20\)/ })).toContainText(tlKurus(KDV));
-  await expect(page.getByRole("button", { name: "Brüt tutar, KDV dahil değerini kopyala" }).locator("xpath=..")).toContainText(tutarMetni(SIPARIS_TUTARI + KDV));
-
-  await page.getByRole("button", { name: "Ödemeyi kaydet ve dosyayı kapat" }).click();
+  await page.getByRole("button", { name: "Dosyayı kapat" }).click();
+  await expect(page.getByText(/Dosya .* tarihinde kapatıldı\./)).toBeVisible();
 
   // ---- Kapanış: dosya özeti ----
+  await page.getByRole("link", { name: "Dosya özeti ve denetim izi" }).click();
   await expect(page).toHaveURL(new RegExp(`#/dosyalar/${no}/ozet$`));
   await expect(page.getByRole("heading", { level: 1, name: konu })).toBeVisible();
   await expect(page.locator("header").getByText("Tamamlandı", { exact: true })).toBeVisible();
@@ -374,11 +370,11 @@ test("sayfalar konsol hatası vermeden açılır", async ({ page }) => {
     await expect(page.getByRole("heading", { level: 1 }).first()).toBeVisible();
   }
 
-  // Örnek dosya DT-2026-041'in 13 basamağı
+  // Örnek dosya DT-2026-041'in 12 basamağı
   await menudenGit(page, "Alım dosyaları");
   await page.getByRole("link", { name: "DT-2026-041", exact: true }).click();
   await expect(page.getByRole("navigation", { name: "Dosya basamakları" })).toBeVisible();
-  for (let no = 1; no <= 13; no++) {
+  for (let no = 1; no <= 12; no++) {
     await basamagaGit(page, no);
     await expect(page).toHaveURL(new RegExp(`#/dosyalar/DT-2026-041/basamak/${no}$`));
     await expect(page.getByRole("heading", { level: 1, name: "Temizlik malzemesi" })).toBeVisible();

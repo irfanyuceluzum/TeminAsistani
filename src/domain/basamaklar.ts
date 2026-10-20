@@ -3,11 +3,11 @@ import type { EvrakKaydi } from "./dosya";
 import { ddLimitKontrolu, malAlimiMi } from "./kurallar";
 import type { Muayene } from "./muayene";
 import { kikSonGunu } from "./raporlar";
-import { kdvTutari, type Odeme } from "./odeme";
 import { kalemTutari, type PiyasaArastirmasi, type PiyasaKalemi } from "./piyasa";
 import { sozlesmeZorunlu, type Kontrol } from "./sihirbaz";
 import { gunYaz } from "./tarih";
 import type { Alim, Ayarlar, LimitDonemi } from "./tipler";
+import { kdvTutari } from "./vergi";
 
 // Alım dosyası örnek Excel düzeneğindeki gibi sırayla doldurulan basamaklardan oluşur.
 // İhtiyaç listesi ve teklif mektupları piyasa araştırması kaydında, muayene ve ödeme kendi kayıtlarında tutulur;
@@ -215,7 +215,6 @@ export interface BasamakGirdisi {
   dosya: DosyaBasamaklari;
   evraklar: Record<string, EvrakKaydi>;
   muayene: Muayene | null;
-  odeme: Odeme | null;
 }
 
 export interface Basamak {
@@ -229,10 +228,11 @@ export interface Basamak {
   evrakKodu?: string;
 }
 
-export const GRUPLAR = ["Hazırlık", "Fiyat ve onay", "Sipariş", "Teslim ve kabul", "Ödeme"] as const;
+export const GRUPLAR = ["Hazırlık", "Fiyat ve onay", "Sipariş", "Teslim ve kabul", "Kapanış"] as const;
 
-// Evrakla tamamlanan ve evrak listesinde (DosyaDetay) bulunmayan basamakların kodları
-export const BASAMAK_EVRAKLARI = { muayeneTalebi: "muayene-talebi", muayeneRaporu: "muayene-raporu", tasinirFisi: "tasinir-fisi" } as const;
+// Evrakla tamamlanan ve evrak listesinde (DosyaDetay) bulunmayan basamakların kodları.
+// Taşınır işlem fişi (TKYS) ve ödeme emri (MYS) artık basamak değil, dış sistem evrakıdır (dosya.ts evrakListesi).
+export const BASAMAK_EVRAKLARI = { muayeneTalebi: "muayene-talebi", muayeneRaporu: "muayene-raporu" } as const;
 
 export function kalemlerHazir(kalemler: PiyasaKalemi[]): boolean {
   return kalemler.length > 0 && kalemler.every((k) => k.ad.trim() && k.miktar > 0);
@@ -281,8 +281,8 @@ export function basamaklar(g: BasamakGirdisi): Basamak[] {
     { no: 9, ad: "Muayene talep yazısı", grup: "Teslim ve kabul", tamam: evrak(BASAMAK_EVRAKLARI.muayeneTalebi), evrakKodu: BASAMAK_EVRAKLARI.muayeneTalebi },
     { no: 10, ad: "Muayene raporu", grup: "Teslim ve kabul", tamam: evrak(BASAMAK_EVRAKLARI.muayeneRaporu), evrakKodu: BASAMAK_EVRAKLARI.muayeneRaporu },
     { no: 11, ad: "Muayene ve kabul belgesi", grup: "Teslim ve kabul", tamam: !!g.muayene?.tamamlandi },
-    { no: 12, ad: "Taşınır işlem fişi", grup: "Teslim ve kabul", tamam: evrak(BASAMAK_EVRAKLARI.tasinirFisi), evrakKodu: BASAMAK_EVRAKLARI.tasinirFisi },
-    { no: 13, ad: "Ödeme emri belgesi", grup: "Ödeme", tamam: !!g.odeme?.tamamlandi },
+    // Dosya kontrol ekranında "Dosyayı kapat" ile tamamlandı olur.
+    { no: 12, ad: "Kontrol ve kapanış", grup: "Kapanış", tamam: alim.asama === "tamamlandi" },
   ];
 
   let suruyorVar = alim.asama === "iptal";
@@ -300,11 +300,11 @@ export function basamaklar(g: BasamakGirdisi): Basamak[] {
 
 // Kaldırılan tek sayfalık ekranların (piyasa araştırması, muayene ve kabul, ödeme) işlevi basamaklara taşındı;
 // eski ekranın karşılığı olan basamak: piyasa 7 (piyasa fiyat araştırma tutanağı),
-// muayene 10 (muayene raporu), ödeme 13 (ödeme emri belgesi).
+// muayene 10 (muayene raporu), ödeme 12 (kontrol ve kapanış; ödeme emri MYS'de düzenlenir).
 export function eskiEkranBasamagi(ekran: "piyasa" | "muayene" | "odeme"): number {
   if (ekran === "piyasa") return 7;
   if (ekran === "muayene") return 10;
-  return 13;
+  return 12;
 }
 
 // Dosya açıldığında gidilecek basamak: süren basamak, hepsi bittiyse sonuncusu.
@@ -562,9 +562,10 @@ export function tarihSirasiKontrolleri(g: BasamakGirdisi): Kontrol[] {
   const teslim = n("Teslim", 10, muayene?.teslimTarihi);
   const talep = n("Muayene talep yazısı", 9, evrakTarihi("muayene-talebi"));
   const muayeneGunu = n("Muayene", 10, muayene?.muayeneTarihi);
+  // TİF, ödeme emri ve KİK bildirimi 12. basamakta (kontrol ve kapanış) görünür; tarihleri girilmemişse çift sessiz geçilir.
   const fis = n("Taşınır işlem fişi", 12, evrakTarihi("tasinir-fisi"));
-  const odemeEmri = n("Ödeme emri", 13, evrakTarihi("odeme-emri"));
-  const kik = n("KİK bildirimi", 13, evrakTarihi("kik-bildirimi"));
+  const odemeEmri = n("Ödeme emri", 12, evrakTarihi("odeme-emri"));
+  const kik = n("KİK bildirimi", 12, evrakTarihi("kik-bildirimi"));
 
   const ciftler: [Nokta, Nokta][] = [
     [ihtiyac, fiyat],

@@ -44,13 +44,12 @@ describe("ayar doğrulama", () => {
     expect(ayarHatalari(ornekAyarlar)).toEqual([]);
   });
 
-  it("ölçütsüz bölme kontrolünü ve geçersiz oranı reddeder", () => {
+  it("ölçütsüz bölme kontrolünü reddeder", () => {
     const h = ayarHatalari({
       ...ornekAyarlar,
       bolme: { pencereGun: 0, ayniKalem: false, ayniEkonomikKod: false, ayniTedarikci: false },
-      damga: { ...ornekAyarlar.damga, makbuzOrani: -1 },
     });
-    expect(h).toHaveLength(3);
+    expect(h).toHaveLength(2);
   });
 });
 

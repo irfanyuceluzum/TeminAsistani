@@ -2,10 +2,9 @@ import { isTauri } from "@tauri-apps/api/core";
 import type { DosyaBasamaklari } from "../domain/basamaklar";
 import type { EvrakKaydi, Olay } from "../domain/dosya";
 import type { Muayene } from "../domain/muayene";
-import type { Odeme } from "../domain/odeme";
 import type { PiyasaArastirmasi } from "../domain/piyasa";
 import type { Alim, Ayarlar, LimitDonemi, Tedarikci } from "../domain/tipler";
-import { ornekAlimlar, ornekAyarlar, ornekBasamaklar, ornekEvraklar, ornekLimitDonemleri, ornekMuayeneler, ornekOdemeler, ornekOlaylar, ornekPiyasa, ornekTedarikciler } from "./ornekVeri";
+import { ornekAlimlar, ornekAyarlar, ornekBasamaklar, ornekEvraklar, ornekLimitDonemleri, ornekMuayeneler, ornekOlaylar, ornekPiyasa, ornekTedarikciler } from "./ornekVeri";
 
 export type AlimDegisikligi = Partial<Pick<Alim, "asama" | "tutar" | "tedarikciId" | "sonIslem" | "ekapKayitNo" | "sureliIs">>;
 
@@ -32,8 +31,6 @@ export interface Depo {
   evrakKaydet(alimId: string, kod: string, kayit: EvrakKaydi): Promise<void>;
   muayeneGetir(alimId: string): Promise<Muayene | null>;
   muayeneKaydet(m: Muayene): Promise<void>;
-  odemeGetir(alimId: string): Promise<Odeme | null>;
-  odemeKaydet(o: Odeme): Promise<void>;
   basamaklarGetir(alimId: string): Promise<DosyaBasamaklari | null>;
   basamaklarKaydet(d: DosyaBasamaklari): Promise<void>;
   // Tutarlı anlık görüntüyü (VACUUM INTO) var olmayan hedef dosyaya yazar.
@@ -53,7 +50,6 @@ export function bellekDepo(): Depo {
   const olaylar: Olay[] = ornekOlaylar.map((o, i) => ({ ...o, id: i + 1 }));
   const evraklar: Record<string, Record<string, EvrakKaydi>> = structuredClone(ornekEvraklar);
   const muayeneler = new Map(ornekMuayeneler.map((m) => [m.alimId, structuredClone(m)]));
-  const odemeler = new Map(ornekOdemeler.map((o) => [o.alimId, structuredClone(o)]));
   const basamakKayitlari = new Map(ornekBasamaklar.map((d) => [d.alimId, structuredClone(d)]));
   return {
     tur: "bellek",
@@ -112,13 +108,6 @@ export function bellekDepo(): Depo {
     },
     muayeneKaydet: async (m) => {
       muayeneler.set(m.alimId, structuredClone(m));
-    },
-    odemeGetir: async (alimId) => {
-      const o = odemeler.get(alimId);
-      return o ? structuredClone(o) : null;
-    },
-    odemeKaydet: async (o) => {
-      odemeler.set(o.alimId, structuredClone(o));
     },
     basamaklarGetir: async (alimId) => {
       const d = basamakKayitlari.get(alimId);

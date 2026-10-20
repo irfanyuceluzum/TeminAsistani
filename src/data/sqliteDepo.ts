@@ -2,12 +2,11 @@ import Database from "@tauri-apps/plugin-sql";
 import type { DosyaBasamaklari } from "../domain/basamaklar";
 import type { EvrakKaydi, Olay } from "../domain/dosya";
 import type { Muayene } from "../domain/muayene";
-import type { Odeme } from "../domain/odeme";
 import type { PiyasaArastirmasi } from "../domain/piyasa";
 import type { Alim, Asama, Ayarlar, Bent, LimitDonemi, Tedarikci } from "../domain/tipler";
 import type { AlimDegisikligi, Depo } from "./depo";
 import { gocSatirlariniCevir } from "./yedek";
-import { ornekAlimlar, ornekAyarlar, ornekBasamaklar, ornekEvraklar, ornekLimitDonemleri, ornekMuayeneler, ornekOdemeler, ornekOlaylar, ornekPiyasa, ornekTedarikciler } from "./ornekVeri";
+import { ornekAlimlar, ornekAyarlar, ornekBasamaklar, ornekEvraklar, ornekLimitDonemleri, ornekMuayeneler, ornekOlaylar, ornekPiyasa, ornekTedarikciler } from "./ornekVeri";
 
 // Şema src-tauri/migrations altındaki SQL dosyalarıyla Rust tarafında kurulur.
 const ADRES = "sqlite:temin.db";
@@ -105,11 +104,6 @@ async function ornekleriYaz(db: Database): Promise<void> {
   for (const m of ornekMuayeneler) {
     if (await alimVar(m.alimId)) {
       await db.execute("INSERT OR IGNORE INTO muayeneler (alim_id, belge, guncelleme) VALUES ($1, $2, datetime('now'))", [m.alimId, JSON.stringify(m)]);
-    }
-  }
-  for (const o of ornekOdemeler) {
-    if (await alimVar(o.alimId)) {
-      await db.execute("INSERT OR IGNORE INTO odemeler (alim_id, belge, guncelleme) VALUES ($1, $2, datetime('now'))", [o.alimId, JSON.stringify(o)]);
     }
   }
   const [{ olayAdet }] = await db.select<{ olayAdet: number }[]>("SELECT COUNT(*) AS olayAdet FROM olaylar");
@@ -270,17 +264,6 @@ export async function sqliteDepo(): Promise<Depo> {
         `INSERT INTO muayeneler (alim_id, belge, guncelleme) VALUES ($1, $2, datetime('now'))
          ON CONFLICT(alim_id) DO UPDATE SET belge = excluded.belge, guncelleme = excluded.guncelleme`,
         [m.alimId, JSON.stringify(m)],
-      );
-    },
-    async odemeGetir(alimId) {
-      const [satir] = await db.select<{ belge: string }[]>("SELECT belge FROM odemeler WHERE alim_id = $1", [alimId]);
-      return satir ? (JSON.parse(satir.belge) as Odeme) : null;
-    },
-    async odemeKaydet(o) {
-      await db.execute(
-        `INSERT INTO odemeler (alim_id, belge, guncelleme) VALUES ($1, $2, datetime('now'))
-         ON CONFLICT(alim_id) DO UPDATE SET belge = excluded.belge, guncelleme = excluded.guncelleme`,
-        [o.alimId, JSON.stringify(o)],
       );
     },
     async basamaklarGetir(alimId) {

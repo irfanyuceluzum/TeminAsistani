@@ -5,7 +5,7 @@ import { yilAlimlari } from "../../domain/raporlar";
 import { ASAMA_ADI, asamaGrubu, bugun, gunFarki, kisaTarih, tl, yuzde, type AsamaGrubu } from "../bicim";
 import type { Veri } from "../useVeri";
 
-const FILTRELER: ("Tümü" | AsamaGrubu)[] = ["Tümü", "Hazırlık", "Teslim", "Ödeme"];
+const FILTRELER: ("Tümü" | AsamaGrubu)[] = ["Tümü", "Hazırlık", "Teslim", "Kapanış"];
 
 const KOD_ADI: Record<string, string> = {
   "03.2": "03.2 Tüketime yönelik mal",

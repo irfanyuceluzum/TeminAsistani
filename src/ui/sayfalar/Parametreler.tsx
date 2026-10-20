@@ -3,39 +3,22 @@ import { useOutletContext } from "react-router-dom";
 import { limitDonemiBul, odenekSiniri } from "../../domain/kurallar";
 import { ayarHatalari, limitDonemiHatalari, onerilenDonem } from "../../domain/parametreler";
 import { tutarCoz } from "../../domain/sihirbaz";
-import type { Ayarlar, KararPulu, Konum } from "../../domain/tipler";
+import type { Ayarlar, Konum } from "../../domain/tipler";
 import type { Depo } from "../../data/depo";
 import { elleYedekAl, yedegiDenetle, yedekSec, yedektenGeriYukle } from "../../data/yedek";
-import { binde, bugun, tl, tutarGirdisi, uzunTarih, yedekOzeti, yolDosyaAdi } from "../bicim";
+import { bugun, tl, tutarGirdisi, uzunTarih, yedekOzeti, yolDosyaAdi } from "../bicim";
 import { IdareBasligi } from "../IdareBasligi";
 import type { Veri } from "../useVeri";
 
-const KARAR_PULU: [KararPulu, string, string][] = [
-  ["uygulanmaz", "Uygulanmaz", "Doğrudan temin ihale usulü değil. Sayıştay kararlarında bu görüş var."],
-  ["onay-karar-sayilir", "Onay belgesi karar sayılır", "Onay belgesi veya \"rayice uygundur\" şerhi karar kabul edilir."],
-  ["yalnizca-komisyon", "Yalnızca komisyon kararı varsa", "İdare ayrıca komisyon kurup karar aldıysa uygulanır."],
-];
-
 interface Metinler {
   odenekler: Record<string, string>;
-  tevkifatSiniri: string;
-  vergiBorcuSorguEsigi: string;
   pencere: string;
-  makbuz: string;
-  sozlesme: string;
-  karar: string;
 }
 
 function metinleriKur(a: Ayarlar): Metinler {
   return {
     odenekler: Object.fromEntries(Object.entries(a.odenekler).map(([y, k]) => [y, tutarGirdisi(k)])),
-    tevkifatSiniri: a.tevkifatSiniri ? tutarGirdisi(a.tevkifatSiniri) : "",
-    vergiBorcuSorguEsigi: a.vergiBorcuSorguEsigi ? tutarGirdisi(a.vergiBorcuSorguEsigi) : "",
     pencere: String(a.bolme.pencereGun),
-    // Oranlar yüz binde tutulur; ekranda binde gösterilir. tutarCoz "9,48" → 948 verir.
-    makbuz: binde(a.damga.makbuzOrani),
-    sozlesme: binde(a.damga.sozlesmeOrani),
-    karar: binde(a.damga.kararOrani),
   };
 }
 
@@ -53,35 +36,11 @@ function taslaktanAyar(taslak: Ayarlar, m: Metinler): { ayar: Ayarlar; hatalar: 
     if (k === null) hatalar.push(`${yil} ödeneğini 20.000.000,00 biçiminde yazın.`);
     else odenekler[Number(yil)] = k;
   }
-  const oran = (ad: string, metin: string) => {
-    const v = tutarCoz(metin);
-    if (v === null) hatalar.push(`${ad} oranını 9,48 biçiminde yazın.`);
-    return v ?? 0;
-  };
-  let tevkifatSiniri: number | undefined;
-  if (m.tevkifatSiniri.trim()) {
-    const v = tutarCoz(m.tevkifatSiniri);
-    if (v === null) hatalar.push("Tevkifat sınırını 12.000,00 biçiminde yazın.");
-    else tevkifatSiniri = v;
-  }
-  let vergiBorcuSorguEsigi: number | undefined;
-  if (m.vergiBorcuSorguEsigi.trim()) {
-    const v = tutarCoz(m.vergiBorcuSorguEsigi);
-    if (v === null) hatalar.push("Vergi borcu sorgu eşiğini 5.000,00 biçiminde yazın.");
-    else vergiBorcuSorguEsigi = v;
-  }
+  // Eski damga/tevkifat/eşik alanları taslaktan aynen korunur (ayar JSON'u bozulmaz).
   const ayar: Ayarlar = {
     ...taslak,
     odenekler,
-    tevkifatSiniri,
-    vergiBorcuSorguEsigi,
     bolme: { ...taslak.bolme, pencereGun: Number(m.pencere) },
-    damga: {
-      ...taslak.damga,
-      makbuzOrani: oran("Makbuz", m.makbuz),
-      sozlesmeOrani: oran("Sözleşme", m.sozlesme),
-      kararOrani: oran("Karar pulu", m.karar),
-    },
   };
   return { ayar, hatalar: [...hatalar, ...ayarHatalari(ayar)] };
 }
@@ -526,72 +485,6 @@ export function Parametreler() {
           </fieldset>
         </section>
       </div>
-
-      <section className="panel" aria-labelledby="tevkifat-baslik">
-        <h2 id="tevkifat-baslik">KDV tevkifatı</h2>
-        <div className="alan">
-          <label htmlFor="tevkifat-siniri">Tevkifat sınırı, KDV dahil, TL</label>
-          <input
-            id="tevkifat-siniri"
-            className="mono"
-            inputMode="decimal"
-            value={metin.tevkifatSiniri}
-            aria-invalid={metin.tevkifatSiniri.trim() !== "" && tutarCoz(metin.tevkifatSiniri) === null}
-            onChange={(e) => metinDegistir({ tevkifatSiniri: e.target.value })}
-            placeholder="Güncel tebliğdeki tutar"
-          />
-          <span className="ipucu">KDV dahil bedel bu tutarı aşarsa tevkifat uygulanır. Boş bırakılırsa her tutara uygulanır.</span>
-        </div>
-        <div className="alan">
-          <label htmlFor="vergi-sorgu-esigi">Vergi borcu sorgu eşiği (₺)</label>
-          <input
-            id="vergi-sorgu-esigi"
-            className="mono"
-            inputMode="decimal"
-            value={metin.vergiBorcuSorguEsigi}
-            aria-invalid={metin.vergiBorcuSorguEsigi.trim() !== "" && tutarCoz(metin.vergiBorcuSorguEsigi) === null}
-            onChange={(e) => metinDegistir({ vergiBorcuSorguEsigi: e.target.value })}
-            placeholder="5.000,00"
-          />
-          <span className="ipucu">KDV dahil ödeme bu tutarı aşarsa vergi borcu sorgulanır (6183 md. 22/A). Boş bırakılırsa ₺5.000 kullanılır. SGK sorgusunda tutar sınırı yoktur.</span>
-        </div>
-      </section>
-
-      <section className="panel" aria-labelledby="damga-baslik">
-        <h2 id="damga-baslik">Damga vergisi kuralları</h2>
-        <p className="soluk kucuk">Ödeme ekranındaki kesintiler bu kurallarla hesaplanır. Oranlar KDV hariç bedele uygulanır.</p>
-        <div className="izgara">
-          <div className="sutun">
-            {(
-              [
-                ["makbuz", "Ödeme makbuzu, binde", "Her ödemede kesilir"],
-                ["sozlesme", "Sözleşme, binde", "Yalnızca yazılı sözleşme imzalanırsa"],
-                ["karar", "Karar pulu, binde", "Ne zaman uygulanacağı yandaki ayardan seçilir"],
-              ] as const
-            ).map(([k, ad, not]) => (
-              <div key={k} className="alan">
-                <label htmlFor={`oran-${k}`}>{ad}</label>
-                <input id={`oran-${k}`} className="mono" inputMode="decimal" value={metin[k]} aria-invalid={tutarCoz(metin[k]) === null} onChange={(e) => metinDegistir({ [k]: e.target.value })} />
-                <span className="ipucu">{not}</span>
-              </div>
-            ))}
-          </div>
-          <div className="sutun">
-            <span id="karar-baslik" className="kalin">
-              Karar pulu uygulansın mı?
-            </span>
-            <div className="sutun" role="radiogroup" aria-labelledby="karar-baslik">
-              {KARAR_PULU.map(([id, ad, not]) => (
-                <button key={id} type="button" role="radio" aria-checked={taslak.damga.kararPulu === id} className="secenek-karti" onClick={() => taslakDegistir({ damga: { ...taslak.damga, kararPulu: id } })}>
-                  <span className="kalin">{ad}</span>
-                  <span className="soluk kucuk">{not}</span>
-                </button>
-              ))}
-            </div>
-            <div className="bant bant-uyari kucuk">Doğrudan teminde karar pulu konusunda kaynaklar çelişiyor. Seçimi muhasebe biriminizle netleştirin.</div>
-          </div>
-        </div>
-      </section>
 
       <YedekPaneli depo={depo} />
 

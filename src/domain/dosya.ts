@@ -24,6 +24,11 @@ export interface EvrakTanimi {
   asama: Asama;
   // Sistemden gelen evrak elle işaretlenmez; durumu kayıtlardan çıkarılır.
   sistemden: boolean;
+  // Kapanış için gerekli mi; değilse eksikliği dosyanın kapanmasını engellemez.
+  zorunlu: boolean;
+  // Evrak bu uygulamada değil, başka bir sistemde düzenlenir (EKAP kaydındaki `sistemden` anlamından ayrıdır).
+  // Dış sistem evrakının yalnız sayı/tarihi dizin için isteğe bağlı elle girilir.
+  disSistem?: "TKYS" | "MYS" | "EKAP";
 }
 
 export interface EvrakDurumu extends EvrakTanimi {
@@ -51,11 +56,14 @@ export function asamaTarihleri(alim: Alim, evraklar: Record<string, EvrakKaydi>)
     piyasa: gun("piyasa-tutanagi"),
     siparis: gun("siparis-yazisi"),
     muayene: gun("muayene-tutanagi"),
-    odeme: gun("odeme-emri"),
+    // Ödeme emri MYS'de düzenlenir ve tarihi isteğe bağlıdır; girilmemişse ödeme aşaması muayene tutanağı günüyle başlamış sayılır.
+    odeme: gun("odeme-emri") ?? gun("muayene-tutanagi"),
   };
   if (alim.asama === "tamamlandi") {
+    // Kapanış günü, kontrol ekranında "Dosyayı kapat" ile yazılan `dosya-kapanisi` evrakının tarihidir.
+    // Bu kayıt yoksa (eski dosyalar) ödeme emri ve KİK bildirimi tarihlerinin en geç olanı alınır.
     const kapanis = [gun("odeme-emri"), gun("kik-bildirimi")].filter((t): t is string => !!t);
-    if (kapanis.length) aday.tamamlandi = kapanis.reduce((a, b) => (b > a ? b : a));
+    aday.tamamlandi = gun("dosya-kapanisi") ?? (kapanis.length ? kapanis.reduce((a, b) => (b > a ? b : a)) : undefined);
   }
   const sonuc: Partial<Record<Asama, string>> = {};
   for (const a of sira) {
@@ -66,7 +74,14 @@ export function asamaTarihleri(alim: Alim, evraklar: Record<string, EvrakKaydi>)
 }
 
 export function evrakListesi(alim: Alim): EvrakTanimi[] {
-  const e = (kod: string, ad: string, asama: Asama, sistemden = false): EvrakTanimi => ({ kod, ad, asama, sistemden });
+  const e = (kod: string, ad: string, asama: Asama, sistemden = false, zorunlu = true, disSistem?: EvrakTanimi["disSistem"]): EvrakTanimi => ({
+    kod,
+    ad,
+    asama,
+    sistemden,
+    zorunlu,
+    ...(disSistem ? { disSistem } : {}),
+  });
   const liste: EvrakTanimi[] = [
     e("ihtiyac-yazisi", "İhtiyaç talep yazısı", "ihtiyac"),
     e("onay-belgesi", "Doğrudan temin onay belgesi, imzalı", "onay"),
@@ -79,11 +94,12 @@ export function evrakListesi(alim: Alim): EvrakTanimi[] {
     e("siparis-yazisi", sozlesmeZorunlu(alim) ? "Sözleşme" : "Sipariş yazısı veya sözleşme", "siparis"),
     e("fatura", "Fatura", "muayene"),
     e("muayene-tutanagi", "Muayene ve kabul tutanağı", "muayene"),
-    e("borc-sorgusu", "Vergi ve SGK borç sorgusu", "odeme"),
-    e("odeme-emri", "Ödeme emri belgesi", "odeme"),
+    // Taşınır işlem fişi TKYS'de, ödeme emri MYS'de düzenlenir; burada yalnız dizin için kaydı tutulur, zorunlu değildir.
+    e("tasinir-fisi", "Taşınır işlem fişi", "odeme", false, false, "TKYS"),
+    e("odeme-emri", "Ödeme emri belgesi", "odeme", false, false, "MYS"),
   );
-  // Doğrudan Temin Tebliği m.4/9: bildirim bentten bağımsızdır.
-  liste.push(e("kik-bildirimi", "KİK bildirimi", "odeme"));
+  // Doğrudan Temin Tebliği m.4/9: bildirim bentten bağımsızdır; süresi geçse de kapanışı engellemez (uyarı olarak gösterilir).
+  liste.push(e("kik-bildirimi", "KİK bildirimi", "odeme", false, false));
   return liste;
 }
 
@@ -109,10 +125,10 @@ export function evrakDurumlari(alim: Alim, kayitlar: Record<string, EvrakKaydi>,
   });
 }
 
-// Dosya "tamamlandı" yapılmadan önce eksiksiz olması gereken evraklar; eksiklerin adlarını döndürür.
+// Dosya "tamamlandı" yapılmadan önce eksiksiz olması gereken (zorunlu) evraklar; eksiklerin adlarını döndürür.
 export function kapanisEksikleri(alim: Alim, kayitlar: Record<string, EvrakKaydi>, piyasa: PiyasaArastirmasi | null): string[] {
   return evrakDurumlari(alim, kayitlar, piyasa)
-    .filter((e) => !e.tamam)
+    .filter((e) => e.zorunlu && !e.tamam)
     .map((e) => e.ad);
 }
 
@@ -120,7 +136,7 @@ export interface IlerlemeDurumu {
   sonraki: Asama | null;
   eksikler: string[];
   // Bu aşamalar elle ilerletilmez, kendi ekranlarında tamamlanır.
-  ekran: "piyasa" | "muayene" | "odeme" | null;
+  ekran: "piyasa" | "muayene" | "kontrol" | null;
 }
 
 export function asamaIlerlemesi(alim: Alim, evraklar: EvrakDurumu[]): IlerlemeDurumu {
@@ -130,11 +146,9 @@ export function asamaIlerlemesi(alim: Alim, evraklar: EvrakDurumu[]): IlerlemeDu
   const sonraki = sira[i + 1];
   if (sonraki === "piyasa" || alim.asama === "piyasa") return { sonraki, eksikler: [], ekran: "piyasa" };
   if (alim.asama === "muayene") return { sonraki, eksikler: [], ekran: "muayene" };
-  // Bu aşamaya ve öncesine ait evraklar tamamlanmadan ileri gidilmez.
-  const eksikler = evraklar.filter((e) => !e.tamam && sira.indexOf(e.asama) <= i).map((e) => e.ad);
-  // Ödeme ekranında tamamlanmamış ödemede kapatma, yalnızca kalan evraklar (KİK bildirimi gibi) için elle yapılır.
-  if (alim.asama === "odeme" && eksikler.some((e) => e === "Vergi ve SGK borç sorgusu" || e === "Ödeme emri belgesi")) {
-    return { sonraki, eksikler: [], ekran: "odeme" };
-  }
+  // Bu aşamaya ve öncesine ait zorunlu evraklar tamamlanmadan ileri gidilmez.
+  const eksikler = evraklar.filter((e) => e.zorunlu && !e.tamam && sira.indexOf(e.asama) <= i).map((e) => e.ad);
+  // "odeme" aşaması ödemenin MYS'de yapıldığı aşamadır; tamamlandıya geçiş kontrol ekranında (12. basamak) yapılır.
+  if (alim.asama === "odeme") return { sonraki, eksikler, ekran: "kontrol" };
   return { sonraki, eksikler, ekran: null };
 }

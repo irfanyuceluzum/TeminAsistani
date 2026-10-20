@@ -191,7 +191,9 @@ export function dosyaKomisyonuKontrolleri(uyeler: KomisyonUyesi[], personel: Per
   return k;
 }
 
-// Muayene tamamlanınca dosya ödeme aşamasına geçer; ödeme tutarı kabul edilen tutardır.
+// Muayene tamamlanınca dosya "odeme" aşamasına geçer. Aşama değeri veritabanında kalır; anlamı artık "ödeme MYS'de yapılıyor":
+// ödeme emri ve taşınır işlem fişi dış sistemlerde (MYS/TKYS) düzenlenir, dosya 12. basamakta (kontrol ve kapanış) kapatılır.
+// Ödeme tutarı kabul edilen tutardır.
 export function muayeneSonrasiDosya(m: Muayene): { asama: "odeme"; tutar: number; aciklama: string } {
   const tutarKurus = muayeneOzeti(m).kabulToplami;
   return { asama: "odeme", tutar: tutarKurus, aciklama: `Muayene tamamlandı: ${kabulSonucu(m).metin}; kabul tutarı ${tlKurus(tutarKurus)} + KDV. Dosya ödeme aşamasına geçti.` };

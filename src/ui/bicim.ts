@@ -26,16 +26,16 @@ export const ASAMA_ADI: Record<Asama, string> = {
   piyasa: "Piyasa araştırması",
   siparis: "Sipariş verildi",
   muayene: "Muayene kabul",
-  odeme: "Ödeme bekliyor",
+  odeme: "Kabul edildi, ödeme MYS'de",
   tamamlandi: "Tamamlandı",
   iptal: "İptal",
 };
 
-export type AsamaGrubu = "Hazırlık" | "Teslim" | "Ödeme" | "Kapalı";
+export type AsamaGrubu = "Hazırlık" | "Teslim" | "Kapanış" | "Kapalı";
 
 export function asamaGrubu(a: Asama): AsamaGrubu {
   if (a === "siparis" || a === "muayene") return "Teslim";
-  if (a === "odeme") return "Ödeme";
+  if (a === "odeme") return "Kapanış";
   if (a === "tamamlandi" || a === "iptal") return "Kapalı";
   return "Hazırlık";
 }

@@ -3,7 +3,7 @@ import { Link, useOutletContext } from "react-router-dom";
 import { ASAMA_ADI, asamaGrubu, tl, uzunTarih, type AsamaGrubu } from "../bicim";
 import type { Veri } from "../useVeri";
 
-const FILTRELER: ("Tümü" | AsamaGrubu)[] = ["Tümü", "Hazırlık", "Teslim", "Ödeme", "Kapalı"];
+const FILTRELER: ("Tümü" | AsamaGrubu)[] = ["Tümü", "Hazırlık", "Teslim", "Kapanış", "Kapalı"];
 
 export function AlimDosyalari() {
   const { alimlar, tedarikciler } = useOutletContext<Veri>();

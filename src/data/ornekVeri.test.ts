@@ -5,21 +5,20 @@ import { dosyaKomisyonuKontrolleri, muayeneOzeti } from "../domain/muayene";
 import { degerlendir, teklifTarihiKontrolleri } from "../domain/piyasa";
 import { kikBildirimleri, yillikOzet } from "../domain/raporlar";
 import { bellekDepo } from "./depo";
-import { ornekAlimlar, ornekAyarlar, ornekBasamaklar, ornekEvraklar, ornekMuayeneler, ornekOdemeler, ornekPiyasa } from "./ornekVeri";
+import { ornekAlimlar, ornekAyarlar, ornekBasamaklar, ornekEvraklar, ornekMuayeneler, ornekPiyasa } from "./ornekVeri";
 
 const ID = "DT-2026-037";
 const alim = ornekAlimlar.find((a) => a.id === ID)!;
 const piyasa = ornekPiyasa.find((p) => p.alimId === ID)!;
 const dosya = ornekBasamaklar.find((d) => d.alimId === ID)!;
 const muayene = ornekMuayeneler.find((m) => m.alimId === ID)!;
-const odeme = ornekOdemeler.find((o) => o.alimId === ID)!;
 const evraklar = ornekEvraklar[ID];
-const girdi = { alim, piyasa, dosya, evraklar, muayene, odeme };
+const girdi = { alim, piyasa, dosya, evraklar, muayene };
 
 describe("tamamlanmış örnek dosya DT-2026-037", () => {
-  it("13 basamağın hepsi tamam ya da gerekmiyor", () => {
+  it("12 basamağın hepsi tamam ya da gerekmiyor", () => {
     const liste = basamaklar(girdi);
-    expect(liste).toHaveLength(13);
+    expect(liste).toHaveLength(12);
     expect(liste.filter((b) => b.durum !== "tamam" && b.durum !== "gerekmiyor")).toEqual([]);
     expect(liste.every((b) => b.durum === "tamam")).toBe(true);
   });
@@ -46,10 +45,9 @@ describe("tamamlanmış örnek dosya DT-2026-037", () => {
     expect(yillikOzet(ornekAlimlar, 2026, ornekAyarlar, ornekPiyasa).ddAdet).toBeGreaterThan(0);
   });
 
-  it("bellekDepo muayene ve ödeme kaydını döndürür", async () => {
+  it("bellekDepo muayene kaydını döndürür", async () => {
     const depo = bellekDepo();
     expect((await depo.muayeneGetir(ID))?.tamamlandi).toBe(true);
-    expect((await depo.odemeGetir(ID))?.oebNo).toBe(odeme.oebNo);
     expect((await depo.alimlar()).find((a) => a.id === ID)?.ekapKayitNo).toBeTruthy();
   });
 });
