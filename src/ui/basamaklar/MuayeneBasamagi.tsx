@@ -8,13 +8,14 @@ import { muayeneTalebiSayfalari, muayeneKabulTutanagiSayfalari } from "./belgele
 import type { Kontrol } from "../../domain/sihirbaz";
 import { evrakFormu, evrakKaydiYap } from "../../domain/basamaklar";
 import { bugun } from "../bicim";
-import { BOS_GOREVLER, KOMISYON_KURALI, KOMISYONSUZ_KABUL_NOTU, belgeGorevlileri } from "../../domain/personel";
+import { BOS_GOREVLER, KOMISYON_KURALI, KOMISYONSUZ_KABUL_NOTU, adlaKisi, belgeGorevlileri } from "../../domain/personel";
 import { dosyaKomisyonuKontrolleri, kabulSonucu, muayeneKalemKontrolleri, muayeneOlustur, muayeneSonrasiDosya, teslimSiparisKontrolu, type KomisyonUyesi, type Muayene } from "../../domain/muayene";
 
 export function MuayeneBasamagi({ b }: { b: BasamakBaglami }) {
   const navigate = useNavigate();
   const { alim, dosya, muayene, basamak, piyasa, veri } = b;
   const { ayarlar, tedarikciler } = veri;
+  const personel = ayarlar.personel ?? [];
   const isTalep = basamak.no === 9; // 9: Talep yazısı, 10-11: Kabul tutanağı
 
   const [kaydediliyor, setKaydediliyor] = useState(false);
@@ -269,6 +270,15 @@ export function MuayeneBasamagi({ b }: { b: BasamakBaglami }) {
                 <p className="ipucu">
                   {KOMISYON_KURALI} {KOMISYONSUZ_KABUL_NOTU}
                 </p>
+                {personel.length > 0 && (
+                  <datalist id="kurum-personeli">
+                    {personel.map((p) => (
+                      <option key={p.id} value={p.ad}>
+                        {p.unvan}
+                      </option>
+                    ))}
+                  </datalist>
+                )}
                 {taslak.uyeler.map((u, i) => (
                   <div key={i} className="kalem-satiri">
                     <label className="onay-kutusu baskan-secimi">
@@ -278,7 +288,19 @@ export function MuayeneBasamagi({ b }: { b: BasamakBaglami }) {
                     <label className="gizli" htmlFor={`uye-ad-${i}`}>
                       {i + 1}. üyenin adı
                     </label>
-                    <input id={`uye-ad-${i}`} className="girdi genis-girdi" value={u.ad} onChange={(e) => uyeDegistir(i, { ad: e.target.value })} placeholder="Ad Soyad" />
+                    <input
+                      id={`uye-ad-${i}`}
+                      className="girdi genis-girdi"
+                      value={u.ad}
+                      list={personel.length ? "kurum-personeli" : undefined}
+                      onChange={(e) => uyeDegistir(i, { ad: e.target.value })}
+                      onBlur={() => {
+                        // Kurum personelinden biri seçildiyse ad kayıttaki gibi, unvan boşsa personelin unvanı yazılır.
+                        const p = adlaKisi(personel, u.ad);
+                        if (p && (p.ad !== u.ad || !u.unvan.trim())) uyeDegistir(i, { ad: p.ad, unvan: u.unvan.trim() || p.unvan });
+                      }}
+                      placeholder={personel.length ? "Personelden seçin ya da yazın" : "Ad Soyad"}
+                    />
                     <label className="gizli" htmlFor={`uye-unvan-${i}`}>
                       {i + 1}. üyenin unvanı
                     </label>

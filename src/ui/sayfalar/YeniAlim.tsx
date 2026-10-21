@@ -1,14 +1,16 @@
-import { useMemo, useState } from "react";
-import { useNavigate, useOutletContext } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useOutletContext, useSearchParams } from "react-router-dom";
 import { bentBilgisi, dayanakKontrolleri, engelVarMi, tutarCoz, yeniDosyaNo } from "../../domain/sihirbaz";
 import { basamaklariTamamla } from "../../domain/basamaklar";
+import { dosyaKopyasi, kopyalanabilirAlimlar, type DosyaKopyasi } from "../../domain/gecmis";
 import { UYGULAMA_BENDI } from "../../domain/gorunurluk";
 import { olayKaydet } from "../../data/olay";
 import { belgeGorevlileri } from "../../domain/personel";
 import { bosArastirma, bosYazi, type PiyasaKalemi } from "../../domain/piyasa";
-import { IhtiyacListesiDuzenleyici, yeniKalem } from "../IhtiyacListesi";
-import { bugun, tl } from "../bicim";
+import { aktarilanlariKalemYap, IhtiyacListesiDuzenleyici, yeniKalem } from "../IhtiyacListesi";
+import { bugun, tl, tutarGirdisi, uzunTarih } from "../bicim";
 import { KontrolSatiri } from "../KontrolSatiri";
+import { useGecmisKalemler } from "../useGecmis";
 import type { Veri } from "../useVeri";
 
 // Örnek kod listesi; ileride Parametreler'den yönetilecek.
@@ -64,6 +66,36 @@ export function YeniAlim() {
   const [engelMesaji, setEngelMesaji] = useState("");
   const [kayitHatasi, setKayitHatasi] = useState("");
   const [kaydediliyor, setKaydediliyor] = useState(false);
+  const gecmis = useGecmisKalemler({ depo, alimlar });
+  // Tamamlanmış bir dosyanın benzeri açılırken onun bilgileri forma dolar; ?kaynak= ile dosya özetinden de gelinir.
+  const [aramaParametreleri] = useSearchParams();
+  const kaynaklar = useMemo(() => kopyalanabilirAlimlar(alimlar), [alimlar]);
+  const [kopya, setKopya] = useState<DosyaKopyasi | null>(null);
+  const [kopyaHatasi, setKopyaHatasi] = useState("");
+
+  async function kaynaktanDoldur(id: string) {
+    setKopyaHatasi("");
+    const kaynak = alimlar.find((a) => a.id === id);
+    if (!kaynak) return;
+    try {
+      const [p, d] = await Promise.all([depo.piyasaGetir(id), depo.basamaklarGetir(id)]);
+      const k = dosyaKopyasi(kaynak, p, d);
+      setForm({ konu: k.konu, nitelik: k.nitelik, tutar: k.tutar ? tutarGirdisi(k.tutar) : "", ekonomikKod: k.ekonomikKod, kalemKodu: k.kalemKodu, birim: k.talepEden });
+      setSureliIs(k.sureliIs);
+      setIhtiyaclar(k.kalemler.length ? aktarilanlariKalemYap(k.kalemler) : [yeniKalem()]);
+      setHatalar({});
+      setIhtiyacHatasi("");
+      setKopya(k);
+    } catch (e) {
+      setKopyaHatasi(`${id} dosyası okunamadı. ${String(e)}`);
+    }
+  }
+
+  const ilkKaynak = aramaParametreleri.get("kaynak");
+  useEffect(() => {
+    if (ilkKaynak) void kaynaktanDoldur(ilkKaynak);
+    // Yalnız sayfa açılışında; sonraki seçimler açılır listeden yapılır.
+  }, [ilkKaynak]);
 
   const tutar = tutarCoz(form.tutar) ?? 0;
   const kalemler = useMemo(() => {
@@ -131,15 +163,25 @@ export function YeniAlim() {
         yazi: bosYazi(tarih),
       });
       // Sihirbazda girilen ve basamaklarda kullanılan bilgiler dosya kaydına geçer.
+      // Benzeri açılan dosyanın teslim yeri ve şartları da geçer; tarihler, sayılar ve fiyatlar yeni dosyada yeniden girilir.
       await depo.basamaklarKaydet(
-        basamaklariTamamla({ alimId: dosyaNo, talepEden: form.birim.trim(), nitelik: form.nitelik.trim(), bolmeGerekcesi: bolmeGerekcesi.trim() }, tarih),
+        basamaklariTamamla(
+          {
+            alimId: dosyaNo,
+            talepEden: form.birim.trim(),
+            nitelik: form.nitelik.trim(),
+            bolmeGerekcesi: bolmeGerekcesi.trim(),
+            ...(kopya ? { teslimYeri: kopya.teslimYeri, ...(kopya.sartlar ? { sartlar: kopya.sartlar } : {}) } : {}),
+          },
+          tarih,
+        ),
       );
       await olayKaydet(
         depo,
         ayarlar,
         dosyaNo,
         "olusturuldu",
-        `Dosya açıldı, dayanak ${UYGULAMA_BENDI}, ${ihtiyaclar.length} kalem, tahmini tutar ${tl(tutar)}${bolmeGerekcesi.trim() ? `; bölme açıklaması: ${bolmeGerekcesi.trim()}` : ""}`,
+        `Dosya açıldı, dayanak ${UYGULAMA_BENDI}, ${ihtiyaclar.length} kalem, tahmini tutar ${tl(tutar)}${kopya ? `; ${kopya.kaynakId} dosyasının benzeri olarak` : ""}${bolmeGerekcesi.trim() ? `; bölme açıklaması: ${bolmeGerekcesi.trim()}` : ""}`,
       );
       await yenile();
       navigate(`/dosyalar/${dosyaNo}`);
@@ -168,6 +210,38 @@ export function YeniAlim() {
         ))}
       </ol>
 
+      {adim === 0 && kaynaklar.length > 0 && (
+        <section className="panel yazdirma" aria-labelledby="kaynak-baslik">
+          <div>
+            <h2 id="kaynak-baslik">Önceki dosyadan başlat</h2>
+            <p className="soluk kucuk">Tamamlanmış bir alımın konusu, bütçe tertibi, ihtiyaç listesi, teslim yeri ve şartları bu dosyaya kopyalanır. Tarih, sayı, firma ve fiyatlar kopyalanmaz.</p>
+          </div>
+          <div className="form-izgara">
+            <div className="alan tam">
+              <label htmlFor="kaynak">Benzeri açılacak dosya</label>
+              <select id="kaynak" value={kopya?.kaynakId ?? ""} onChange={(e) => (e.target.value ? void kaynaktanDoldur(e.target.value) : setKopya(null))}>
+                <option value="">Boş dosyayla başla</option>
+                {kaynaklar.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.id} · {a.konu} · {uzunTarih(a.onayTarihi)} · {tl(a.tutar)}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          {kopya && (
+            <div className="bant bant-bilgi" role="status">
+              {kopya.kaynakId} dosyasından {kopya.kalemler.length} kalem ve bilgiler kopyalandı. Tahmini tutarı ve miktarları yeni döneme göre gözden geçirin.
+            </div>
+          )}
+          {kopyaHatasi && (
+            <div className="bant bant-hata" role="alert">
+              {kopyaHatasi}
+            </div>
+          )}
+        </section>
+      )}
+
       {adim === 0 && (
         <section className="panel yazdirma" aria-labelledby="ihtiyac-baslik">
           <h2 id="ihtiyac-baslik">İhtiyaç bilgileri</h2>
@@ -190,6 +264,7 @@ export function YeniAlim() {
               <label htmlFor="kod">Bütçe tertibi</label>
               <select id="kod" value={form.ekonomikKod} onChange={(e) => alan("ekonomikKod", e.target.value)} aria-invalid={!!hatalar.ekonomikKod}>
                 <option value="">Seçin</option>
+                {form.ekonomikKod && !EKONOMIK_KODLAR.some(([kod]) => kod === form.ekonomikKod) && <option value={form.ekonomikKod}>{form.ekonomikKod}</option>}
                 {EKONOMIK_KODLAR.map(([kod, ad]) => (
                   <option key={kod} value={kod}>
                     {kod} {ad}
@@ -233,6 +308,7 @@ export function YeniAlim() {
           </div>
           <IhtiyacListesiDuzenleyici
             kalemler={ihtiyaclar}
+            gecmis={gecmis}
             degistir={(k) => {
               setIhtiyaclar(k);
               setIhtiyacHatasi("");

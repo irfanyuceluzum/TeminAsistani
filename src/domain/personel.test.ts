@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ornekAyarlar } from "../data/ornekVeri";
-import { BOS_GOREVLER, belgeGorevlileri, gorevKontrolleri, idareSatirlari, kisininGorevleri, komisyon, muayeneKomisyonuKontrolleri, personelCikar } from "./personel";
+import { BOS_GOREVLER, adlaKisi, belgeGorevlileri, gorevKontrolleri, idareSatirlari, kisininGorevleri, komisyon, muayeneKomisyonuKontrolleri, personelCikar } from "./personel";
 import type { GorevAtamalari } from "./tipler";
 
 const personel = ornekAyarlar.personel!;
@@ -124,5 +124,22 @@ describe("muayene komisyonu kontrolleri", () => {
     const u = k.find((x) => x.baslik === "Muayene komisyonunda yetkili var: görevler ayrılığı");
     expect(u?.durum).toBe("uyari");
     expect(u?.detay).toContain("Standart 9");
+  });
+});
+
+describe("adlaKisi", () => {
+  const personel = [
+    { id: "p1", ad: "Ayşe Demir", unvan: "Öğretmen" },
+    { id: "p2", ad: "İsmail Işık", unvan: "Memur" },
+  ];
+
+  it("büyük/küçük harf ve boşluk farkını yok sayarak eşler", () => {
+    expect(adlaKisi(personel, "  ayşe   DEMİR ")?.id).toBe("p1");
+    expect(adlaKisi(personel, "İSMAİL IŞIK")?.id).toBe("p2");
+  });
+
+  it("boş ya da kayıtsız adda bir şey döndürmez", () => {
+    expect(adlaKisi(personel, " ")).toBeUndefined();
+    expect(adlaKisi(personel, "Ayşe")).toBeUndefined();
   });
 });

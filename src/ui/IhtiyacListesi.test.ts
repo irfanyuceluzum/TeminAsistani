@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { aktarilanlariKalemYap, doluKalemVarMi, listeyeBirlestir, onizlemeFazlasi, onizlemeOzeti, yeniKalem } from "./IhtiyacListesi";
+import { aktarilanlariKalemYap, doluKalemVarMi, gecmistenKalemYap, gecmistenTamamla, listeyeBirlestir, onizlemeFazlasi, onizlemeOzeti, yeniKalem } from "./IhtiyacListesi";
 
 const dolu = (ad: string) => ({ ...yeniKalem(), ad });
 const aktarilan = (ad: string) => ({ ad, ozellik: "", miktar: 2, birim: "adet" });
@@ -64,5 +64,21 @@ describe("doluKalemVarMi", () => {
   it("boşlukla dolu sayılmaz", () => {
     expect(doluKalemVarMi([{ ...yeniKalem(), ad: "  " }])).toBe(false);
     expect(doluKalemVarMi([dolu("X")])).toBe(true);
+  });
+});
+
+describe("önceki alımlardan kalem", () => {
+  const gecmis = [{ ad: "Toner", ozellik: "Siyah, 3000 sayfa", miktar: 4, birim: "kutu", alimId: "DT-2025-010", tarih: "2025-05-01", kez: 2 }];
+
+  it("seçilen kalemler son miktar ve özellikle, yeni kimlikle gelir", () => {
+    const [k] = gecmistenKalemYap(gecmis);
+    expect(k).toMatchObject({ ad: "Toner", ozellik: "Siyah, 3000 sayfa", miktar: 4, birim: "kutu" });
+    expect(k.id).toMatch(/^k/);
+  });
+
+  it("özelliği boş, adı eşleşen kaleme özellik ve birim önerir; dolu özelliğe dokunmaz", () => {
+    expect(gecmistenTamamla({ ...dolu(" toner "), ozellik: "" }, gecmis)).toEqual({ ozellik: "Siyah, 3000 sayfa", birim: "kutu" });
+    expect(gecmistenTamamla({ ...dolu("Toner"), ozellik: "Renkli" }, gecmis)).toBeNull();
+    expect(gecmistenTamamla(dolu("Kalem"), gecmis)).toBeNull();
   });
 });

@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from "react";
+import { gecmisKalemAra, gecmisKalemBul, kalemAnahtari, type GecmisKalem } from "../domain/gecmis";
 import { ihtiyacMetniniAyikla, metniCoz } from "../domain/ihtiyacAktar";
 import type { AktarimSonucu, AktarilanKalem } from "../domain/ihtiyacAktar";
 import type { PiyasaKalemi } from "../domain/piyasa";
@@ -43,21 +44,57 @@ export function onizlemeFazlasi(toplam: number): string | null {
   return toplam > ONIZLEME_SATIRI ? `… ve ${toplam - ONIZLEME_SATIRI} kalem daha` : null;
 }
 
+export const GECMIS_SATIRI = 50;
+
+// Önceki alımlardan seçilen kalemler listeye son alındıkları miktar ve özellikle girer.
+export function gecmistenKalemYap(secilen: GecmisKalem[]): PiyasaKalemi[] {
+  return aktarilanlariKalemYap(secilen.map((g) => ({ ad: g.ad, ozellik: g.ozellik, miktar: g.miktar, birim: g.birim })));
+}
+
+// Ad önceki bir alımın kalemiyle aynıysa ve özellik boşsa özellik ve birim o alımdan dolar.
+export function gecmistenTamamla(k: PiyasaKalemi, gecmis: GecmisKalem[]): Partial<PiyasaKalemi> | null {
+  const g = gecmisKalemBul(gecmis, k.ad);
+  if (!g || (k.ozellik ?? "").trim()) return null;
+  return { ozellik: g.ozellik, birim: g.birim || k.birim };
+}
+
 // İhtiyaç listesi düzenleyicisi: sihirbazın ilk adımında ve piyasa araştırmasında aynı liste düzenlenir.
 export function IhtiyacListesiDuzenleyici({
   kalemler,
   degistir,
   kilitli = false,
+  gecmis = [],
 }: {
   kalemler: PiyasaKalemi[];
   degistir: (k: PiyasaKalemi[]) => void;
   kilitli?: boolean;
+  gecmis?: GecmisKalem[];
 }) {
   const guncelle = (id: string, d: Partial<PiyasaKalemi>) => degistir(kalemler.map((k) => (k.id === id ? { ...k, ...d } : k)));
 
   const baslikKimligi = useId();
   const metinKimligi = useId();
   const dosyaKimligi = useId();
+  const oneriKimligi = useId();
+  const gecmisBaslikKimligi = useId();
+  const aramaKimligi = useId();
+  const [gecmisAcik, setGecmisAcik] = useState(false);
+  const [arama, setArama] = useState("");
+  const [secilenler, setSecilenler] = useState<Set<string>>(() => new Set());
+  const listedekiler = new Set(kalemler.map((k) => kalemAnahtari(k.ad)).filter(Boolean));
+  const bulunanlar = gecmisKalemAra(gecmis, arama);
+  const secilenKalemler = gecmis.filter((g) => secilenler.has(kalemAnahtari(g.ad)));
+  const gecmisiKapat = () => {
+    setGecmisAcik(false);
+    setArama("");
+    setSecilenler(new Set());
+  };
+  const gecmistenEkle = () => {
+    if (secilenKalemler.length === 0) return;
+    degistir(listeyeBirlestir(kalemler, gecmistenKalemYap(secilenKalemler), "ekle"));
+    setDurum(`Önceki alımlardan ${secilenKalemler.length} kalem eklendi.`);
+    gecmisiKapat();
+  };
   const [aktarAcik, setAktarAcik] = useState(false);
   const [metin, setMetin] = useState("");
   const [dosyaHatasi, setDosyaHatasi] = useState("");
@@ -122,7 +159,20 @@ export function IhtiyacListesiDuzenleyici({
           <label className="gizli" htmlFor={`ad-${k.id}`}>
             {i + 1}. kalemin adı
           </label>
-          <input id={`ad-${k.id}`} className="girdi ihtiyac-ad" value={k.ad} disabled={kilitli} onChange={(e) => guncelle(k.id, { ad: e.target.value })} placeholder="Çamaşır suyu, 4 L" aria-invalid={!k.ad.trim()} />
+          <input
+            id={`ad-${k.id}`}
+            className="girdi ihtiyac-ad"
+            value={k.ad}
+            disabled={kilitli}
+            list={gecmis.length ? oneriKimligi : undefined}
+            onChange={(e) => guncelle(k.id, { ad: e.target.value })}
+            onBlur={() => {
+              const d = gecmistenTamamla(k, gecmis);
+              if (d) guncelle(k.id, d);
+            }}
+            placeholder="Çamaşır suyu, 4 L"
+            aria-invalid={!k.ad.trim()}
+          />
           <label className="gizli" htmlFor={`oz-${k.id}`}>
             {i + 1}. kalemin teknik özelliği
           </label>
@@ -152,11 +202,34 @@ export function IhtiyacListesiDuzenleyici({
           )}
         </div>
       ))}
+      {!kilitli && gecmis.length > 0 && (
+        <datalist id={oneriKimligi}>
+          {gecmis.map((g) => (
+            <option key={g.alimId + g.ad} value={g.ad}>
+              {[g.ozellik, `${miktarYazisi(g.miktar)} ${g.birim}`, g.alimId].filter(Boolean).join(" · ")}
+            </option>
+          ))}
+        </datalist>
+      )}
       {!kilitli && (
         <div className="ust-araclar">
           <button type="button" className="dugme kucuk-dugme kendi-genisligi" onClick={() => degistir([...kalemler, yeniKalem()])}>
             Kalem ekle
           </button>
+          {gecmis.length > 0 && (
+            <button
+              type="button"
+              className="dugme kucuk-dugme kendi-genisligi"
+              aria-expanded={gecmisAcik}
+              onClick={() => {
+                setDurum("");
+                setAktarAcik(false);
+                setGecmisAcik(true);
+              }}
+            >
+              Önceki alımlardan ekle…
+            </button>
+          )}
           <button
             ref={dugmeRef}
             type="button"
@@ -164,6 +237,7 @@ export function IhtiyacListesiDuzenleyici({
             aria-expanded={aktarAcik}
             onClick={() => {
               setDurum("");
+              gecmisiKapat();
               setAktarAcik(true);
             }}
           >
@@ -175,6 +249,84 @@ export function IhtiyacListesiDuzenleyici({
         <p className="kucuk" role="status">
           {durum}
         </p>
+      )}
+      {!kilitli && gecmisAcik && (
+        <section className="aktar-bolumu" aria-labelledby={gecmisBaslikKimligi}>
+          <h3 id={gecmisBaslikKimligi} className="kucuk-baslik">
+            Önceki alımlardan ekle
+          </h3>
+          <p className="soluk kucuk">Daha önceki dosyalarda alınmış kalemler, en son alındıkları miktar ve özellikle listeye girer. Eklendikten sonra değiştirebilirsiniz.</p>
+          <div className="alan">
+            <label htmlFor={aramaKimligi}>Kalem ara</label>
+            <input id={aramaKimligi} className="girdi" value={arama} autoFocus onChange={(e) => setArama(e.target.value)} placeholder="Toner, A4, deterjan…" />
+          </div>
+          {bulunanlar.length === 0 ? (
+            <p className="soluk kucuk">Aramaya uyan kalem yok.</p>
+          ) : (
+            <div className="tablo-kutu">
+              <table>
+                <thead>
+                  <tr>
+                    <th scope="col">
+                      <span className="gizli">Seç</span>
+                    </th>
+                    <th scope="col">Malzeme veya hizmet</th>
+                    <th scope="col">Teknik özellik</th>
+                    <th scope="col">Son miktar</th>
+                    <th scope="col">Son alım</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {bulunanlar.slice(0, GECMIS_SATIRI).map((g) => {
+                    const anahtar = kalemAnahtari(g.ad);
+                    const listede = listedekiler.has(anahtar);
+                    return (
+                      <tr key={anahtar}>
+                        <td>
+                          <input
+                            type="checkbox"
+                            aria-label={`${g.ad} seç`}
+                            disabled={listede}
+                            checked={listede || secilenler.has(anahtar)}
+                            onChange={(e) =>
+                              setSecilenler((s) => {
+                                const y = new Set(s);
+                                if (e.target.checked) y.add(anahtar);
+                                else y.delete(anahtar);
+                                return y;
+                              })
+                            }
+                          />
+                        </td>
+                        <td>
+                          {g.ad}
+                          {listede && <span className="soluk kucuk"> · listede</span>}
+                        </td>
+                        <td>{g.ozellik}</td>
+                        <td className="mono">
+                          {miktarYazisi(g.miktar)} {g.birim}
+                        </td>
+                        <td className="kucuk">
+                          <span className="mono">{g.alimId}</span>
+                          {g.kez > 1 && <span className="soluk"> · {g.kez} dosyada</span>}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {onizlemeFazlasi(bulunanlar.length) && <p className="soluk kucuk">{onizlemeFazlasi(bulunanlar.length)}; aramayı daraltın.</p>}
+          <div className="ust-araclar">
+            <button type="button" className="dugme kucuk-dugme dugme-ana" disabled={secilenKalemler.length === 0} onClick={gecmistenEkle}>
+              Seçilenleri ekle ({secilenKalemler.length} kalem)
+            </button>
+            <button type="button" className="dugme kucuk-dugme" onClick={gecmisiKapat}>
+              Vazgeç
+            </button>
+          </div>
+        </section>
       )}
       {!kilitli && aktarAcik && (
         <section className="aktar-bolumu" aria-labelledby={baslikKimligi}>

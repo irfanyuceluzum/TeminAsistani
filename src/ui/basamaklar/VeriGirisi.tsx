@@ -6,9 +6,11 @@ import { tlKurus, tutarGirdisi, uzunTarih } from "../bicim";
 import { IhtiyacListesiDuzenleyici } from "../IhtiyacListesi";
 import { KontrolSatiri } from "../KontrolSatiri";
 import type { BasamakBaglami } from "../sayfalar/DosyaCalismaAlani";
+import { useGecmisKalemler } from "../useGecmis";
 
 export function VeriGirisi({ b }: { b: BasamakBaglami }) {
   const { alim, piyasa, dosya, dosyaDegistir } = b;
+  const gecmis = useGecmisKalemler(b.veri, alim.id);
   const [odenekMetni, setOdenekMetni] = useState(dosya.odenek ? tutarGirdisi(dosya.odenek) : "");
   const odenekGecersiz = odenekMetni.trim() !== "" && tutarCoz(odenekMetni) === null;
   const kontroller = veriKontrolleri(piyasa.kalemler, dosya, alim);
@@ -110,7 +112,7 @@ export function VeriGirisi({ b }: { b: BasamakBaglami }) {
         {piyasa.tamamlandi && (
           <div className="bant bant-bilgi">Piyasa araştırması tamamlandığı için liste kilitli. Değiştirmek için araştırmayı yeniden açın.</div>
         )}
-        <IhtiyacListesiDuzenleyici kalemler={piyasa.kalemler} degistir={b.kalemleriDegistir} kilitli={piyasa.tamamlandi} />
+        <IhtiyacListesiDuzenleyici kalemler={piyasa.kalemler} degistir={b.kalemleriDegistir} kilitli={piyasa.tamamlandi} gecmis={gecmis} />
       </section>
 
       <section className="panel" aria-labelledby="sart-baslik">

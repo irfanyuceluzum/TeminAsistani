@@ -22,6 +22,13 @@ export function kisi(personel: Personel[], id: string | null): Personel | undefi
   return id ? personel.find((p) => p.id === id) : undefined;
 }
 
+// Elle yazılan adı kurum personeliyle eşler; büyük/küçük harf ve fazla boşluk farkı sayılmaz.
+export function adlaKisi(personel: Personel[], ad: string): Personel | undefined {
+  const anahtar = (s: string) => s.trim().replace(/\s+/g, " ").toLocaleLowerCase("tr-TR");
+  const a = anahtar(ad);
+  return a ? personel.find((p) => anahtar(p.ad) === a) : undefined;
+}
+
 // "Ali Yılmaz (Öğretmen)" biçimi; belgelerdeki görevli listelerinde kullanılır.
 export function kisiYazisi(p: Personel): string {
   return p.unvan ? `${p.ad} (${p.unvan})` : p.ad;

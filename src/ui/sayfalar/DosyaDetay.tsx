@@ -3,6 +3,7 @@ import { Link, useOutletContext, useParams } from "react-router-dom";
 import { olayKaydet } from "../../data/olay";
 import { asamaIlerlemesi, asamaSirasi, asamaTarihleri, evrakDurumlari, type EvrakKaydi, type Olay } from "../../domain/dosya";
 import { eskiEkranBasamagi } from "../../domain/basamaklar";
+import { kopyalanabilirAlimlar } from "../../domain/gecmis";
 import { butceTertibi } from "../../domain/parametreler";
 import type { PiyasaArastirmasi } from "../../domain/piyasa";
 import type { Asama } from "../../domain/tipler";
@@ -143,6 +144,11 @@ export function DosyaDetay() {
         </div>
         <div className="ust-araclar">
           <span className={`etiket etiket-${asamaGrubu(alim.asama)}`}>{ASAMA_ADI[alim.asama]}</span>
+          {kopyalanabilirAlimlar([alim]).length > 0 && (
+            <Link to={`/yeni?kaynak=${encodeURIComponent(alim.id)}`} className="dugme kucuk-dugme">
+              Benzerini yeni dosya olarak aç
+            </Link>
+          )}
           <Link to={`/dosyalar/${alim.id}`} className="dugme kucuk-dugme">
             Basamaklı çalışma alanı
           </Link>
