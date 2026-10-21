@@ -6,7 +6,8 @@ import type { PiyasaArastirmasi } from "../domain/piyasa";
 import type { Alim, Asama, Ayarlar, Bent, LimitDonemi, Tedarikci } from "../domain/tipler";
 import type { AlimDegisikligi, Depo } from "./depo";
 import { gocSatirlariniCevir } from "./yedek";
-import { ornekAlimlar, ornekAyarlar, ornekBasamaklar, ornekEvraklar, ornekLimitDonemleri, ornekMuayeneler, ornekOlaylar, ornekPiyasa, ornekTedarikciler } from "./ornekVeri";
+import { BOS_GOREVLER } from "../domain/personel";
+import { ornekAyarlar, ornekLimitDonemleri } from "./ornekVeri";
 
 // Şema src-tauri/migrations altındaki SQL dosyalarıyla Rust tarafında kurulur.
 const ADRES = "sqlite:temin.db";
@@ -71,50 +72,21 @@ async function piyasaYaz(db: Database, p: PiyasaArastirmasi): Promise<void> {
   );
 }
 
-async function ornekleriYaz(db: Database): Promise<void> {
-  const [{ adet }] = await db.select<{ adet: number }[]>("SELECT COUNT(*) AS adet FROM alimlar");
-  if (adet === 0) {
-    for (const d of ornekLimitDonemleri) {
-      await db.execute(
-        "INSERT INTO limit_donemleri (baslangic, bitis, buyuksehir_kurus, diger_kurus, dayanak) VALUES ($1, $2, $3, $4, $5)",
-        [d.baslangic, d.bitis, d.buyuksehir, d.diger, d.dayanak],
-      );
-    }
-    for (const t of ornekTedarikciler) {
-      await db.execute("INSERT INTO tedarikciler (id, ad, kategori) VALUES ($1, $2, $3)", [t.id, t.ad, t.kategori]);
-    }
-    for (const a of ornekAlimlar) {
-      await alimYaz(db, a);
-    }
-    await db.execute("INSERT OR REPLACE INTO ayarlar (anahtar, deger) VALUES ('genel', $1)", [JSON.stringify(ornekAyarlar)]);
-  }
-  // Sonradan eklenen tablolar daha önce doldurulmuş veritabanında da örneklerle bir kez doldurulur.
-  const alimVar = async (id: string) =>
-    (await db.select<{ adet: number }[]>("SELECT COUNT(*) AS adet FROM alimlar WHERE id = $1", [id]))[0].adet > 0;
-  for (const p of ornekPiyasa) {
-    if (await alimVar(p.alimId)) {
-      await db.execute("INSERT OR IGNORE INTO piyasa_arastirmalari (alim_id, belge, guncelleme) VALUES ($1, $2, datetime('now'))", [p.alimId, JSON.stringify(p)]);
-    }
-  }
-  for (const d of ornekBasamaklar) {
-    if (await alimVar(d.alimId)) {
-      await db.execute("INSERT OR IGNORE INTO dosya_basamaklari (alim_id, belge, guncelleme) VALUES ($1, $2, datetime('now'))", [d.alimId, JSON.stringify(d)]);
-    }
-  }
-  for (const m of ornekMuayeneler) {
-    if (await alimVar(m.alimId)) {
-      await db.execute("INSERT OR IGNORE INTO muayeneler (alim_id, belge, guncelleme) VALUES ($1, $2, datetime('now'))", [m.alimId, JSON.stringify(m)]);
-    }
-  }
-  const [{ olayAdet }] = await db.select<{ olayAdet: number }[]>("SELECT COUNT(*) AS olayAdet FROM olaylar");
-  if (olayAdet === 0) {
-    for (const o of ornekOlaylar) if (await alimVar(o.alimId)) await olayYaz(db, o);
-    for (const [alimId, kayitlar] of Object.entries(ornekEvraklar)) {
-      if (!(await alimVar(alimId))) continue;
-      for (const [kod, k] of Object.entries(kayitlar)) await evrakYaz(db, alimId, kod, k);
-    }
+// Masaüstü veritabanına örnek dosya, firma ya da personel yazılmaz; dosya numaraları DT-YYYY-001'den başlar.
+// Yalnız 22/d parasal limitleri (Kamu İhale Tebliği) tablo boşsa bir kez yazılır.
+async function limitleriYaz(db: Database): Promise<void> {
+  const [{ adet }] = await db.select<{ adet: number }[]>("SELECT COUNT(*) AS adet FROM limit_donemleri");
+  if (adet > 0) return;
+  for (const d of ornekLimitDonemleri) {
+    await db.execute(
+      "INSERT INTO limit_donemleri (baslangic, bitis, buyuksehir_kurus, diger_kurus, dayanak) VALUES ($1, $2, $3, $4, $5)",
+      [d.baslangic, d.bitis, d.buyuksehir, d.diger, d.dayanak],
+    );
   }
 }
+
+// Ayar kaydı yoksa: kurum, personel, görevler ve ödenek Parametreler ile Personel ekranlarından girilir.
+const ILK_AYARLAR: Ayarlar = { konum: "buyuksehir", odenekler: {}, bolme: ornekAyarlar.bolme, personel: [], gorevler: BOS_GOREVLER };
 
 async function olayYaz(db: Database, o: Olay): Promise<void> {
   await db.execute("INSERT INTO olaylar (alim_id, zaman, kim, tur, aciklama) VALUES ($1, $2, $3, $4, $5)", [o.alimId, o.zaman, o.kim, o.tur, o.aciklama]);
@@ -130,7 +102,7 @@ async function evrakYaz(db: Database, alimId: string, kod: string, k: EvrakKaydi
 
 export async function sqliteDepo(): Promise<Depo> {
   const db = await Database.load(ADRES);
-  await ornekleriYaz(db);
+  await limitleriYaz(db);
   return {
     tur: "sqlite",
     async alimlar() {
@@ -182,7 +154,7 @@ export async function sqliteDepo(): Promise<Depo> {
     },
     async ayarlar() {
       const [satir] = await db.select<{ deger: string }[]>("SELECT deger FROM ayarlar WHERE anahtar = 'genel'");
-      return satir ? (JSON.parse(satir.deger) as Ayarlar) : ornekAyarlar;
+      return satir ? (JSON.parse(satir.deger) as Ayarlar) : ILK_AYARLAR;
     },
     async alimEkle(alim) {
       await alimYaz(db, alim);
