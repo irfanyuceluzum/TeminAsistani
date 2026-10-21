@@ -27,6 +27,20 @@ describe("görev kontrolleri", () => {
     expect(kontroller.some((x) => x.durum === "engel")).toBe(false);
   });
 
+  it("yetkili hem piyasada hem muayene komisyonundaysa görev çakışmasını da uyarır", () => {
+    const hy = gorevler.harcamaYetkilisi!;
+    const g: GorevAtamalari = { ...gorevler, piyasaGorevlileri: [hy], muayeneUyeleri: [...gorevler.muayeneUyeleri.filter((x) => x !== "p3"), hy] };
+    const cakisma = gorevKontrolleri(personel, g).find((x) => x.baslik === "Görev çakışması");
+    expect(cakisma?.detay).toContain(personel.find((p) => p.id === hy)!.ad);
+    const kom = muayeneKomisyonuKontrolleri(personel, g).find((x) => x.baslik === "Görev çakışması");
+    expect(kom?.detay).toContain(personel.find((p) => p.id === hy)!.ad);
+  });
+
+  it("komisyon sayısı uyarısı yönetmelik dayanağını yazar", () => {
+    const g: GorevAtamalari = { ...gorevler, muayeneUyeleri: [gorevler.muayeneUyeleri[0]] };
+    expect(gorevKontrolleri(personel, g).find((x) => x.baslik.endsWith("kişilik komisyon"))?.detay).toContain("md. 6/1");
+  });
+
   it("harcama yetkilisi ve gerçekleştirme görevlisinin piyasa ve yaklaşık maliyette yer alması engel değil uyarıdır", () => {
     const g1: GorevAtamalari = { ...gorevler, piyasaGorevlileri: [gorevler.gerceklestirme!, "p3"] };
     const k1 = gorevKontrolleri(personel, g1);

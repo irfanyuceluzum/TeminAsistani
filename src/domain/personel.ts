@@ -1,6 +1,14 @@
 import type { Kontrol } from "./sihirbaz";
 import type { Ayarlar, GorevAtamalari, Personel } from "./tipler";
 
+// Muayene ve kabul komisyonunun kuruluş kuralı; kontrol satırlarında ve muayene ekranında aynı metin kullanılır.
+export const KOMISYON_KURALI =
+  "Muayene ve kabul komisyonu en az üç kişiden kurulur, üye sayısı tek olur (Mal Alımları Denetim, Muayene ve Kabul İşlemlerine Dair Yönetmelik md. 6/1; Hizmet Alımları Muayene ve Kabul Yönetmeliği md. 5).";
+
+// 22/d'de komisyonsuz kabul yoktur: 2002 metnindeki istisna (md. 6/3) RG 22.06.2005/25853 md. 13 ile kaldırıldı.
+export const KOMISYONSUZ_KABUL_NOTU =
+  "Doğrudan temin (22/d) alımlarında da kabul komisyonla yapılır; komisyonsuz teslim alınabilecek bir mal türü yoktur. Yönetmeliğin 2002 metnindeki \"teslim anında idare yetkilisince kabul\" hükmü 22.07.2005'te yürürlükten kaldırıldı (RG 22.06.2005/25853, md. 13).";
+
 export const BOS_GOREVLER: GorevAtamalari = {
   harcamaYetkilisi: null,
   gerceklestirme: null,
@@ -17,11 +25,6 @@ export function kisi(personel: Personel[], id: string | null): Personel | undefi
 // "Ali Yılmaz (Öğretmen)" biçimi; belgelerdeki görevli listelerinde kullanılır.
 export function kisiYazisi(p: Personel): string {
   return p.unvan ? `${p.ad} (${p.unvan})` : p.ad;
-}
-
-export function yetkiliMi(id: string | null | undefined, g: GorevAtamalari): boolean {
-  if (!id) return false;
-  return id === g.harcamaYetkilisi || id === g.gerceklestirme;
 }
 
 export function komisyon(g: GorevAtamalari): string[] {
@@ -101,7 +104,7 @@ export function gorevKontrolleri(personel: Personel[], g: GorevAtamalari): Kontr
   if (!g.muayeneBaskani) {
     k.push({ durum: "yapilacak", baslik: "Komisyon başkanı", detay: "Muayene ve kabul komisyonuna başkan seçin." });
   } else if (kom.length < 3 || kom.length % 2 === 0) {
-    k.push({ durum: "uyari", baslik: `${kom.length} kişilik komisyon`, detay: "Komisyonun en az üç kişiden ve tek sayıda üyeden oluşması önerilir." });
+    k.push({ durum: "uyari", baslik: `${kom.length} kişilik komisyon`, detay: KOMISYON_KURALI });
   } else {
     k.push({ durum: "tamam", baslik: `${kom.length} kişilik komisyon`, detay: "Başkan ve üyeler belirlendi." });
   }
@@ -114,7 +117,7 @@ export function gorevKontrolleri(personel: Personel[], g: GorevAtamalari): Kontr
   }
 
   // Piyasa ve muayene ortaklığı uyarısı
-  const ortak = g.piyasaGorevlileri.filter((p) => kom.includes(p) && !yetkiliMi(p, g));
+  const ortak = g.piyasaGorevlileri.filter((p) => kom.includes(p));
   if (ortak.length) {
     k.push({ durum: "uyari", baslik: "Görev çakışması", detay: `${ortak.map(ad).join(", ")} hem fiyat araştırmasında hem muayene komisyonunda. Aynı alımda iki görevi birlikte almaması önerilir.` });
   }
@@ -133,9 +136,9 @@ export function muayeneKomisyonuKontrolleri(personel: Personel[], g: GorevAtamal
   }
   if (!g.muayeneBaskani) k.push({ durum: "uyari", baslik: "Komisyon başkanı seçilmemiş", detay: "Personel ve görevler ekranından başkan seçin." });
   if (kom.length < 3 || kom.length % 2 === 0) {
-    k.push({ durum: "uyari", baslik: `${kom.length} kişilik komisyon`, detay: "Komisyonun en az üç kişiden ve tek sayıda üyeden oluşması önerilir." });
+    k.push({ durum: "uyari", baslik: `${kom.length} kişilik komisyon`, detay: KOMISYON_KURALI });
   }
-  const ortak = g.piyasaGorevlileri.filter((p) => kom.includes(p) && !yetkiliMi(p, g));
+  const ortak = g.piyasaGorevlileri.filter((p) => kom.includes(p));
   if (ortak.length) {
     k.push({
       durum: "uyari",

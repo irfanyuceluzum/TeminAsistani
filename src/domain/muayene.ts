@@ -1,7 +1,7 @@
 import { tlKurus } from "./bicim";
 import { degerlendir, kalemTutari, type PiyasaArastirmasi } from "./piyasa";
 import type { Kontrol } from "./sihirbaz";
-import { gorevAyriligiUyarisi, kisi } from "./personel";
+import { gorevAyriligiUyarisi, KOMISYON_KURALI, kisi } from "./personel";
 import { gunYaz } from "./tarih";
 import type { Alim, GorevAtamalari, Personel } from "./tipler";
 
@@ -165,7 +165,7 @@ export function dosyaKomisyonuKontrolleri(uyeler: KomisyonUyesi[], personel: Per
   if (baskanlar.length !== 1) k.push({ durum: "engel", baslik: "Komisyon başkanı", detay: "Üyelerden birini başkan seçin." });
   if (adsiz) k.push({ durum: "engel", baslik: "Üye adı eksik", detay: `${adsiz} üyenin adı yazılmamış.` });
   if (uyeler.length < 3 || uyeler.length % 2 === 0) {
-    k.push({ durum: "uyari", baslik: `${uyeler.length} kişilik komisyon`, detay: "Komisyonun en az üç kişiden ve tek sayıda üyeden oluşması önerilir." });
+    k.push({ durum: "uyari", baslik: `${uyeler.length} kişilik komisyon`, detay: KOMISYON_KURALI });
   }
 
   const uyeAdlari = new Set(uyeler.map((u) => buyuk(u.ad)).filter(Boolean));

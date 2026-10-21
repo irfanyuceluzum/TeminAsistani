@@ -8,7 +8,7 @@ import { muayeneTalebiSayfalari, muayeneKabulTutanagiSayfalari } from "./belgele
 import type { Kontrol } from "../../domain/sihirbaz";
 import { evrakFormu, evrakKaydiYap } from "../../domain/basamaklar";
 import { bugun } from "../bicim";
-import { BOS_GOREVLER, belgeGorevlileri } from "../../domain/personel";
+import { BOS_GOREVLER, KOMISYON_KURALI, KOMISYONSUZ_KABUL_NOTU, belgeGorevlileri } from "../../domain/personel";
 import { dosyaKomisyonuKontrolleri, kabulSonucu, muayeneKalemKontrolleri, muayeneOlustur, muayeneSonrasiDosya, teslimSiparisKontrolu, type KomisyonUyesi, type Muayene } from "../../domain/muayene";
 
 export function MuayeneBasamagi({ b }: { b: BasamakBaglami }) {
@@ -266,6 +266,9 @@ export function MuayeneBasamagi({ b }: { b: BasamakBaglami }) {
                     </button>
                   </div>
                 </div>
+                <p className="ipucu">
+                  {KOMISYON_KURALI} {KOMISYONSUZ_KABUL_NOTU}
+                </p>
                 {taslak.uyeler.map((u, i) => (
                   <div key={i} className="kalem-satiri">
                     <label className="onay-kutusu baskan-secimi">
