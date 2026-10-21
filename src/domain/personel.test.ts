@@ -18,21 +18,43 @@ describe("görev kontrolleri", () => {
     expect(gorevKontrolleri(personel, BOS_GOREVLER)[0].durum).toBe("yapilacak");
   });
 
-  it("çift sayılı komisyonu uyarır ve komisyondaki yetkiliyi engeller", () => {
+  it("çift sayılı komisyonu uyarır ve komisyondaki yetkiliyi engellemeden uyarır", () => {
     const g: GorevAtamalari = { ...gorevler, muayeneUyeleri: [gorevler.harcamaYetkilisi!] };
     const kontroller = gorevKontrolleri(personel, g);
     const basliklar = kontroller.map((x) => x.baslik);
     expect(basliklar).toContain("2 kişilik komisyon");
-    expect(basliklar).toContain("Yetkili muayene komisyonunda yer alamaz");
-    expect(kontroller.find((x) => x.baslik === "Yetkili muayene komisyonunda yer alamaz")?.durum).toBe("engel");
+    expect(kontroller.find((x) => x.baslik === "Muayene komisyonunda yetkili var: görevler ayrılığı")?.durum).toBe("uyari");
+    expect(kontroller.some((x) => x.durum === "engel")).toBe(false);
   });
 
-  it("harcama yetkilisi ve gerçekleştirme görevlisinin piyasa ve yaklaşık maliyette yer almasını engeller", () => {
+  it("harcama yetkilisi ve gerçekleştirme görevlisinin piyasa ve yaklaşık maliyette yer alması engel değil uyarıdır", () => {
     const g1: GorevAtamalari = { ...gorevler, piyasaGorevlileri: [gorevler.gerceklestirme!, "p3"] };
-    expect(gorevKontrolleri(personel, g1).find((x) => x.baslik === "Yetkili piyasa araştırmasında yer alamaz")?.durum).toBe("engel");
+    const k1 = gorevKontrolleri(personel, g1);
+    const u1 = k1.find((x) => x.baslik === "Piyasa araştırmasında yetkili var: görevler ayrılığı");
+    expect(u1?.durum).toBe("uyari");
+    expect(u1?.detay).toContain("Standart 9");
+    expect(k1.some((x) => x.durum === "engel")).toBe(false);
 
     const g2: GorevAtamalari = { ...gorevler, yaklasikMaliyetGorevlileri: [gorevler.harcamaYetkilisi!, "p3"] };
-    expect(gorevKontrolleri(personel, g2).find((x) => x.baslik === "Yetkili yaklaşık maliyette yer alamaz")?.durum).toBe("engel");
+    const k2 = gorevKontrolleri(personel, g2);
+    const u2 = k2.find((x) => x.baslik === "Yaklaşık maliyette yetkili var: görevler ayrılığı");
+    expect(u2?.durum).toBe("uyari");
+    expect(u2?.detay).toContain("Standart 9");
+    expect(k2.some((x) => x.durum === "engel")).toBe(false);
+  });
+
+  it("belgeGorevlileri yetkiliyi piyasa, yaklaşık maliyet ve komisyon listelerinden çıkarmaz", () => {
+    const g: GorevAtamalari = {
+      ...gorevler,
+      piyasaGorevlileri: ["p1", "p3"],
+      yaklasikMaliyetGorevlileri: ["p2", "p3"],
+      muayeneBaskani: "p1",
+      muayeneUyeleri: ["p2", "p5"],
+    };
+    const b = belgeGorevlileri({ ...ornekAyarlar, gorevler: g });
+    expect(b.piyasaGorevlileri).toContain("Mehmet Arslan");
+    expect(b.yaklasikGorevlileri.map((p) => p.ad)).toContain("Ayşe Demir");
+    expect(b.komisyon.map((u) => `${u.ad}:${u.rol}`)).toEqual(["Mehmet Arslan:baskan", "Ayşe Demir:uye", "Hasan Çelik:uye"]);
   });
 
 });
@@ -81,8 +103,12 @@ describe("muayene komisyonu kontrolleri", () => {
     expect(k[0]).toMatchObject({ durum: "tamam", baslik: "Muayene komisyonu uygun" });
   });
 
-  it("yetkiliyi komisyonda engeller", () => {
+  it("yetkiliyi komisyonda engellemez, görevler ayrılığı uyarısı verir", () => {
     const g: GorevAtamalari = { ...gorevler, muayeneUyeleri: [gorevler.gerceklestirme!, "p5"] };
-    expect(muayeneKomisyonuKontrolleri(personel, g).find((x) => x.durum === "engel")?.baslik).toBe("Yetkili muayene komisyonunda yer alamaz");
+    const k = muayeneKomisyonuKontrolleri(personel, g);
+    expect(k.some((x) => x.durum === "engel")).toBe(false);
+    const u = k.find((x) => x.baslik === "Muayene komisyonunda yetkili var: görevler ayrılığı");
+    expect(u?.durum).toBe("uyari");
+    expect(u?.detay).toContain("Standart 9");
   });
 });

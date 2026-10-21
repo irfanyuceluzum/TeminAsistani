@@ -45,24 +45,11 @@ export function Personel() {
     setGorevler((g) => {
       const digerAlan = alan === "harcamaYetkilisi" ? "gerceklestirme" : "harcamaYetkilisi";
       const diger = g[digerAlan] === id ? null : g[digerAlan];
-      const arindir = (liste: string[] | undefined) => (liste ?? []).filter((x) => x !== id);
-      return {
-        ...g,
-        [alan]: id,
-        [digerAlan]: diger,
-        piyasaGorevlileri: arindir(g.piyasaGorevlileri),
-        yaklasikMaliyetGorevlileri: arindir(g.yaklasikMaliyetGorevlileri),
-        muayeneBaskani: g.muayeneBaskani === id ? null : g.muayeneBaskani,
-        muayeneUyeleri: arindir(g.muayeneUyeleri),
-      };
+      return { ...g, [alan]: id, [digerAlan]: diger };
     });
   }
 
   function listeDegistir(alan: "piyasaGorevlileri" | "muayeneUyeleri" | "yaklasikMaliyetGorevlileri", id: string) {
-    if (id === gorevler.harcamaYetkilisi || id === gorevler.gerceklestirme) {
-      setMesaj({ tur: "hata", metin: "Harcama Yetkilisi ve Gerçekleştirme Görevlisi komisyonlarda görev alamaz." });
-      return;
-    }
     const liste = gorevler[alan] ?? [];
     ata({ [alan]: liste.includes(id) ? liste.filter((x) => x !== id) : [...liste, id] });
   }
@@ -115,7 +102,6 @@ export function Personel() {
   const hy = ad(gorevler.harcamaYetkilisi);
   const gg = ad(gorevler.gerceklestirme);
   const yetkiliIdler = new Set([gorevler.harcamaYetkilisi, gorevler.gerceklestirme].filter(Boolean));
-  const komisyonAdaylari = personel.filter((p) => !yetkiliIdler.has(p.id));
 
   return (
     <div className="sayfa">
@@ -230,7 +216,7 @@ export function Personel() {
             <div>
               <h2 id="harcama-baslik">Harcama görevlileri</h2>
               <p className="soluk kucuk">
-                Onay belgesinin ve ödeme emrinin imzacılarıdır. <strong>Mevzuat gereği teslim alma, piyasa araştırması ve yaklaşık maliyet komisyonlarında yer alamazlar.</strong>
+                Onay belgesinin ve ödeme emrinin imzacılarıdır. <strong>Görevler ayrılığı ilkesi (Kamu İç Kontrol Standartları, Standart 9) gereği teslim alma, piyasa araştırması ve yaklaşık maliyet komisyonlarında yer almamaları önerilir; açık bir yasak yoktur, seçerseniz uyarı görürsünüz.</strong>
               </p>
             </div>
             <div className="form-izgara">
@@ -242,7 +228,7 @@ export function Personel() {
           <section className="panel" aria-labelledby="ym-baslik">
             <div>
               <h2 id="ym-baslik">Yaklaşık maliyet komisyonu / görevlileri</h2>
-              <p className="soluk kucuk">Fiyat araştırmasını derler ve resmi Yaklaşık Maliyet Hesap Cetveli'ni imzalar. Harcama Yetkilisi ve Gerçekleştirme Görevlisi seçilemez.</p>
+              <p className="soluk kucuk">Fiyat araştırmasını derler ve resmi Yaklaşık Maliyet Hesap Cetveli'ni imzalar. Harcama Yetkilisi ve Gerçekleştirme Görevlisinin seçilmesi görevler ayrılığı açısından önerilmez.</p>
             </div>
             <div className="filtreler" role="group" aria-labelledby="ym-baslik">
               {personel.map((p) => {
@@ -252,11 +238,10 @@ export function Personel() {
                   <button
                     key={p.id}
                     type="button"
-                    disabled={yasakli}
-                    className={`filtre secim-cipi ${yasakli ? "soluk" : ""}`}
+                    className="filtre secim-cipi"
                     aria-pressed={secili}
                     onClick={() => listeDegistir("yaklasikMaliyetGorevlileri", p.id)}
-                    title={yasakli ? "Harcama Yetkilisi veya Gerçekleştirme Görevlisi komisyonda yer alamaz" : ""}
+                    title={yasakli ? "Harcama Yetkilisi veya Gerçekleştirme Görevlisi: görevler ayrılığı: önerilmez" : ""}
                   >
                     {p.ad} {yasakli ? "(Yetkili)" : ""}
                   </button>
@@ -268,7 +253,7 @@ export function Personel() {
           <section className="panel" aria-labelledby="piyasa-baslik">
             <div>
               <h2 id="piyasa-baslik">Piyasa fiyat araştırması görevlileri</h2>
-              <p className="soluk kucuk">Teklif isteme yazısını imzalar, teklifleri toplar ve piyasa tutanağını düzenler. Harcama Yetkilisi ve Gerçekleştirme Görevlisi seçilemez.</p>
+              <p className="soluk kucuk">Teklif isteme yazısını imzalar, teklifleri toplar ve piyasa tutanağını düzenler. Harcama Yetkilisi ve Gerçekleştirme Görevlisinin seçilmesi görevler ayrılığı açısından önerilmez.</p>
             </div>
             <div className="filtreler" role="group" aria-labelledby="piyasa-baslik">
               {personel.map((p) => {
@@ -278,11 +263,10 @@ export function Personel() {
                   <button
                     key={p.id}
                     type="button"
-                    disabled={yasakli}
-                    className={`filtre secim-cipi ${yasakli ? "soluk" : ""}`}
+                    className="filtre secim-cipi"
                     aria-pressed={secili}
                     onClick={() => listeDegistir("piyasaGorevlileri", p.id)}
-                    title={yasakli ? "Harcama Yetkilisi veya Gerçekleştirme Görevlisi komisyonda yer alamaz" : ""}
+                    title={yasakli ? "Harcama Yetkilisi veya Gerçekleştirme Görevlisi: görevler ayrılığı: önerilmez" : ""}
                   >
                     {p.ad} {yasakli ? "(Yetkili)" : ""}
                   </button>
@@ -294,7 +278,7 @@ export function Personel() {
           <section className="panel" aria-labelledby="muayene-baslik">
             <div>
               <h2 id="muayene-baslik">Muayene ve kabul komisyonu (Teslim Alma)</h2>
-              <p className="soluk kucuk">Muayene ve kabul tutanağına başkan ve üyeler olarak yazılır. Harcama Yetkilisi ve Gerçekleştirme Görevlisi komisyona seçilemez.</p>
+              <p className="soluk kucuk">Muayene ve kabul tutanağına başkan ve üyeler olarak yazılır. Harcama Yetkilisi ve Gerçekleştirme Görevlisinin seçilmesi görevler ayrılığı açısından önerilmez.</p>
             </div>
             <div className="form-izgara">
               {secim(
@@ -302,7 +286,6 @@ export function Personel() {
                 gorevler.muayeneBaskani,
                 (v) => ata({ muayeneBaskani: v, muayeneUyeleri: gorevler.muayeneUyeleri.filter((u) => u !== v) }),
                 "Komisyon başkanı",
-                komisyonAdaylari,
               )}
             </div>
             <span id="uye-baslik" className="soluk kucuk">
@@ -318,11 +301,10 @@ export function Personel() {
                     <button
                       key={p.id}
                       type="button"
-                      disabled={yasakli}
-                      className={`filtre secim-cipi ${yasakli ? "soluk" : ""}`}
+                      className="filtre secim-cipi"
                       aria-pressed={secili}
                       onClick={() => listeDegistir("muayeneUyeleri", p.id)}
-                      title={yasakli ? "Harcama Yetkilisi veya Gerçekleştirme Görevlisi muayene komisyonunda yer alamaz" : ""}
+                      title={yasakli ? "Harcama Yetkilisi veya Gerçekleştirme Görevlisi: görevler ayrılığı: önerilmez" : ""}
                     >
                       {p.ad} {yasakli ? "(Yetkili)" : ""}
                     </button>

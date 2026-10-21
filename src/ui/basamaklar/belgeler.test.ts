@@ -17,8 +17,13 @@ describe("muayeneKomisyonuImzalari", () => {
     expect(adlar(gorevli({ muayeneUyeleri: ["p5", "p4", "p3"] }))).toEqual(["Fatma Kaya (başkan)", "Hasan Çelik", "Ali Yılmaz"]);
   });
 
-  it("yetkili başkan yer tutucuyla değil hiç yazılmaz; yetkili üye çıkarılır", () => {
-    expect(adlar(gorevli({ muayeneBaskani: "p1", muayeneUyeleri: ["p5", "p2", "p3"] }))).toEqual(["Hasan Çelik", "Ali Yılmaz"]);
+  it("yetkili başkan görevlendirmedeki başkan olarak yazılır; yetkili üye de listelenir", () => {
+    expect(adlar(gorevli({ muayeneBaskani: "p1", muayeneUyeleri: ["p5", "p2", "p3"] }))).toEqual([
+      "Mehmet Arslan (başkan)",
+      "Hasan Çelik",
+      "Ayşe Demir",
+      "Ali Yılmaz",
+    ]);
   });
 
   it("görevlendirme yoksa tek boş imza yeri bırakır", () => {

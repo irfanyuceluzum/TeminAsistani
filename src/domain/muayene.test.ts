@@ -147,9 +147,13 @@ describe("dosyaKomisyonuKontrolleri", () => {
     expect(durumlar([uye("A", "baskan"), uye("B")])).toContain("uyari:2 kişilik komisyon");
     expect(durumlar([...uc, uye("D")])).toContain("uyari:4 kişilik komisyon");
   });
-  it("harcama yetkilisi ya da gerçekleştirme görevlisi üyeyse engel (Türkçe büyük/küçük duyarsız)", () => {
-    expect(durumlar([uye("A", "baskan"), uye("B"), uye("İLKER DEMİR")])).toContain("engel:Yetkili muayene komisyonunda yer alamaz");
-    expect(durumlar([uye("A", "baskan"), uye("B"), uye("ayşe kaya")])).toContain("engel:Yetkili muayene komisyonunda yer alamaz");
+  it("harcama yetkilisi ya da gerçekleştirme görevlisi üyeyse engel değil uyarı (Türkçe büyük/küçük duyarsız)", () => {
+    const baslik = "uyari:Muayene komisyonunda yetkili var: görevler ayrılığı";
+    expect(durumlar([uye("A", "baskan"), uye("B"), uye("İLKER DEMİR")])).toContain(baslik);
+    expect(durumlar([uye("A", "baskan"), uye("B"), uye("ayşe kaya")])).toContain(baslik);
+    expect(durumlar([uye("A", "baskan"), uye("B"), uye("ayşe kaya")]).some((s) => s.startsWith("engel:"))).toBe(false);
+    const u = dosyaKomisyonuKontrolleri([uye("A", "baskan"), uye("B"), uye("ayşe kaya")], personel, g).find((x) => x.durum === "uyari" && x.baslik.includes("görevler ayrılığı"))!;
+    expect(u.detay).toContain("Standart 9");
   });
   it("piyasa görevlisi üyeyse görev çakışması uyarısı kişi adıyla", () => {
     const r = dosyaKomisyonuKontrolleri([uye("A", "baskan"), uye("B"), uye("mehmet tan")], personel, g);

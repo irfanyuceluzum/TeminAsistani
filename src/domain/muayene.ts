@@ -1,7 +1,7 @@
 import { tlKurus } from "./bicim";
 import { degerlendir, kalemTutari, type PiyasaArastirmasi } from "./piyasa";
 import type { Kontrol } from "./sihirbaz";
-import { kisi } from "./personel";
+import { gorevAyriligiUyarisi, kisi } from "./personel";
 import { gunYaz } from "./tarih";
 import type { Alim, GorevAtamalari, Personel } from "./tipler";
 
@@ -173,11 +173,7 @@ export function dosyaKomisyonuKontrolleri(uyeler: KomisyonUyesi[], personel: Per
     idler.map((id) => (id ? kisi(personel, id)?.ad : undefined)).filter((a): a is string => !!a && uyeAdlari.has(buyuk(a)));
   const yetkili = adlar([g.harcamaYetkilisi, g.gerceklestirme]);
   if (yetkili.length) {
-    k.push({
-      durum: "engel",
-      baslik: "Yetkili muayene komisyonunda yer alamaz",
-      detay: `${yetkili.join(", ")} harcama yetkilisi ya da gerçekleştirme görevlisi; muayene ve kabul komisyonunda yer alamaz.`,
-    });
+    k.push(gorevAyriligiUyarisi("Muayene komisyonunda yetkili var", yetkili));
   }
   const ortak = adlar(g.piyasaGorevlileri);
   if (ortak.length) {

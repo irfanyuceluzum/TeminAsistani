@@ -230,12 +230,10 @@ export function yaklasikMaliyetSayfalari(b: BelgeBilgisi, sonuc: MaliyetSonucu, 
   // Eksik fiyatlı firmanın toplamı null'dır ve belgede "—" basılır; boş sütun 0,00 kalır
   const firmaToplamlari = firmaSlotlari.map((slot) => (slot.id ? firmaFiyatToplami(b.kalemler, slot.fiyatlar) : 0));
 
-  // Harcama yetkilisi ve gerçekleştirme görevlisi yaklaşık maliyet komisyonunda kesinlikle yer alamaz.
-  const yetkiliIdler = new Set([g?.harcamaYetkilisi, g?.gerceklestirme].filter(Boolean));
-  const gorevliIdler = (g?.yaklasikMaliyetGorevlileri && g.yaklasikMaliyetGorevlileri.length > 0
+  // Görevlendirme olduğu gibi yansır (yetkililer de dahil; görevler ayrılığı uyarısı alan kontrolündedir).
+  const gorevliIdler = g?.yaklasikMaliyetGorevlileri && g.yaklasikMaliyetGorevlileri.length > 0
     ? g.yaklasikMaliyetGorevlileri
-    : g?.piyasaGorevlileri ?? []
-  ).filter((id) => !yetkiliIdler.has(id));
+    : g?.piyasaGorevlileri ?? [];
 
   const gorevliUyeler = gorevliIdler.map((id) => imzaci(b.ayarlar, id));
   const imzacilar = Array.from({ length: Math.max(gorevliUyeler.length, 3) }, (_, i) => gorevliUyeler[i] ?? { ad: "…", unvan: "GÖREVLİ" });
@@ -681,9 +679,8 @@ export function piyasaTutanagiSayfalari(
   const birim = b.ayarlar.idare?.birim || "";
   const sonuc = degerlendir(piyasa);
   const g = b.ayarlar.gorevler;
-  const yetkiliIdler = new Set([g?.harcamaYetkilisi, g?.gerceklestirme].filter(Boolean));
-  // Piyasa görevlileri (Harcama Yetkilisi ve Gerçekleştirme Görevlisi OLMAMAK üzere)
-  const gorevliIdler = (g?.piyasaGorevlileri ?? []).filter((id) => !yetkiliIdler.has(id));
+  // Piyasa görevlileri görevlendirmedeki gibi yazılır.
+  const gorevliIdler = g?.piyasaGorevlileri ?? [];
   const gorevliUyeler = gorevliIdler.map((id) => imzaci(b.ayarlar, id));
   const imzacilar = Array.from({ length: Math.max(gorevliUyeler.length, 2) }, (_, i) => gorevliUyeler[i] ?? { ad: "…", unvan: "GÖREVLİ" });
 
@@ -939,7 +936,7 @@ export function muayeneTalebiSayfalari(
 }
 
 // Tutanaktaki komisyon imzaları: dosyaya özel üyeler (adı dolu olanlar) varsa onlar, yoksa görevlendirmeden
-// domain kuralıyla kurulan komisyon (yetkililer hariç, başkan başta, kişi bir kez). Kimse yoksa tek boş imza yeri.
+// domain kuralıyla kurulan komisyon (başkan başta, kişi bir kez). Kimse yoksa tek boş imza yeri.
 export function muayeneKomisyonuImzalari(ayarlar: Ayarlar, muayene: Muayene | null): { ad: string; unvan: string; baskan: boolean }[] {
   const dosyaUyeleri = (muayene?.uyeler ?? []).filter((u) => u.ad.trim());
   if (dosyaUyeleri.length) {

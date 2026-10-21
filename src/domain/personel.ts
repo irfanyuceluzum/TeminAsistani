@@ -56,7 +56,17 @@ export function personelCikar(id: string, personel: Personel[], g: GorevAtamalar
   };
 }
 
-// Görev ayrılığı ve mevzuat kontrolleri (5018 ve 4734 sayılı kanunlar gereği)
+// Harcama yetkilisi ya da gerçekleştirme görevlisi bir komisyona/göreve atandığında verilen ortak uyarı.
+// Açık bir yasak hükmü yoktur; dayanak Kamu İç Kontrol Standartları Tebliği Standart 9'dur (görevler ayrılığı).
+export function gorevAyriligiUyarisi(gorevBasligi: string, adlar: string[]): Kontrol {
+  return {
+    durum: "uyari",
+    baslik: `${gorevBasligi}: görevler ayrılığı`,
+    detay: `${adlar.join(", ")} harcama yetkilisi ya da gerçekleştirme görevlisi. Mevzuatta açık yasak yok, ancak görevler ayrılığı ilkesi (Kamu İç Kontrol Standartları, Standart 9) onay ve kontrol görevlerinin farklı kişilerde olmasını ister. Personel yetersizse görevlendirmeyi bilerek yapın.`,
+  };
+}
+
+// Görev ayrılığı kontrolleri (Kamu İç Kontrol Standartları, Standart 9)
 export function gorevKontrolleri(personel: Personel[], g: GorevAtamalari): Kontrol[] {
   const ad = (id: string) => kisi(personel, id)?.ad ?? id;
   const k: Kontrol[] = [];
@@ -71,14 +81,10 @@ export function gorevKontrolleri(personel: Personel[], g: GorevAtamalari): Kontr
   // 1. Piyasa Fiyat Araştırması kontrolleri
   const piyasadaYetkili = [g.harcamaYetkilisi, g.gerceklestirme].filter((id): id is string => !!id && g.piyasaGorevlileri.includes(id));
   if (piyasadaYetkili.length) {
-    k.push({
-      durum: "engel",
-      baslik: "Yetkili piyasa araştırmasında yer alamaz",
-      detay: `${piyasadaYetkili.map(ad).join(", ")} Harcama Yetkilisi veya Gerçekleştirme Görevlisidir. Mevzuat gereği piyasa araştırmasında görev alamaz.`,
-    });
+    k.push(gorevAyriligiUyarisi("Piyasa araştırmasında yetkili var", piyasadaYetkili.map(ad)));
   }
 
-  const n = g.piyasaGorevlileri.filter((id) => !yetkiliMi(id, g)).length;
+  const n = g.piyasaGorevlileri.length;
   k.push(
     n < 2
       ? { durum: "uyari", baslik: `${n} piyasa görevlisi`, detay: "Fiyat araştırmasının en az iki kişiyle yapılması önerilir." }
@@ -89,11 +95,7 @@ export function gorevKontrolleri(personel: Personel[], g: GorevAtamalari): Kontr
   const kom = komisyon(g);
   const muayenedeYetkili = [g.harcamaYetkilisi, g.gerceklestirme].filter((id): id is string => !!id && kom.includes(id));
   if (muayenedeYetkili.length) {
-    k.push({
-      durum: "engel",
-      baslik: "Yetkili muayene komisyonunda yer alamaz",
-      detay: `${muayenedeYetkili.map(ad).join(", ")} Harcama Yetkilisi veya Gerçekleştirme Görevlisidir. Muayene ve kabul (teslim alma) komisyonunda yer alamaz.`,
-    });
+    k.push(gorevAyriligiUyarisi("Muayene komisyonunda yetkili var", muayenedeYetkili.map(ad)));
   }
 
   if (!g.muayeneBaskani) {
@@ -108,11 +110,7 @@ export function gorevKontrolleri(personel: Personel[], g: GorevAtamalari): Kontr
   const ymGorevlileri = g.yaklasikMaliyetGorevlileri ?? [];
   const ymdeYetkili = [g.harcamaYetkilisi, g.gerceklestirme].filter((id): id is string => !!id && ymGorevlileri.includes(id));
   if (ymdeYetkili.length) {
-    k.push({
-      durum: "engel",
-      baslik: "Yetkili yaklaşık maliyette yer alamaz",
-      detay: `${ymdeYetkili.map(ad).join(", ")} Harcama Yetkilisi veya Gerçekleştirme Görevlisidir. Yaklaşık maliyet komisyonunda yer alamaz.`,
-    });
+    k.push(gorevAyriligiUyarisi("Yaklaşık maliyette yetkili var", ymdeYetkili.map(ad)));
   }
 
   // Piyasa ve muayene ortaklığı uyarısı
@@ -131,11 +129,7 @@ export function muayeneKomisyonuKontrolleri(personel: Personel[], g: GorevAtamal
   const k: Kontrol[] = [];
   const yetkili = [g.harcamaYetkilisi, g.gerceklestirme].filter((id): id is string => !!id && kom.includes(id));
   if (yetkili.length) {
-    k.push({
-      durum: "engel",
-      baslik: "Yetkili muayene komisyonunda yer alamaz",
-      detay: `${yetkili.map(ad).join(", ")} harcama yetkilisi ya da gerçekleştirme görevlisi; muayene ve kabul komisyonunda yer alamaz.`,
-    });
+    k.push(gorevAyriligiUyarisi("Muayene komisyonunda yetkili var", yetkili.map(ad)));
   }
   if (!g.muayeneBaskani) k.push({ durum: "uyari", baslik: "Komisyon başkanı seçilmemiş", detay: "Personel ve görevler ekranından başkan seçin." });
   if (kom.length < 3 || kom.length % 2 === 0) {
@@ -153,7 +147,7 @@ export function muayeneKomisyonuKontrolleri(personel: Personel[], g: GorevAtamal
   return k;
 }
 
-// Belgelere dolacak görevli adları; yetkililer komisyonlardan hariç tutulur.
+// Belgelere dolacak görevli adları; görevlendirme olduğu gibi yansır (yetkililer de dahil, başkan görevlendirmedeki başkandır).
 export function belgeGorevlileri(a: Ayarlar) {
   const personel = a.personel ?? [];
   const g = a.gorevler ?? BOS_GOREVLER;
@@ -161,12 +155,11 @@ export function belgeGorevlileri(a: Ayarlar) {
     const p = kisi(personel, id);
     return p ? kisiYazisi(p) : "";
   };
-  const piyasaTemiz = g.piyasaGorevlileri.filter((id) => !yetkiliMi(id, g));
-  const ymTemiz = (g.yaklasikMaliyetGorevlileri && g.yaklasikMaliyetGorevlileri.length > 0
+  const piyasaTemiz = g.piyasaGorevlileri;
+  const ymTemiz = g.yaklasikMaliyetGorevlileri && g.yaklasikMaliyetGorevlileri.length > 0
     ? g.yaklasikMaliyetGorevlileri
-    : g.piyasaGorevlileri
-  ).filter((id) => !yetkiliMi(id, g));
-  const komisyonTemiz = komisyon(g).filter((id) => !yetkiliMi(id, g));
+    : g.piyasaGorevlileri;
+  const komisyonTemiz = komisyon(g);
 
   return {
     harcamaYetkilisi: yaz(g.harcamaYetkilisi),
@@ -176,7 +169,7 @@ export function belgeGorevlileri(a: Ayarlar) {
     komisyon: komisyonTemiz
       .map((id, i) => {
         const p = kisi(personel, id);
-        return p ? { ad: p.ad, unvan: p.unvan, rol: (i === 0 && g.muayeneBaskani && !yetkiliMi(g.muayeneBaskani, g) ? "baskan" : "uye") as "baskan" | "uye" } : null;
+        return p ? { ad: p.ad, unvan: p.unvan, rol: (i === 0 && g.muayeneBaskani ? "baskan" : "uye") as "baskan" | "uye" } : null;
       })
       .filter((x): x is { ad: string; unvan: string; rol: "baskan" | "uye" } => !!x),
   };

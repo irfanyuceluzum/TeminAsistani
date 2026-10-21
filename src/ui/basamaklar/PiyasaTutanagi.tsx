@@ -9,7 +9,7 @@ import { degerlendir, piyasaKontrolleri, type Degerlendirme } from "../../domain
 import { evrakFormu, evrakKaydiYap } from "../../domain/basamaklar";
 import { bugun, tlKurus } from "../bicim";
 import type { Kontrol } from "../../domain/sihirbaz";
-import { yetkiliMi } from "../../domain/personel";
+import { gorevAyriligiUyarisi, kisi } from "../../domain/personel";
 
 export function PiyasaTutanagiBasamagi({ b }: { b: BasamakBaglami }) {
   const navigate = useNavigate();
@@ -47,11 +47,7 @@ export function PiyasaTutanagiBasamagi({ b }: { b: BasamakBaglami }) {
     );
 
     if (piyasadaYetkili.length > 0) {
-      k.push({
-        durum: "engel",
-        baslik: "Yetkili piyasa araştırmasında görev alamaz",
-        detay: "Harcama Yetkilisi ve Gerçekleştirme Görevlisi 5018 ve 4734 sayılı kanunlar gereği piyasa araştırma komisyonunda yer alamaz.",
-      });
+      k.push(gorevAyriligiUyarisi("Piyasa araştırmasında yetkili var", piyasadaYetkili.map((id) => kisi(ayarlar.personel ?? [], id)?.ad ?? id)));
     } else {
       k.push({
         durum: "tamam",
@@ -69,7 +65,7 @@ export function PiyasaTutanagiBasamagi({ b }: { b: BasamakBaglami }) {
       });
     }
 
-    const gorevliSayisi = (g?.piyasaGorevlileri ?? []).filter((id) => g ? !yetkiliMi(id, g) : true).length;
+    const gorevliSayisi = (g?.piyasaGorevlileri ?? []).length;
     if (gorevliSayisi < 2) {
       k.push({
         durum: "uyari",
