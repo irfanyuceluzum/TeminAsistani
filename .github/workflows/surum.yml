@@ -1,0 +1,58 @@
+# Sürüm etiketi (v0.1.0 gibi) gönderildiğinde ya da Actions sekmesinden elle çalıştırıldığında
+# macOS (Apple Silicon ve Intel) ve Windows kurulum dosyalarını derleyip GitHub Releases'e yükler.
+# Sürüm numarası src-tauri/tauri.conf.json'daki "version" alanından gelir; etiket onunla aynı olmalıdır.
+name: Sürüm
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  derle:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            args: --target universal-apple-darwin
+          - platform: windows-latest
+            args: ""
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          # Evrensel macOS paketi iki mimari için ayrı derlenip birleştirilir.
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - run: npm ci
+
+      - run: npm test
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: v__VERSION__
+          releaseName: Temin Asistanı v__VERSION__
+          releaseBody: |
+            Windows: `.msi` ya da `-setup.exe` dosyasını indirip kurun. SmartScreen uyarısında "Ek bilgi" › "Yine de çalıştır" seçin.
+            macOS: `.dmg` dosyasını açıp uygulamayı Uygulamalar klasörüne sürükleyin. Uygulama imzasız olduğundan ilk açılışta sağ tıklayıp "Aç" seçin.
+          releaseDraft: false
+          prerelease: false
+          args: ${{ matrix.args }}
