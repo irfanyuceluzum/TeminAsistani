@@ -36,12 +36,22 @@ describe("kontrolOzeti", () => {
 
   it("tamamlanmamış basamak ve zorunlu evrak eksiği engeldir", () => {
     const g = tamGirdi();
+    g.alim = { ...g.alim, sureliIs: true };
     delete g.evraklar["siparis-yazisi"];
     const o = kontrolOzeti(g);
     expect(o.hazir).toBe(false);
     expect(o.engeller.every((e) => e.durum === "engel")).toBe(true);
-    expect(o.engeller.some((e) => e.baslik.includes("8. basamak") && e.baslik.includes("Sipariş yazısı"))).toBe(true);
-    expect(o.engeller.some((e) => e.baslik === "Eksik evrak: Sipariş yazısı veya sözleşme")).toBe(true);
+    expect(o.engeller.some((e) => e.baslik.includes("8. basamak") && e.baslik.includes("Sözleşme"))).toBe(true);
+    expect(o.engeller.some((e) => e.baslik === "Eksik evrak: Sözleşme")).toBe(true);
+  });
+
+  it("sipariş yazısı ve muayene talebi isteğe bağlıdır; eksikken kapanış engellenmez", () => {
+    const g = tamGirdi();
+    delete g.evraklar["siparis-yazisi"];
+    delete g.evraklar["muayene-talebi"];
+    const o = kontrolOzeti(g);
+    expect(o.engeller).toEqual([]);
+    expect(o.hazir).toBe(true);
   });
 
   it("TİF, ödeme emri ve KİK eksikken engel yoktur; yapılacak bilgisi verilir", () => {

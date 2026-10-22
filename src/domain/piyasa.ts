@@ -18,6 +18,8 @@ export interface TeklifYazisi {
   sayi: string;
   tarih: string;
   sonTeklifTarihi: string;
+  // "11:00" biçiminde; boşsa yazıda mesai bitimi yazılır.
+  sonTeklifSaati?: string;
   teslimYeri: string;
   teslimSuresi: string;
   aciklama: string;

@@ -17,7 +17,7 @@ export function SiparisBasamagi({ b }: { b: BasamakBaglami }) {
   const [onizle, setOnizle] = useState(false);
 
   // Kayıtlı sipariş yazısı varsa sayısı ve tarihi geri yüklenir
-  const [ilkForm] = useState(() => evrakFormu(b.evraklar["siparis-yazisi"], bugun()));
+  const [ilkForm] = useState(() => evrakFormu(b.evraklar["siparis-yazisi"], b.dosya.ihtiyacOnayi.tarih || bugun(), b.dosya.ihtiyacOnayi.sayi));
   const [siparisSayi, setSiparisSayi] = useState(ilkForm.sayi);
   const [siparisTarih, setSiparisTarih] = useState(ilkForm.tarih);
   const [mesaj, setMesaj] = useState("");

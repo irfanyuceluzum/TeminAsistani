@@ -1,7 +1,7 @@
 import { Fragment, type ReactNode } from "react";
-import { SARTLAR, type DosyaBasamaklari, type MaliyetSonucu, isinTuruBul, makamBasligi } from "../../domain/basamaklar";
+import { SARTLAR, belgeNumarasi, harcamaYetkilisiMakami, type DosyaBasamaklari, type EvrakFormu, type MaliyetSonucu, isinTuruBul, makamBasligi } from "../../domain/basamaklar";
 import { butceTertibi } from "../../domain/parametreler";
-import { belgeGorevlileri, kisi } from "../../domain/personel";
+import { BOS_GOREVLER, belgeGorevlileri, kisi, komisyon } from "../../domain/personel";
 import type { PiyasaKalemi } from "../../domain/piyasa";
 import type { PiyasaArastirmasi } from "../../domain/piyasa";
 import { degerlendir, firmaToplami, kalemTutari } from "../../domain/piyasa";
@@ -72,365 +72,416 @@ export function SartlarListesi({ dosya }: { dosya: DosyaBasamaklari }) {
   );
 }
 
-function EkIhtiyacListesi({ b, imzalayan }: { b: BelgeBilgisi; imzalayan: { ad: string; unvan: string; gorev: string } }) {
+// ---- Kurum örnek yazılarından alınan ortak parçalar ----
+
+type Imzaci = { ad: string; unvan: string };
+
+// 22/d alımlarında temin şekli yazısı: "22/d (Parasal Limitler Dahilinde)"
+function teminSekli(alim: Alim): string {
+  return alim.bent === "22/d" ? "22/d (Parasal Limitler Dahilinde)" : alim.bent;
+}
+
+// "Kırmızıdağ İlkokulu Müdürlüğü" → "KIRMIZIDAĞ İLKOKULU MÜDÜRLÜĞÜNE"; ünlüyle biten iyelikli adlara -NA/-NE, ötekilere -A/-E eklenir
+// (ünsüz yumuşaması yapılmaz; kurum adları iyelik ekiyle biter).
+export function yonelmeBasligi(birim: string): string {
+  const b = birim.trim().toLocaleUpperCase("tr-TR");
+  if (!b) return "İDAREYE";
+  const unluler = [...b].filter((c) => "AEIİOÖUÜ".includes(c));
+  const ek = "AIOU".includes(unluler[unluler.length - 1] ?? "E") ? "A" : "E";
+  return "AEIİOÖUÜ".includes(b[b.length - 1]) ? `${b}N${ek}` : `${b}${ek}`;
+}
+
+function kisiler(ayarlar: Ayarlar, idler: (string | null)[]): Imzaci[] {
+  return idler
+    .map((id) => kisi(ayarlar.personel ?? [], id))
+    .filter((p): p is NonNullable<typeof p> => !!p)
+    .map((p) => ({ ad: p.ad, unvan: p.unvan }));
+}
+
+// "Sayı : E-… / Konu : …" künyesi; tarih sayı satırının sağındadır.
+function SayiKonu({ numara, konu }: { numara: EvrakFormu; konu: string }) {
   return (
-    <>
-      <IdareBasligi ayarlar={b.ayarlar} />
-      <p className="belge-baslik">İHTİYAÇ LİSTESİ</p>
-      <div className="belge-satir">
-        <span>İşin adı: {b.alim.konu}</span>
-        <span>Dosya: {b.alim.id}</span>
-      </div>
-      <IhtiyacTablosu kalemler={b.kalemler} />
-      <SartlarListesi dosya={b.dosya} />
-      <div className="belge-imzalar">
-        <div />
-        <div>
-          <span className="imza-bosluk" />
-          <span>{imzaAdi(imzalayan.ad)}</span>
-          <span>{imzalayan.unvan}</span>
-          <span>{imzalayan.gorev}</span>
-        </div>
-      </div>
-    </>
+    <div className="yazi-kunye">
+      <span>Sayı</span>
+      <span>: {numara.sayi || "…"}</span>
+      <span className="sag">{tarihYazisi(numara.tarih)}</span>
+      <span>Konu</span>
+      <span>: {konu}</span>
+      <span />
+    </div>
   );
 }
 
-export function ihtiyacOnayiSayfalari(b: BelgeBilgisi): ReactNode[] {
-  const o = b.dosya.ihtiyacOnayi;
-  const g = b.ayarlar.gorevler;
-  const arz = imzaci(b.ayarlar, g?.gerceklestirme);
-  const olur = imzaci(b.ayarlar, g?.harcamaYetkilisi);
-  return [
-    <>
-      <IdareBasligi ayarlar={b.ayarlar} />
-      <div className="belge-satir">
-        <span>Sayı: {o.sayi || "…"}</span>
-        <span>{tarihYazisi(o.tarih)}</span>
-      </div>
-      <p>Konu: İhtiyaç onayı</p>
-      <p className="belge-baslik">{makamBasligi(b.ayarlar.idare?.birim ?? "")}</p>
-      {o.gerekce.trim() && <p className="girintili">{o.gerekce.trim()}</p>}
-      <p className="girintili">
-        Bu nedenle ekli listede cinsi ve miktarı belirtilen {b.kalemler.length} kalem ihtiyacın ("{b.alim.konu}") 4734 sayılı Kamu İhale Kanununun 22 nci
-        maddesinin ({bentBilgisi(b.alim.bent).harf}) bendi uyarınca doğrudan temin usulüyle
-        {b.alim.ekonomikKod ? `, ${butceTertibi(b.ayarlar, b.alim.ekonomikKod)} tertibindeki ödenekten karşılanmak üzere` : ""} satın alınmasını olurlarınıza arz ederim.
-      </p>
-      <div className="belge-imzalar">
-        <div />
-        <div>
-          <span className="imza-bosluk" />
-          <span>{imzaAdi(arz.ad)}</span>
-          <span>{arz.unvan}</span>
-          <span>Gerçekleştirme Görevlisi</span>
-        </div>
-      </div>
-      <div className="belge-onay">
-        <span className="kalin">OLUR</span>
-        <span>{tarihYazisi(o.tarih)}</span>
-        <span className="imza-bosluk" />
-        <span>{imzaAdi(olur.ad)}</span>
-        <span>{olur.unvan}</span>
-        <span>Harcama Yetkilisi</span>
-      </div>
-      <p className="kucuk">EK: İhtiyaç listesi (1 sayfa)</p>
-    </>,
-    <EkIhtiyacListesi b={b} imzalayan={{ ...arz, gorev: "Gerçekleştirme Görevlisi" }} />,
+// Cetvel ve tutanakların üstündeki dört satır; onay tarihi ve sayısı doğrudan temin olurununkidir.
+function KunyeSatirlari({ b, olur }: { b: BelgeBilgisi; olur: EvrakFormu }) {
+  const satirlar: [string, string][] = [
+    ["İdarenin Adı", b.ayarlar.idare?.birim ?? ""],
+    ["Doğrudan Temin Numarası", b.alim.ekapKayitNo ?? ""],
+    ["Mal/Hizmet/Yapım Adı, Niteliği", b.alim.konu],
+    ["Alım/Görevlendirme Onay Tarihi/sayısı", `${tarihYazisi(olur.tarih)}   /   ${olur.sayi || "…"}`],
   ];
+  return (
+    <dl className="kunye-satirlari">
+      {satirlar.map(([e, d]) => (
+        <Fragment key={e}>
+          <dt>{e}</dt>
+          <dd>: {d}</dd>
+        </Fragment>
+      ))}
+    </dl>
+  );
 }
 
-export function fiyatIstemeSayfalari(b: BelgeBilgisi, firma: Tedarikci | null): ReactNode[] {
-  const f = b.dosya.fiyatIsteme;
-  const g = b.ayarlar.gorevler;
-  const gorevli = imzaci(b.ayarlar, g?.piyasaGorevlileri[0]);
-  return [
-    <>
-      <IdareBasligi ayarlar={b.ayarlar} />
-      <div className="belge-satir">
-        <span>Sayı: {f.sayi || "…"}</span>
-        <span>{tarihYazisi(f.tarih)}</span>
-      </div>
-      <p>Konu: Yaklaşık maliyet için fiyat istenmesi</p>
-      <p className="kalin">{firma ? firma.ad : "Sayın Yetkili"}</p>
-      <p className="girintili">
-        İdaremizce 4734 sayılı Kamu İhale Kanununun 22 nci maddesinin ({bentBilgisi(b.alim.bent).harf}) bendi uyarınca doğrudan temin usulüyle alınması
-        planlanan "{b.alim.konu}" işinin yaklaşık maliyetinin tespiti amacıyla, ekli listede nitelik ve miktarları belirtilen kalemlere ilişkin KDV hariç birim
-        fiyatlarınızın kaşeli ve imzalı olarak en geç <span className="kalin">{tarihYazisi(f.sonTarih)}</span> tarihine kadar idaremize bildirilmesini rica ederim.
-      </p>
-      <p className="girintili">Bu yazı teklif isteme niteliğinde değildir; bildirilen fiyatlar yalnızca yaklaşık maliyetin hesaplanmasında kullanılır.</p>
-      {b.dosya.teslimYeri && (
-        <table className="belge-tablo">
-          <tbody>
+// S / Kalem/Kısım Bilgileri / Birimi / Miktarı; fiyat sütunları firmanın dolduracağı boş hücrelerdir.
+function KalemTablosu({
+  kalemler,
+  baslik = "MAL'IN/HİZMET'İN/YAPIM İŞİ'NİN",
+  miktar = (k) => k.miktar,
+  fiyatSutunlari = false,
+}: {
+  kalemler: PiyasaKalemi[];
+  baslik?: string;
+  miktar?: (k: PiyasaKalemi) => number;
+  fiyatSutunlari?: boolean;
+}) {
+  return (
+    <table className="ornek-tablo">
+      <thead>
+        <tr>
+          <th colSpan={fiyatSutunlari ? 6 : 4}>{baslik}</th>
+        </tr>
+        <tr>
+          <th className="sira-sutunu">S</th>
+          <th>Kalem/Kısım Bilgileri</th>
+          <th>Birimi</th>
+          <th>Miktarı</th>
+          {fiyatSutunlari && (
+            <>
+              <th>Birim Fiyatı</th>
+              <th>Toplam Fiyatı</th>
+            </>
+          )}
+        </tr>
+      </thead>
+      <tbody>
+        {kalemler.map((k, i) => (
+          <tr key={k.id}>
+            <td className="merkez">{i + 1}</td>
+            <td>{k.ad}</td>
+            <td className="merkez">{k.birim}</td>
+            <td className="merkez">{miktarYazisi(miktar(k))}</td>
+            {fiyatSutunlari && (
+              <>
+                <td className="bos-hucre" />
+                <td className="bos-hucre" />
+              </>
+            )}
+          </tr>
+        ))}
+        {fiyatSutunlari && (
+          <tr>
+            <th colSpan={4}>TOPLAM (KDV Hariç)</th>
+            <td className="bos-hucre" />
+            <td className="bos-hucre" />
+          </tr>
+        )}
+      </tbody>
+    </table>
+  );
+}
+
+// Görevli adları ve unvanları üçerli sütunlarla yazılır (olurdaki görevlendirme tabloları).
+function GorevliTablosu({ baslik, kisiler }: { baslik: string; kisiler: Imzaci[] }) {
+  const satirlar: (Imzaci | null)[][] = [];
+  for (let i = 0; i < Math.max(kisiler.length, 1); i += 3) satirlar.push([0, 1, 2].map((j) => kisiler[i + j] ?? null));
+  return (
+    <table className="ornek-tablo gorevli-tablosu">
+      <thead>
+        <tr>
+          <th colSpan={3}>{baslik}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {satirlar.map((s, i) => (
+          <Fragment key={i}>
             <tr>
-              <th scope="row">Teslim yeri</th>
-              <td>{b.dosya.teslimYeri}</td>
+              {s.map((k, j) => (
+                <td key={j} className="merkez">
+                  {k ? imzaAdi(k.ad) : ""}
+                </td>
+              ))}
             </tr>
-          </tbody>
-        </table>
-      )}
-      <div className="belge-imzalar">
-        <div />
-        <div>
+            <tr>
+              {s.map((k, j) => (
+                <td key={j} className="merkez">
+                  {k?.unvan ?? ""}
+                </td>
+              ))}
+            </tr>
+          </Fragment>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+// Görev unvanı, (varsa) tarih, imza yeri, ad ve kadro unvanı; en az üç imza yeri açılır.
+function GorevliImzalari({ kisiler, gorev, tarih, enAz = 3 }: { kisiler: Imzaci[]; gorev: string; tarih?: string; enAz?: number }) {
+  const yerler = Array.from({ length: Math.max(kisiler.length, enAz) }, (_, i) => kisiler[i] ?? null);
+  return (
+    <div className="gorevli-imzalari">
+      {yerler.map((k, i) => (
+        <div key={i}>
+          <span>{gorev}</span>
+          {tarih !== undefined && <span>{tarihYazisi(tarih)}</span>}
           <span className="imza-bosluk" />
-          <span>{imzaAdi(gorevli.ad)}</span>
-          <span>{gorevli.unvan}</span>
-          <span>Piyasa Fiyat Araştırması Görevlisi</span>
+          {k && (
+            <>
+              <span>{imzaAdi(k.ad)}</span>
+              <span>{k.unvan}</span>
+            </>
+          )}
         </div>
-      </div>
-      <p className="kucuk">EK: Fiyat cetveli ve şartlar (1 sayfa)</p>
-    </>,
+      ))}
+    </div>
+  );
+}
+
+// Harcama yetkilisinin onayı: "OLUR/UYGUNDUR", tarih, ad, unvan.
+function OlurImzasi({ ayarlar, tarih, metin = "OLUR/UYGUNDUR" }: { ayarlar: Ayarlar; tarih?: string; metin?: string }) {
+  const hy = imzaci(ayarlar, ayarlar.gorevler?.harcamaYetkilisi);
+  return (
+    <div className="olur-imzasi">
+      <span>{metin}</span>
+      {tarih !== undefined && <span>{tarihYazisi(tarih)}</span>}
+      <span className="imza-bosluk" />
+      <span>{imzaAdi(hy.ad)}</span>
+      <span>{hy.unvan}</span>
+    </div>
+  );
+}
+
+// Firmaların birim ve toplam fiyatları; sonuç sütunu (yaklaşık maliyet) isteğe bağlıdır.
+// Toplam satırında her firmanın birim fiyatlarının ve tutarlarının toplamı yazılır; eksik fiyatlı firmanın tutar toplamı "—" kalır.
+function FiyatCetveli({
+  kalemler,
+  firmalar,
+  sonuc,
+}: {
+  kalemler: PiyasaKalemi[];
+  firmalar: { ad: string; fiyatlar: Record<string, number | null | undefined> }[];
+  sonuc?: { baslik: string; birimFiyat: (k: PiyasaKalemi) => number | null; toplam: number };
+}) {
+  const fiyat = (f: (typeof firmalar)[number], k: PiyasaKalemi) => {
+    const v = f.fiyatlar[k.id];
+    return v && v > 0 ? v : null;
+  };
+  const birimToplami = (bul: (k: PiyasaKalemi) => number | null) => kalemler.reduce((s, k) => s + (bul(k) ?? 0), 0);
+  return (
+    <table className="ornek-tablo cetvel">
+      <thead>
+        <tr>
+          <th colSpan={4}>MAL/HİZMET/YAPIM</th>
+          <th colSpan={firmalar.length * 2}>TEKLİF VEREN KİŞİLER/FİRMALAR VE TEKLİF FİYATLARI</th>
+          {sonuc && (
+            <th colSpan={2} rowSpan={2}>
+              {sonuc.baslik}
+            </th>
+          )}
+        </tr>
+        <tr>
+          <th rowSpan={2} className="sira-sutunu">
+            S
+          </th>
+          <th rowSpan={2}>Kalem/Kısım Bilgileri</th>
+          <th rowSpan={2}>Birimi</th>
+          <th rowSpan={2}>Miktarı</th>
+          {firmalar.map((f, i) => (
+            <th key={i} colSpan={2}>
+              {f.ad}
+            </th>
+          ))}
+        </tr>
+        <tr>
+          {[...firmalar, ...(sonuc ? [null] : [])].map((_, i) => (
+            <Fragment key={i}>
+              <th>Birim Fiyat</th>
+              <th>Toplam Fiyat</th>
+            </Fragment>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {kalemler.map((k, i) => {
+          const sb = sonuc?.birimFiyat(k) ?? null;
+          return (
+            <tr key={k.id}>
+              <td className="merkez">{i + 1}</td>
+              <td>{k.ad}</td>
+              <td className="merkez">{k.birim}</td>
+              <td className="merkez">{miktarYazisi(k.miktar)}</td>
+              {firmalar.map((f, j) => {
+                const v = fiyat(f, k);
+                return (
+                  <Fragment key={j}>
+                    <td className="sag">{bosIse(v, tutarMetni)}</td>
+                    <td className="sag">{bosIse(v === null ? null : kalemTutari(k, v), tutarMetni)}</td>
+                  </Fragment>
+                );
+              })}
+              {sonuc && (
+                <>
+                  <td className="sag">{bosIse(sb, tutarMetni)}</td>
+                  <td className="sag">{bosIse(sb === null ? null : kalemTutari(k, sb), tutarMetni)}</td>
+                </>
+              )}
+            </tr>
+          );
+        })}
+        <tr className="kalin">
+          <th colSpan={4}>TOPLAM (KDV Hariç)</th>
+          {firmalar.map((f, j) => (
+            <Fragment key={j}>
+              <td className="sag">{tutarMetni(birimToplami((k) => fiyat(f, k)))}</td>
+              <td className="sag">{bosIse(firmaFiyatToplami(kalemler, f.fiyatlar as Record<string, number | null>), tutarMetni)}</td>
+            </Fragment>
+          ))}
+          {sonuc && (
+            <>
+              <td className="sag">{tutarMetni(birimToplami(sonuc.birimFiyat))}</td>
+              <td className="sag">{tutarMetni(sonuc.toplam)}</td>
+            </>
+          )}
+        </tr>
+      </tbody>
+    </table>
+  );
+}
+
+// 2. basamak: ihtiyaç ve görevlendirme tek yazıdır (Doğrudan Temin Oluru).
+export function ihtiyacOnayiSayfalari(b: BelgeBilgisi): ReactNode[] {
+  const olur = belgeNumarasi(b.dosya);
+  const g = b.ayarlar.gorevler ?? BOS_GOREVLER;
+  const arz = imzaci(b.ayarlar, g.gerceklestirme);
+  const gerekce = b.dosya.ihtiyacOnayi.gerekce.trim();
+  return [
     <>
-      <div className="belge-satir">
-        <span className="kalin">FİYAT CETVELİ</span>
-        <span>EK-1</span>
+      <IdareBasligi ayarlar={b.ayarlar} />
+      <SayiKonu numara={olur} konu={`${b.alim.konu} Doğrudan Temin Oluru`} />
+      <p className="belge-baslik normal-yazi">Harcama Yetkilisi Makamına</p>
+      {gerekce && <p className="girintili">{gerekce}</p>}
+      <p className="girintili">
+        Kurumumuz ihtiyaçlarında kullanılmak üzere aşağıda bilgileri verilen Mal/Hizmet/Yapım İşi'nin Kamu İhale Kanunu'nun {b.alim.bent} Maddesine göre
+        Doğrudan Temin yoluyla satın alınması ve aşağıda bilgileri verilen personellerin piyasa araştırma, muayene ve kabul görevlisi olarak
+        görevlendirilmesi hususunu;
+      </p>
+      <p className="girintili">Olurlarınıza arz ederim.</p>
+      <div className="sag-imza">
+        <span className="imza-bosluk" />
+        <span>{imzaAdi(arz.ad)}</span>
+        <span>{arz.unvan}</span>
       </div>
-      <div className="belge-satir">
-        <span>İşin adı: {b.alim.konu}</span>
-        <span>Dosya: {b.alim.id}</span>
-      </div>
-      <IhtiyacTablosu kalemler={b.kalemler} fiyatSutunlari />
-      <SartlarListesi dosya={b.dosya} />
-      <div className="firma-kase">
-        <div className="firma-kase-bilgi">
-          <span>Firma unvanı: {firma?.ad ?? ""}</span>
-          <span>Vergi dairesi ve no: {firma ? [firma.vergiDairesi, firma.vkn].filter(Boolean).join(" · ") : ""}</span>
-          <span>Adres ve telefon: {firma ? [firma.adres, firma.telefon].filter(Boolean).join(" · ") : ""}</span>
-          <span>Tarih: …/…/……</span>
-        </div>
-        <div className="firma-kase-alan">Kaşe ve imza</div>
-      </div>
+      <KalemTablosu kalemler={b.kalemler} baslik="MAL/HİZMET/YAPIM İŞİ'NİN" />
+      <GorevliTablosu baslik="PİYASA ARAŞTIRMA GÖREVLİLERİ" kisiler={kisiler(b.ayarlar, g.piyasaGorevlileri)} />
+      <GorevliTablosu baslik="MUAYENE VE KABUL GÖREVLİLERİ" kisiler={kisiler(b.ayarlar, komisyon(g))} />
+      <OlurImzasi ayarlar={b.ayarlar} metin="OLUR" />
     </>,
   ];
 }
 
+// 3. basamak: yaklaşık maliyet için fiyat isteme. Yazı ilgili kişilere hitap eder; firma cevabı aynı sayfadadır.
+// Firma seçilirse hitap firmanın adı olur. Birim fiyat istendiğinden miktarlar 1 yazılır.
+export function fiyatIstemeSayfalari(b: BelgeBilgisi, firma: Tedarikci | null): ReactNode[] {
+  const numara = belgeNumarasi(b.dosya, b.dosya.fiyatIsteme.sayi, b.dosya.fiyatIsteme.tarih);
+  const g = b.ayarlar.gorevler ?? BOS_GOREVLER;
+  return [
+    <>
+      <IdareBasligi ayarlar={b.ayarlar} />
+      <SayiKonu numara={numara} konu="Yaklaşık Maliyet Araştırması" />
+      <p className="belge-baslik">{firma ? firma.ad.toLocaleUpperCase("tr-TR") : "İLGİLİ GERÇEK/TÜZEL KİŞİLERE"}</p>
+      <p className="girintili">
+        Kurumumuz ihtiyaçlarında kullanılmak üzere aşağıda bilgileri verilen Mal/Hizmet/Yapım İşi, Kamu İhale Kanunu'nun {teminSekli(b.alim)} maddesine
+        göre Doğrudan Temin yoluyla satın alınacaktır.
+      </p>
+      <p className="girintili">
+        Yaklaşık maliyetin tespitinde değerlendirilmek üzere aşağıda bilgileri verilen Mal'ın/Hizmet'in/Yapım İşi'nin KDV hariç piyasa fiyatlarının
+        karşılarına yazılması ve Kurumumuza gönderilmesi hususunda;
+      </p>
+      <p className="girintili">Gereğini rica ederim/ederiz.</p>
+      <GorevliImzalari kisiler={kisiler(b.ayarlar, g.piyasaGorevlileri)} gorev="Piyasa Araştırma Görevlisi" />
+      <p className="belge-baslik">{yonelmeBasligi(b.ayarlar.idare?.birim ?? "")}</p>
+      <p className="girintili">Kurumunuzca satın alınacak Mal'ın/Hizmet'in/Yapım İşi'nin piyasa fiyatları aşağıya çıkarılmıştır.</p>
+      <p className="girintili">Gereğini bilgilerinize arz ederim/ederiz.</p>
+      <KalemTablosu kalemler={b.kalemler} miktar={() => 1} fiyatSutunlari />
+      <p className="sag-imza kalin">KİŞİ/FİRMA KAŞE/İMZA</p>
+    </>,
+  ];
+}
+
+// 4. basamak: yaklaşık maliyet hesap cetveli (yatay A4).
 export function yaklasikMaliyetSayfalari(b: BelgeBilgisi, sonuc: MaliyetSonucu, firmaAdi: (id: string) => string): ReactNode[] {
   const y = b.dosya.yaklasik;
-  const g = b.ayarlar.gorevler;
-  const idareAdi =
-    [b.ayarlar.idare?.ustIdare, b.ayarlar.idare?.birim].filter(Boolean).join(" - ").toLocaleUpperCase("tr-TR") || "T.C. İDARE MÜDÜRLÜĞÜ";
-  const isinAdi = b.alim.konu.toLocaleUpperCase("tr-TR");
-  const duzenlemeTarihi = b.dosya.fiyatIsteme.tarih
-    ? b.dosya.fiyatIsteme.tarih.split("-").reverse().join("/")
-    : b.alim.onayTarihi
-      ? b.alim.onayTarihi.split("-").reverse().join("/")
-      : "…/…/……";
-
-  // En az 4 firma sütun alanı oluşturulur
-  const firmaSlotSayisi = Math.max(y.firmalar.length, 4);
-  const firmaSlotlari = Array.from({ length: firmaSlotSayisi }, (_, i) => {
-    const f = y.firmalar[i];
-    return {
-      no: i + 1,
-      id: f?.tedarikciId ?? "",
-      ad: f ? firmaAdi(f.tedarikciId).toLocaleUpperCase("tr-TR") : "",
-      fiyatlar: f?.fiyatlar ?? {},
-    };
-  });
-
-  // Eksik fiyatlı firmanın toplamı null'dır ve belgede "—" basılır; boş sütun 0,00 kalır
-  const firmaToplamlari = firmaSlotlari.map((slot) => (slot.id ? firmaFiyatToplami(b.kalemler, slot.fiyatlar) : 0));
-
-  // Görevlendirme olduğu gibi yansır (yetkililer de dahil; görevler ayrılığı uyarısı alan kontrolündedir).
-  const gorevliIdler = g?.yaklasikMaliyetGorevlileri && g.yaklasikMaliyetGorevlileri.length > 0
-    ? g.yaklasikMaliyetGorevlileri
-    : g?.piyasaGorevlileri ?? [];
-
-  const gorevliUyeler = gorevliIdler.map((id) => imzaci(b.ayarlar, id));
-  const imzacilar = Array.from({ length: Math.max(gorevliUyeler.length, 3) }, (_, i) => gorevliUyeler[i] ?? { ad: "…", unvan: "GÖREVLİ" });
-
-  const toplamSutun = 5 + firmaSlotSayisi * 2 + 2;
-
+  const g = b.ayarlar.gorevler ?? BOS_GOREVLER;
+  const olur = belgeNumarasi(b.dosya);
+  const tarih = belgeNumarasi(b.dosya, undefined, b.dosya.fiyatIsteme.tarih).tarih;
+  const gorevliIdler = g.yaklasikMaliyetGorevlileri && g.yaklasikMaliyetGorevlileri.length > 0 ? g.yaklasikMaliyetGorevlileri : g.piyasaGorevlileri;
   return [
-    <div key="ym-cetvel" className="ym-sablon-kapsayici">
-      <table className="ym-sablon-tablo">
-        <thead>
-          <tr>
-            <th colSpan={toplamSutun} className="ym-ana-baslik">
-              YAKLAŞIK MALİYET HESAP CETVELİ
-            </th>
-          </tr>
-          <tr>
-            <th colSpan={2} className="ym-bilgi-etiket">
-              İdarenin Adı
-            </th>
-            <td colSpan={toplamSutun - 2} className="ym-bilgi-deger kalin">
-              {idareAdi}
-            </td>
-          </tr>
-          <tr>
-            <th colSpan={2} className="ym-bilgi-etiket">
-              İşin / Alımın Adı
-            </th>
-            <td colSpan={toplamSutun - 2} className="ym-bilgi-deger kalin">
-              {isinAdi}
-            </td>
-          </tr>
-          <tr>
-            <th colSpan={2} className="ym-bilgi-etiket">
-              Düzenleme Tarihi
-            </th>
-            <td colSpan={3} className="ym-bilgi-deger kalin">
-              {duzenlemeTarihi}
-            </td>
-            <th colSpan={2} className="ym-bilgi-etiket">
-              Yasal Dayanak
-            </th>
-            <td colSpan={toplamSutun - 7} className="ym-bilgi-deger">
-              4734 Sayılı Kamu İhale Kanunu Madde 9
-            </td>
-          </tr>
-          <tr>
-            <th rowSpan={2} style={{ width: "3%" }}>
-              Sıra No
-            </th>
-            <th rowSpan={2} style={{ width: "17%" }}>
-              Satın Alınacak Malın / Hizmetin Cinsi
-            </th>
-            <th rowSpan={2} style={{ width: "12%" }}>
-              Özelliği
-            </th>
-            <th rowSpan={2} style={{ width: "5%" }}>
-              Miktarı
-            </th>
-            <th rowSpan={2} style={{ width: "5%" }}>
-              Ölçüsü
-            </th>
-            {firmaSlotlari.map((f) => (
-              <th key={f.no} colSpan={2} className="ym-firma-baslik">
-                <div className="ym-firma-baslik-icerik">
-                  <span className="ym-firma-sira">{f.no}. FİRMA</span>
-                  <span className="ym-firma-adi">{f.ad || "(Teklif Alınmadı)"}</span>
-                </div>
-              </th>
-            ))}
-            <th colSpan={2} className="ym-sonuc-baslik">
-              İdarece Tespit Edilen Yaklaşık Maliyet (KDV Hariç)
-            </th>
-          </tr>
-          <tr>
-            {firmaSlotlari.map((f) => (
-              <Fragment key={f.no}>
-                <th style={{ width: "6%" }}>Birim Fiyat</th>
-                <th style={{ width: "6%" }}>Toplam Tutar</th>
-              </Fragment>
-            ))}
-            <th style={{ width: "7%" }}>Birim Fiyat</th>
-            <th style={{ width: "8%" }}>Toplam Tutar</th>
-          </tr>
-        </thead>
-        <tbody>
-          {b.kalemler.map((kalem, idx) => {
-            const satir = sonuc.satirlar.find((r) => r.kalem.id === kalem.id);
-            return (
-              <tr key={kalem.id}>
-                <td className="merkez">{idx + 1}</td>
-                <td className="kalin">{kalem.ad}</td>
-                <td>{kalem.ozellik?.trim() || "-"}</td>
-                <td className="merkez">{miktarYazisi(kalem.miktar)}</td>
-                <td className="merkez">{kalem.birim.toLocaleUpperCase("tr-TR")}</td>
-                {firmaSlotlari.map((slot) => {
-                  const bf = slot.id ? slot.fiyatlar[kalem.id] : null;
-                  const tf = bf && bf > 0 ? kalemTutari(kalem, bf) : 0;
-                  return (
-                    <Fragment key={slot.no}>
-                      <td className="sag">{bosIse(bf || null, tutarMetni)}</td>
-                      <td className="sag">{bosIse(tf || null, tutarMetni)}</td>
-                    </Fragment>
-                  );
-                })}
-                <td className="sag kalin">{bosIse(satir?.birimFiyat || null, tutarMetni)}</td>
-                <td className="sag kalin">{bosIse(satir?.tutar || null, tutarMetni)}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-        <tfoot>
-          <tr>
-            <th colSpan={5} className="sag kalin" style={{ padding: "4pt" }}>
-              Kişiler / Firmalarca Bildirilen Fiyatlar ve Yaklaşık Maliyet Toplamı (KDV Hariç)
-            </th>
-            {firmaSlotlari.map((slot, i) => (
-              <Fragment key={slot.no}>
-                <td className="merkez kalin kucuk">TOPLAM</td>
-                <td className="sag kalin">{bosIse(firmaToplamlari[i], tutarMetni)}</td>
-              </Fragment>
-            ))}
-            <td className="merkez kalin kucuk">TOPLAM</td>
-            <td className="sag kalin">{tutarMetni(sonuc.toplam)}</td>
-          </tr>
-        </tfoot>
-      </table>
-
-      <div className="ym-aciklama-kutusu">
-        <p>
-          İdaremizce 4734 sayılı Kamu İhale Kanunu'nun 9'uncu maddesi gereğince yaklaşık maliyetin tespitine esas olmak üzere piyasa fiyat araştırması
-          yapılmış olup, ilgili firmalardan KDV hariç olarak temin edilen birim ve toplam fiyat teklifleri yukarıdaki cetvelde gösterilmiştir.
-        </p>
-        <p>
-          Yapılan piyasa fiyat araştırması neticesinde; 4734 sayılı İhale Kanunu'nun 9'uncu maddesi gereğince yaklaşık maliyet KDV hariç yukarıda
-          belirtildiği gibi takdir ve tespit edilerek işbu Hesap Cetveli tarafımızca düzenlenip imza altına alınmıştır.
-        </p>
+    <>
+      <div className="baslik-tarih">
+        <span />
+        <p className="belge-baslik">YAKLAŞIK MALİYET HESAP CETVELİ</p>
+        <span className="sag">{tarihYazisi(tarih)}</span>
       </div>
-
-      <div className="ym-imza-bolumu">
-        <p className="ym-imza-baslik">YAKLAŞIK MALİYETİ TESPİT EDEN GÖREVLİLER</p>
-        <div className="ym-imzalar-sirasi">
-          {imzacilar.map((u, i) => (
-            <div key={i} className="ym-imza-kutusu">
-              <span className="kalin">{imzaAdi(u.ad)}</span>
-              <span>{u.unvan || "Görevli"}</span>
-              <span className="soluk kucuk">{i === 0 ? "Komisyon Başkanı / Yetkili" : "Üye"}</span>
-              <span className="imza-cizgi" />
-            </div>
-          ))}
-        </div>
+      <KunyeSatirlari b={b} olur={olur} />
+      <p className="girintili">
+        Kurumumuz ihtiyaçlarında kullanılmak üzere aşağıda bilgileri verilen Mal/Hizmet/Yapım İşi Kamu İhale Kanunu'nun {b.alim.bent} maddesine göre
+        Doğrudan Temin yoluyla satın alınmak üzere piyasa fiyat araştırması yapılmış olup verilen fiyatlar ve yaklaşık maliyet aşağıya çıkarılmıştır.
+      </p>
+      <FiyatCetveli
+        kalemler={b.kalemler}
+        firmalar={y.firmalar.map((f) => ({ ad: firmaAdi(f.tedarikciId), fiyatlar: f.fiyatlar }))}
+        sonuc={{ baslik: "YAKLAŞIK MALİYET", birimFiyat: (k) => sonuc.satirlar.find((r) => r.kalem.id === k.id)?.birimFiyat ?? null, toplam: sonuc.toplam }}
+      />
+      <p>
+        Piyasa araştırması sonucu yaklaşık maliyet, KDV hariç <span className="kalin">{tutarMetni(sonuc.toplam)}</span> Türk Lirası olarak hesaplanmış olup
+        iş bu cetvel tarafımızca imza altına alınmıştır.
+      </p>
+      <div className="cetvel-imzalari">
+        <GorevliImzalari kisiler={kisiler(b.ayarlar, gorevliIdler)} gorev="Piyasa Araştırma Görevlisi" enAz={2} />
+        <OlurImzasi ayarlar={b.ayarlar} tarih={tarih} />
       </div>
-
-      <div className="ym-dipnot">Not: Yaklaşık Maliyet Hesap Cetveli ve ekleri İhale / Doğrudan Temin Onay Belgesi'ne eklenecektir.</div>
-    </div>,
+    </>,
   ];
 }
 
+// 5. basamak: doğrudan temin onay belgesi. Arz eden ilk piyasa araştırma görevlisi, onaylayan harcama yetkilisidir.
 export function dogrudanTeminOnaySayfalari(
   b: BelgeBilgisi,
   ozellestirme?: { makam?: string; sayi?: string; tarih?: string },
 ): ReactNode[] {
-  const g = b.ayarlar.gorevler;
-  const ustIdare = (b.ayarlar.idare?.ustIdare || "T.C. İDARE MÜDÜRLÜĞÜ").toLocaleUpperCase("tr-TR");
+  const g = b.ayarlar.gorevler ?? BOS_GOREVLER;
   const birim = b.ayarlar.idare?.birim || "";
-  const makam = (ozellestirme?.makam || b.dosya.onayBelgesi?.makam || makamBasligi(b.ayarlar.idare?.birim ?? "")).toLocaleUpperCase("tr-TR");
-  const isinTuru = isinTuruBul(b.alim.ekonomikKod);
-
-  const gg = imzaci(b.ayarlar, g?.gerceklestirme);
-  const hy = imzaci(b.ayarlar, g?.harcamaYetkilisi);
-  const piyasaGorevlileriYazisi = (g?.piyasaGorevlileri ?? [])
-    .map((id) => imzaci(b.ayarlar, id))
-    .filter((u) => u.ad && u.ad !== "…")
-    .map((u) => `${imzaAdi(u.ad)} (${u.unvan || "Görevli"})`)
-    .join(", ");
-
-  const ilgiYazisi = b.dosya.ihtiyacOnayi.sayi
-    ? `${b.dosya.ihtiyacOnayi.tarih ? uzunTarih(b.dosya.ihtiyacOnayi.tarih) : ""} tarihli ve ${b.dosya.ihtiyacOnayi.sayi} sayılı İhtiyaç Belgesi`
-    : `${b.dosya.ihtiyacOnayi.tarih ? uzunTarih(b.dosya.ihtiyacOnayi.tarih) : ""} tarihli İhtiyaç Belgesi`;
+  const numara = belgeNumarasi(b.dosya, ozellestirme?.sayi, ozellestirme?.tarih);
+  const makam = (ozellestirme?.makam || b.dosya.onayBelgesi?.makam || harcamaYetkilisiMakami(birim)).toLocaleUpperCase("tr-TR");
+  const arz = kisiler(b.ayarlar, g.piyasaGorevlileri)[0] ?? imzaci(b.ayarlar, null);
+  const aciklamalar = [
+    b.dosya.nitelik.trim() && `İşin niteliği: ${b.dosya.nitelik.trim()}`,
+    b.dosya.bolmeGerekcesi.trim() && `Bölme yasağı (4734 md. 5) açıklaması: ${b.dosya.bolmeGerekcesi.trim()}`,
+  ].filter(Boolean);
+  const satir = (etiket: string, deger: ReactNode) => (
+    <tr>
+      <th className="onay-th-etiket">{etiket}</th>
+      <td className="onay-td-deger">{deger}</td>
+    </tr>
+  );
 
   return [
     <div key="dt-onay-belgesi" className="onay-sablon-kapsayici">
       <div className="onay-sablon-ana-baslik">DOĞRUDAN TEMİN ONAY BELGESİ</div>
-
       <table className="onay-sablon-tablo">
         <tbody>
-          <tr>
-            <th className="onay-th-etiket" style={{ width: "42%" }}>
-              ALIMI YAPAN İDARENİN ADI
-            </th>
-            <td className="onay-td-deger" style={{ width: "58%" }}>
-              <div className="kalin">{ustIdare}</div>
-              {birim && <div>{birim}</div>}
-            </td>
-          </tr>
-          <tr>
-            <td colSpan={2} className="onay-ara-bosluk"></td>
-          </tr>
+          {satir("ALIMI YAPAN İDARENİN ADI", birim)}
+          {satir("BELGE TARİH VE SAYISI", `${tarihYazisi(numara.tarih)}   /   ${numara.sayi || "…"}`)}
           <tr>
             <th colSpan={2} className="onay-makam-baslik">
               {makam}
@@ -441,57 +492,20 @@ export function dogrudanTeminOnaySayfalari(
               DOĞRUDAN TEMİN İLE İLGİLİ BİLGİLER
             </th>
           </tr>
-          <tr>
-            <th className="onay-th-etiket">EKAP DOĞRUDAN TEMİN NUMARASI</th>
-            <td className="onay-td-deger">{b.alim.ekapKayitNo || "—"}</td>
-          </tr>
-          <tr>
-            <th className="onay-th-etiket">İŞİN ADI</th>
-            <td className="onay-td-deger kalin">{b.alim.konu}</td>
-          </tr>
-          <tr>
-            <th className="onay-th-etiket">TEMİN ŞEKLİ</th>
-            <td className="onay-td-deger">4734 Sayılı Kamu İhale Kanunu Madde {b.alim.bent}</td>
-          </tr>
-          <tr>
-            <th className="onay-th-etiket">İŞİN TÜRÜ</th>
-            <td className="onay-td-deger">{isinTuru}</td>
-          </tr>
+          {satir("DOĞRUDAN TEMİN NUMARASI", b.alim.ekapKayitNo ?? "")}
+          {satir("İŞİN ADI", b.alim.konu)}
+          {satir("TEMİN ŞEKLİ", teminSekli(b.alim))}
+          {satir("İŞİN TÜRÜ", isinTuruBul(b.alim.ekonomikKod))}
           <tr>
             <td colSpan={2} className="onay-ara-bosluk"></td>
           </tr>
-          <tr>
-            <th className="onay-th-etiket">YAKLAŞIK MALİYET TUTARI</th>
-            <td className="onay-td-deger kalin">
-              {b.dosya.yaklasik.hesaplanmayacak
-                ? "Hesaplanmamıştır (Doğrudan Temin Tebliği m.4/4)"
-                : `${belgeTutari(b.alim.tutar)} (KDV Hariç)`}
-            </td>
-          </tr>
-          <tr>
-            <th className="onay-th-etiket">KULLANILABİLİR ÖDENEK TUTARI</th>
-            <td className="onay-td-deger">{b.dosya.odenek > 0 ? belgeTutari(b.dosya.odenek) : BOS_DEGER}</td>
-          </tr>
-          <tr>
-            <th className="onay-th-etiket">YATIRIM PROJE NUMARASI (Varsa)</th>
-            <td className="onay-td-deger">Yoktur</td>
-          </tr>
-          <tr>
-            <th className="onay-th-etiket">BÜTÇE TERTİBİ (Varsa)</th>
-            <td className="onay-td-deger">{butceTertibi(b.ayarlar, b.alim.ekonomikKod)}</td>
-          </tr>
-          <tr>
-            <th className="onay-th-etiket">FİYAT FARKI VERİLECEKSE ŞARTLARI</th>
-            <td className="onay-td-deger">{b.dosya.onayBelgesi?.fiyatFarki || "Verilmeyecektir"}</td>
-          </tr>
-          <tr>
-            <th className="onay-th-etiket">AVANS VERİLECEKSE ŞARTLARI</th>
-            <td className="onay-td-deger">{b.dosya.onayBelgesi?.avans || "Verilmeyecektir"}</td>
-          </tr>
-          <tr>
-            <th className="onay-th-etiket">DOKÜMAN HAZIRLANIP HAZIRLANMAYACAĞI</th>
-            <td className="onay-td-deger">{b.dosya.onayBelgesi?.dokuman || "İhtiyaç Listesi ve Şartlar hazırlanmıştır"}</td>
-          </tr>
+          {satir("KULLANILABİLİR ÖDENEK TUTARI", b.dosya.odenek > 0 ? belgeTutari(b.dosya.odenek) : "")}
+          {satir("YAKLAŞIK MALİYET", b.dosya.yaklasik.hesaplanmayacak ? "Hesaplanmamıştır (Doğrudan Temin Tebliği m.4/4)" : belgeTutari(b.alim.tutar))}
+          {satir("YATIRIM/PROJE NUMARASI (Varsa)", "")}
+          {satir("BÜTÇE TERTİBİ (Varsa)", butceTertibi(b.ayarlar, b.alim.ekonomikKod))}
+          {satir("FİYAT FARKI VERİLECEKSE ŞARTLARI", b.dosya.onayBelgesi?.fiyatFarki || "Verilmeyecektir.")}
+          {satir("AVANS VERİLECEKSE ŞARTLARI", b.dosya.onayBelgesi?.avans || "Verilmeyecektir.")}
+          {satir("DOKÜMAN HAZIRLANIP HAZIRLANMAYACAĞI", b.dosya.onayBelgesi?.dokuman || "Hazırlanmayacaktır.")}
           <tr>
             <th colSpan={2} className="onay-bolum-baslik">
               DOĞRUDAN TEMİN İLE İLGİLİ DİĞER AÇIKLAMALAR
@@ -499,32 +513,11 @@ export function dogrudanTeminOnaySayfalari(
           </tr>
           <tr>
             <td colSpan={2} className="onay-aciklamalar-alani">
-              <div className="onay-aciklama-satir">
-                <strong>İLGİ:</strong> {ilgiYazisi}
-              </div>
-              <div className="onay-aciklama-satir">
-                <strong>GÖREVLENDİRME:</strong> Piyasa Fiyat Araştırması Görevlileri: {piyasaGorevlileriYazisi || "—"}
-              </div>
-              <div className="onay-aciklama-satir">
-                <strong>GEREKÇELERİ:</strong> {b.dosya.ihtiyacOnayi.gerekce || "İdaremizin ihtiyacının karşılanması."}
-              </div>
-              {b.dosya.nitelik.trim() && (
-                <div className="onay-aciklama-satir">
-                  <strong>İŞİN NİTELİĞİ:</strong> {b.dosya.nitelik.trim()}
+              {aciklamalar.map((a) => (
+                <div key={a as string} className="onay-aciklama-satir">
+                  {a}
                 </div>
-              )}
-              {b.dosya.bolmeGerekcesi.trim() && (
-                <div className="onay-aciklama-satir">
-                  <strong>BÖLME YASAĞI (4734 md. 5) AÇIKLAMASI:</strong> {b.dosya.bolmeGerekcesi.trim()}
-                </div>
-              )}
-              <div className="onay-ekler-satir">
-                <strong>Ekler:</strong>
-                <ul style={{ margin: "2pt 0 0 16pt", padding: 0 }}>
-                  <li>Malzeme İhtiyaç Listesi ({b.kalemler.length} Kalem)</li>
-                  {!b.dosya.yaklasik.hesaplanmayacak && <li>Yaklaşık Maliyet Hesap Cetveli (1 Sayfa)</li>}
-                </ul>
-              </div>
+              ))}
             </td>
           </tr>
           <tr>
@@ -534,282 +527,129 @@ export function dogrudanTeminOnaySayfalari(
           </tr>
           <tr>
             <td className="onay-imza-sol" style={{ width: "50%", verticalAlign: "top" }}>
-              <p style={{ margin: "0 0 16pt 0", fontSize: "8.5pt", lineHeight: 1.4, textAlign: "justify" }}>
-                Yukarıda belirtilen işin Kamu İhale Kanunu’nun {b.alim.bent} ({bentBilgisi(b.alim.bent).ad}) maddesi kapsamında
-                doğrudan temin yoluyla satın alınması hususunda onaylarınızı arz ederim.
+              <p className="onay-arz-metni">
+                Yukarıda belirtilen işin Kamu İhale Kanunu'nun {teminSekli(b.alim)} maddesine göre Doğrudan Temin yoluyla satın alınması hususunu;
+                Olurlarınıza arz ederim.
               </p>
-              <div className="onay-imza-kutu">
-                <span className="kalin">Gerçekleştirme Görevlisi</span>
-                <span className="kalin">{imzaAdi(gg.ad)}</span>
-                <span>{gg.unvan}</span>
-                <span className="imza-cizgi" />
+              <div className="olur-imzasi">
+                <span>{tarihYazisi(numara.tarih)}</span>
+                <span className="imza-bosluk" />
+                <span>Piyasa Araştırma Görevlisi</span>
+                <span>{imzaAdi(arz.ad)}</span>
               </div>
             </td>
             <td className="onay-imza-sag" style={{ width: "50%", verticalAlign: "top" }}>
-              <div style={{ textAlign: "center", marginBottom: "16pt", fontWeight: "bold", fontSize: "9pt" }}>
-                UYGUNDUR
-              </div>
-              <div className="onay-imza-kutu">
-                <span className="kalin">Harcama Yetkilisi</span>
-                <span className="kalin">{imzaAdi(hy.ad)}</span>
-                <span>{hy.unvan}</span>
-                <span className="imza-cizgi" />
-              </div>
+              <OlurImzasi ayarlar={b.ayarlar} tarih={numara.tarih} />
             </td>
           </tr>
         </tbody>
       </table>
-    </div>,
-    <div key="dt-onay-ek1">
-      <div className="belge-satir">
-        <span className="kalin">EK-1 İHTİYAÇ LİSTESİ</span>
-        <span>Dosya: {b.alim.id}</span>
-      </div>
-      <p>
-        <span className="kalin">İşin adı:</span> {b.alim.konu}
-      </p>
-      <IhtiyacTablosu kalemler={b.kalemler} />
+      {!b.dosya.yaklasik.hesaplanmayacak && <p className="kucuk">Ek: İdare Tarafından Hazırlanan Yaklaşık Maliyet Hesap Cetveli</p>}
     </div>,
   ];
 }
 
-// 6. Basamak: Teklif Mektubu ve Fiyat Cetveli (Firmaya Gönderilen Teklif İsteme Mektubu)
+// 6. basamak: teklif vermeye davet. Yazı ilgili kişilere hitap eder; firmanın teklif cetveli aynı sayfadadır.
 export function teklifIstemeMektubuSayfalari(
   b: BelgeBilgisi,
   firma: Tedarikci | null,
-  yazi?: { sayi?: string; tarih?: string; sonTarih?: string; teslimYeri?: string; teslimSuresi?: string; aciklama?: string },
+  yazi?: { sayi?: string; tarih?: string; sonTarih?: string; sonSaat?: string; teslimYeri?: string; teslimSuresi?: string; aciklama?: string },
 ): ReactNode[] {
-  const ustIdare = (b.ayarlar.idare?.ustIdare || "T.C. İDARE MÜDÜRLÜĞÜ").toLocaleUpperCase("tr-TR");
-  const birim = b.ayarlar.idare?.birim || "";
-  const teslimYeri = yazi?.teslimYeri?.trim() || b.dosya.teslimYeri;
-  const teslimSuresi = yazi?.teslimSuresi?.trim() || b.dosya.sartlar.teslimSuresi;
+  const g = b.ayarlar.gorevler ?? BOS_GOREVLER;
+  const numara = belgeNumarasi(b.dosya, yazi?.sayi, yazi?.tarih);
+  const sonTarih = yazi?.sonTarih || numara.tarih;
+  const sure = `${tarihYazisi(sonTarih)} tarihi ${yazi?.sonSaat ? `${yazi.sonSaat} saatine` : "mesai bitimine"} kadar`;
   const aciklama = yazi?.aciklama?.trim() ?? "";
-  const sayi = yazi?.sayi || b.dosya.fiyatIsteme?.sayi || "…";
-  const tarih = yazi?.tarih || b.dosya.fiyatIsteme?.tarih || "";
-  const sonTarih = yazi?.sonTarih || b.dosya.fiyatIsteme?.sonTarih || "";
-  const g = b.ayarlar.gorevler;
-  const gorevli = imzaci(b.ayarlar, g?.piyasaGorevlileri?.[0]);
 
   return [
-    <div key="teklif-mektubu" className="onay-sablon-kapsayici">
+    <>
       <IdareBasligi ayarlar={b.ayarlar} />
-      <div className="belge-satir" style={{ marginTop: "12pt" }}>
-        <span>Sayı: {sayi}</span>
-        <span>Tarih: {tarihYazisi(tarih)}</span>
-      </div>
-      <p style={{ margin: "4pt 0" }}>
-        <strong>Konu:</strong> Fiyat Teklifi İsteme ({b.alim.konu})
+      <SayiKonu numara={numara} konu="Teklif Vermeye Davet" />
+      <p className="belge-baslik">{firma ? firma.ad.toLocaleUpperCase("tr-TR") : "İLGİLİ GERÇEK/TÜZEL KİŞİLERE"}</p>
+      <p className="girintili">
+        Kurumumuz ihtiyaçlarında kullanılmak üzere aşağıda bilgileri verilen Mal/Hizmet/Yapım İşi, Kamu İhale Kanunu'nun {teminSekli(b.alim)} maddesine
+        göre Doğrudan Temin yoluyla satın alınacaktır.
       </p>
-      <div style={{ margin: "16pt 0 8pt 0", textAlign: "center", fontWeight: "bold", fontSize: "11pt" }}>
-        {firma ? firma.ad.toLocaleUpperCase("tr-TR") : "SAYIN YETKİLİ"}
-      </div>
-      <p style={{ textIndent: "24pt", lineHeight: 1.5, textAlign: "justify" }}>
-        İdaremiz ihtiyacı olan ve aşağıda cinsi, özelliği ve miktarı belirtilen ("{b.alim.konu}") alımı 4734 sayılı
-        Kamu İhale Kanunu’nun 22 nci maddesinin ({bentBilgisi(b.alim.bent).harf}) bendi gereğince Doğrudan Temin
-        usulüyle satın alınacaktır.
+      <p className="girintili">
+        İlgilenmeniz halinde aşağıda bilgileri verilen Mal/Hizmet/Yapım İşi'ne ilişkin, KDV hariç teklifinizi içeren birim fiyat ve toplam fiyatlarının
+        karşılarına yazılarak {sure} Kurumumuza gönderilmesi hususunda;
       </p>
-      <p style={{ textIndent: "24pt", lineHeight: 1.5, textAlign: "justify" }}>
-        Söz konusu işe ait KDV hariç birim ve toplam fiyat teklifinizi ekte yer alan Teklif Mektubu ve Fiyat Cetvelini
-        doldurarak kaşeli ve imzalı şekilde en geç <strong>{tarihYazisi(sonTarih)}</strong> günü mesai bitimine kadar
-        idaremize ulaştırmanızı rica ederim.
-      </p>
-      {teslimYeri && (
-        <p style={{ margin: "4pt 0" }}>
-          <strong>Teslim yeri:</strong> {teslimYeri}
-        </p>
-      )}
-      {teslimSuresi && (
-        <p style={{ margin: "4pt 0" }}>
-          <strong>Teslim süresi:</strong> {teslimSuresi}
-        </p>
-      )}
-      {aciklama && (
-        <p style={{ margin: "4pt 0" }}>
-          <strong>Açıklama:</strong> {aciklama}
-        </p>
-      )}
-      <div className="belge-imzalar" style={{ marginTop: "24pt" }}>
-        <div />
-        <div style={{ textAlign: "center" }}>
-          <span className="imza-bosluk" />
-          <span className="kalin">{imzaAdi(gorevli.ad)}</span>
-          <span>{gorevli.unvan}</span>
-          <span>Piyasa Fiyat Araştırması Görevlisi</span>
-        </div>
-      </div>
-      <div style={{ marginTop: "20pt", fontSize: "8pt" }}>
-        <strong>EK:</strong> Fiyat Teklif Cetveli ve Şartlar (1 Sayfa)
-      </div>
-    </div>,
-    <div key="teklif-cetveli" className="onay-sablon-kapsayici">
-      <div style={{ textAlign: "center", fontWeight: "bold", fontSize: "11pt", marginBottom: "8pt" }}>
-        FİYAT TEKLİF CETVELİ (EK-1)
-      </div>
-      <div className="belge-satir">
-        <span>İdare: {ustIdare} {birim}</span>
-        <span>Dosya No: {b.alim.id}</span>
-      </div>
-      <div className="belge-satir" style={{ marginBottom: "6pt" }}>
-        <span>İşin Adı: {b.alim.konu}</span>
-        <span>Tarih: …/…/20…</span>
-      </div>
-      <IhtiyacTablosu kalemler={b.kalemler} fiyatSutunlari />
-      <SartlarListesi dosya={b.dosya} />
-      <div className="firma-kase" style={{ marginTop: "16pt" }}>
-        <div className="firma-kase-bilgi">
-          <span><strong>Teklif Veren Firma:</strong> {firma?.ad || "……………………………………………………"}</span>
-          <span><strong>Vergi Dairesi / VKN:</strong> {firma ? [firma.vergiDairesi, firma.vkn].filter(Boolean).join(" · ") : "…………………………………………"}</span>
-          <span><strong>Adres / Tel:</strong> {firma ? [firma.adres, firma.telefon].filter(Boolean).join(" · ") : "…………………………………………"}</span>
-          <span>Yukarıda belirtilen şartları okudum, kabul ettim. Teklif ettiğim fiyatlar KDV hariçtir.</span>
-        </div>
-        <div className="firma-kase-alan">Firma Kaşe ve Yetkili İmza</div>
-      </div>
-    </div>,
+      {aciklama && <p className="girintili">{aciklama}</p>}
+      <p className="girintili">Gereğini rica ederim/ederiz.</p>
+      <GorevliImzalari kisiler={kisiler(b.ayarlar, g.piyasaGorevlileri)} gorev="Piyasa Araştırma Görevlisi" />
+      <p className="belge-baslik">{yonelmeBasligi(b.ayarlar.idare?.birim ?? "")}</p>
+      <p className="girintili">Kurumunuzca satın alınacak Mal/Hizmet/Yapım İşi'ne ilişkin teklifimizi içeren birim fiyatlar ve toplam fiyatlar aşağıya çıkarılmıştır.</p>
+      <p className="girintili">Gereğini arz ederim/ederiz.</p>
+      <KalemTablosu kalemler={b.kalemler} fiyatSutunlari />
+      <p className="sag-imza kalin">KİŞİ/FİRMA KAŞE/İMZA</p>
+    </>,
   ];
 }
 
-// 7. Basamak: Piyasa Fiyat Araştırması Tutanağı (Resmî Monokrom Şablon)
+// 7. basamak: piyasa fiyat araştırma tutanağı (yatay A4). Kazananın adresi tedarikçi kaydından gelir.
 export function piyasaTutanagiSayfalari(
   b: BelgeBilgisi,
   piyasa: PiyasaArastirmasi,
   firmaAdi: (id: string) => string,
   tutanakTarihi = "",
+  firmaBul: (id: string) => Tedarikci | undefined = () => undefined,
 ): ReactNode[] {
-  const ustIdare = (b.ayarlar.idare?.ustIdare || "T.C. İDARE MÜDÜRLÜĞÜ").toLocaleUpperCase("tr-TR");
-  const birim = b.ayarlar.idare?.birim || "";
+  const g = b.ayarlar.gorevler ?? BOS_GOREVLER;
+  const olur = belgeNumarasi(b.dosya);
+  const tarih = tutanakTarihi || olur.tarih;
   const sonuc = degerlendir(piyasa);
-  const g = b.ayarlar.gorevler;
-  // Piyasa görevlileri görevlendirmedeki gibi yazılır.
-  const gorevliIdler = g?.piyasaGorevlileri ?? [];
-  const gorevliUyeler = gorevliIdler.map((id) => imzaci(b.ayarlar, id));
-  const imzacilar = Array.from({ length: Math.max(gorevliUyeler.length, 2) }, (_, i) => gorevliUyeler[i] ?? { ad: "…", unvan: "GÖREVLİ" });
-
-  const kazanan = sonuc && sonuc.kazananlar.length > 0 ? firmaAdi(sonuc.kazananlar[0]) : "—";
-  const toplamKurus = sonuc?.toplam ?? 0;
+  const kazananlar = (sonuc?.kazananlar ?? []).map((id) => ({
+    id,
+    ad: firmaAdi(id),
+    adres: firmaBul(id)?.adres ?? "",
+    tutar: (sonuc?.atamalar ?? []).filter((a) => a.tedarikciId === id).reduce((s, a) => s + a.tutar, 0),
+  }));
 
   return [
-    <div key="piyasa-tutanak" className="onay-sablon-kapsayici">
-      <div style={{ textAlign: "center", fontWeight: "bold", fontSize: "12pt", marginBottom: "4pt" }}>
-        PİYASA FİYAT ARAŞTIRMASI TUTANAĞI
+    <>
+      <div className="baslik-tarih">
+        <span />
+        <p className="belge-baslik">PİYASA FİYAT ARAŞTIRMA TUTANAĞI</p>
+        <span className="sag">{tarihYazisi(tarih)}</span>
       </div>
-      <div style={{ textAlign: "center", fontSize: "8.5pt", marginBottom: "8pt" }}>
-        {ustIdare} {birim && `· ${birim}`}
-      </div>
-
-      <table className="onay-sablon-tablo" style={{ marginBottom: "6pt" }}>
-        <tbody>
-          <tr>
-            <th className="onay-th-etiket" style={{ width: "25%" }}>İŞİN ADI</th>
-            <td className="onay-td-deger kalin" colSpan={3}>{b.alim.konu}</td>
-          </tr>
-          <tr>
-            <th className="onay-th-etiket">ALIM USULÜ VE YASAL DAYANAK</th>
-            <td className="onay-td-deger">4734 Sayılı KİK Madde {b.alim.bent}</td>
-            <th className="onay-th-etiket" style={{ width: "18%" }}>DOSYA / DT NO</th>
-            <td className="onay-td-deger">{b.alim.ekapKayitNo || b.alim.id}</td>
-          </tr>
-          <tr>
-            <th className="onay-th-etiket">TUTANAK TARİHİ</th>
-            <td className="onay-td-deger">{tutanakTarihi ? uzunTarih(tutanakTarihi) : "…/…/20…"}</td>
-            <th className="onay-th-etiket">DEĞERLENDİRME ŞEKLİ</th>
-            <td className="onay-td-deger">{piyasa.degerlendirme === "kalem" ? "Kısmi Teklif (Kalem Bazında)" : "Toplam Tutar Esasına Göre"}</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <table className="onay-sablon-tablo" style={{ fontSize: "7.5pt" }}>
+      <KunyeSatirlari b={b} olur={olur} />
+      <FiyatCetveli kalemler={b.kalemler} firmalar={piyasa.teklifler.map((t) => ({ ad: firmaAdi(t.tedarikciId), fiyatlar: t.fiyatlar }))} />
+      <table className="ornek-tablo">
         <thead>
           <tr>
-            <th style={{ width: "3%", textAlign: "center" }}>S.No</th>
-            <th style={{ width: "22%", textAlign: "left" }}>Malın / Hizmetin Cinsi</th>
-            <th style={{ width: "6%", textAlign: "center" }}>Miktar</th>
-            <th style={{ width: "6%", textAlign: "center" }}>Birim</th>
-            {piyasa.teklifler.map((t, idx) => (
-              <th key={t.tedarikciId} style={{ textAlign: "center" }}>
-                <div style={{ fontWeight: "bold" }}>{idx + 1}. {firmaAdi(t.tedarikciId)}</div>
-                <div style={{ fontSize: "6.5pt", color: "#333" }}>{t.belgeAlindi ? "(Kaşeli Belge Alındı)" : "(Belge Bekleniyor)"}</div>
-              </th>
-            ))}
-            <th style={{ width: "12%", textAlign: "center", fontWeight: "bold" }}>
-              {piyasa.degerlendirme === "kalem" ? "EN UYGUN FİYAT" : "SEÇİLEN TEKLİF"}
-            </th>
+            <th colSpan={3}>EN UYGUN (DÜŞÜK) TEKLİFİ VEREN VE TEKLİFİ UYGUN GÖRÜLEN GERÇEK/TÜZEL KİŞİ</th>
+          </tr>
+          <tr>
+            <th>ADI</th>
+            <th>GERÇEK/TÜZEL KİŞİNİN ADRESİ</th>
+            <th>TEKLİF ETTİĞİ FİYAT</th>
           </tr>
         </thead>
         <tbody>
-          {b.kalemler.map((k, idx) => {
-            // Değerlendirmenin sonucu: toplam esasında kazananın fiyatı, kalem esasında kalemin en düşük fiyatı.
-            // Böylece sütunun toplamı her zaman sonuç toplamına eşit olur.
-            const atama = sonuc?.atamalar.find((a) => a.kalemId === k.id);
-            const enUygun = atama?.birimFiyat ?? null;
-            return (
+          {kazananlar.length ? (
+            kazananlar.map((k) => (
               <tr key={k.id}>
-                <td style={{ textAlign: "center" }}>{idx + 1}</td>
-                <td className="kalin">{k.ad}</td>
-                <td style={{ textAlign: "center" }}>{miktarYazisi(k.miktar)}</td>
-                <td style={{ textAlign: "center" }}>{k.birim}</td>
-                {piyasa.teklifler.map((t) => {
-                  const f = t.fiyatlar[k.id];
-                  const uygunMu = atama?.tedarikciId === t.tedarikciId;
-                  return (
-                    <td key={t.tedarikciId} style={{ textAlign: "right", fontWeight: uygunMu ? "bold" : "normal" }}>
-                      {f ? belgeTutari(f) : BOS_DEGER}
-                    </td>
-                  );
-                })}
-                <td style={{ textAlign: "right", fontWeight: "bold" }}>
-                  {enUygun ? belgeTutari(enUygun) : BOS_DEGER}
-                </td>
+                <td>{k.ad}</td>
+                <td>{k.adres}</td>
+                <td className="sag kalin">{belgeTutari(k.tutar)}</td>
               </tr>
-            );
-          })}
+            ))
+          ) : (
+            <tr>
+              <td>{BOS_DEGER}</td>
+              <td />
+              <td />
+            </tr>
+          )}
         </tbody>
-        <tfoot>
-          <tr>
-            <th colSpan={4} style={{ textAlign: "right", fontWeight: "bold" }}>
-              TOPLAM TUTAR (KDV HARİÇ):
-            </th>
-            {piyasa.teklifler.map((t) => {
-              const top = firmaToplami(piyasa, t.tedarikciId);
-              const enUygunToplam = sonuc?.toplam === top;
-              return (
-                <td key={t.tedarikciId} style={{ textAlign: "right", fontWeight: "bold", background: enUygunToplam ? "#f5f5f5" : "#fff" }}>
-                  {bosIse(top, belgeTutari)}
-                </td>
-              );
-            })}
-            <td style={{ textAlign: "right", fontWeight: "bold" }}>
-              {sonuc ? belgeTutari(sonuc.toplam) : BOS_DEGER}
-            </td>
-          </tr>
-        </tfoot>
       </table>
-
-      <div style={{ marginTop: "6pt", padding: "6pt", border: "1px solid #000", fontSize: "8pt", lineHeight: 1.35, textAlign: "justify" }}>
-        <strong>KARAR:</strong> İdaremizce 4734 sayılı Kamu İhale Kanunu’nun 22 nci maddesinin ({bentBilgisi(b.alim.bent).harf}) bendi uyarınca yapılan piyasa fiyat araştırması neticesinde; teklif veren firmaların fiyat teklifleri ve şartları incelenmiş olup, en uygun ve avantajlı teklifin KDV hariç <strong>{belgeTutari(toplamKurus)}</strong> ile <strong>{kazanan}</strong> tarafından verildiği tespit edilmiştir.{" "}
-        {sonuc?.kazananlar
-          .map((id) => ({ id, tarih: piyasa.teklifler.find((t) => t.tedarikciId === id)?.yasaklilikSorgusu }))
-          .filter((x) => x.tarih)
-          .map((x) => `${firmaAdi(x.id)} hakkında ${uzunTarih(x.tarih!)} tarihinde EKAP üzerinden yapılan sorgulamada ihalelere katılmaktan yasaklı olmadığı görülmüştür. `)
-          .join("")}
-        Alımın anılan firmadan yapılması uygun görülerek işbu tutanak tarafımızca müştereken tanzim ve imza edilmiştir.
-      </div>
-
-      <div style={{ marginTop: "10pt" }}>
-        <div style={{ textAlign: "center", fontWeight: "bold", fontSize: "8.5pt", marginBottom: "6pt" }}>
-          PİYASA FİYAT ARAŞTIRMASI GÖREVLİLERİ
-        </div>
-        <div style={{ display: "flex", justifyContent: "space-around" }}>
-          {imzacilar.map((u, i) => (
-            <div key={i} className="onay-imza-kutu" style={{ minWidth: "140px" }}>
-              <span className="kalin">{imzaAdi(u.ad)}</span>
-              <span>{u.unvan || "Görevli"}</span>
-              <span style={{ fontSize: "7pt", color: "#333" }}>{i === 0 ? "Komisyon Üyesi" : "Komisyon Üyesi"}</span>
-              <span className="imza-cizgi" />
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>,
+      <p className="girintili">
+        Kamu İhale Kanunu'nun {b.alim.bent} maddesine göre Doğrudan Temin yoluyla satın alınacak Mal/Hizmet/Yapım İşi'ne ilişkin yapılan piyasa araştırması
+        sonucu gerçek/tüzel kişilerce teklif edilen fiyatlar tarafımızca değerlendirilmiş olup Mal/Hizmet/Yapım İşi'nin yukarıda bilgileri verilen ve
+        teklifi uygun görülen gerçek/tüzel kişiden alınması uygun görülmüştür. {tarihYazisi(tarih)}
+      </p>
+      <GorevliImzalari kisiler={kisiler(b.ayarlar, g.piyasaGorevlileri)} gorev="Piyasa Araştırma Görevlisi" enAz={2} />
+    </>,
   ];
 }
 
@@ -950,114 +790,84 @@ export function muayeneKomisyonuImzalari(ayarlar: Ayarlar, muayene: Muayene | nu
   return kom.length ? kom : [{ ...imzaci(ayarlar, null), baskan: true }];
 }
 
-// 10 & 11. Basamak: Muayene ve Kabul Tutanağı
+// 10 ve 11. basamak: muayene ve kabul tutanağı. Miktarlar kabul edilen miktarlardır; teklifler piyasa araştırmasından gelir.
 export function muayeneKabulTutanagiSayfalari(
   b: BelgeBilgisi,
   muayene: Muayene | null,
   firmaAdi: (id: string) => string,
+  piyasa: PiyasaArastirmasi | null = null,
 ): ReactNode[] {
-  const ustIdare = (b.ayarlar.idare?.ustIdare || "T.C. İDARE MÜDÜRLÜĞÜ").toLocaleUpperCase("tr-TR");
-  const birim = b.ayarlar.idare?.birim || "";
-  const komisyon = muayeneKomisyonuImzalari(b.ayarlar, muayene);
-  const yukleniciAdi = b.alim.tedarikciId ? firmaAdi(b.alim.tedarikciId) : "—";
-  const faturaNo = muayene?.faturaNo || "—";
-  const faturaTarih = muayene?.faturaTarihi ? uzunTarih(muayene.faturaTarihi) : "—";
-  const teslimTarih = muayene?.teslimTarihi || muayene?.muayeneTarihi;
-  const sonuc = muayene ? kabulSonucu(muayene) : null;
+  const olur = belgeNumarasi(b.dosya);
+  const tarih = muayene?.muayeneTarihi || olur.tarih;
+  const komisyonImzalari = muayeneKomisyonuImzalari(b.ayarlar, muayene).filter((u) => u.ad && u.ad !== "…");
+  const kalemler: PiyasaKalemi[] = muayene
+    ? muayene.kalemler.map((k) => ({ id: k.kalemId, ad: k.ad, birim: k.birim, miktar: k.kabulMiktari }))
+    : b.kalemler;
+  const teklifler = (piyasa?.teklifler ?? []).map((t) => ({ id: t.tedarikciId, toplam: piyasa ? firmaToplami(piyasa, t.tedarikciId) : null }));
+  const sonuc = piyasa ? degerlendir(piyasa) : null;
+  const kazananlar = (sonuc?.kazananlar ?? []).map((id) => ({
+    id,
+    tutar: (sonuc?.atamalar ?? []).filter((a) => a.tedarikciId === id).reduce((s, a) => s + a.tutar, 0),
+  }));
+  const kabul = muayene ? kabulSonucu(muayene).sonuc : "tam";
 
   return [
-    <div key="muayene-kabul-tutanak" className="onay-sablon-kapsayici">
-      <div style={{ textAlign: "center", fontWeight: "bold", fontSize: "12pt", marginBottom: "4pt" }}>
-        MUAYENE VE KABUL TUTANAĞI
-      </div>
-      <div style={{ textAlign: "center", fontSize: "8.5pt", marginBottom: "8pt" }}>
-        {ustIdare} {birim && `· ${birim}`}
-      </div>
-
-      <table className="onay-sablon-tablo" style={{ marginBottom: "6pt" }}>
+    <>
+      <KunyeSatirlari b={b} olur={olur} />
+      <p className="belge-baslik">MUAYENE VE KABUL TUTANAĞI</p>
+      <KalemTablosu kalemler={kalemler} />
+      <table className="ornek-tablo">
+        <thead>
+          <tr>
+            <th className="sira-sutunu">S</th>
+            <th>TEKLİF VEREN GERÇEK/TÜZEL KİŞİLER</th>
+            <th>TEKLİF FİYATLARI</th>
+          </tr>
+        </thead>
         <tbody>
-          <tr>
-            <th className="onay-th-etiket" style={{ width: "25%" }}>İŞİN / ALIMIN ADI</th>
-            <td className="onay-td-deger kalin" colSpan={3}>{b.alim.konu}</td>
-          </tr>
-          <tr>
-            <th className="onay-th-etiket">YÜKLENİCİ ADI</th>
-            <td className="onay-td-deger">{yukleniciAdi}</td>
-            <th className="onay-th-etiket" style={{ width: "20%" }}>FATURA NO / TARİH</th>
-            <td className="onay-td-deger">{faturaNo} / {faturaTarih}</td>
-          </tr>
-          <tr>
-            <th className="onay-th-etiket">TESLİM / MUAYENE TARİHİ</th>
-            <td className="onay-td-deger">
-              {teslimTarih ? uzunTarih(teslimTarih) : "…/…/20…"} / {muayene?.muayeneTarihi ? uzunTarih(muayene.muayeneTarihi) : "…/…/20…"}
-            </td>
-            <th className="onay-th-etiket">KABUL SONUCU</th>
-            <td className="onay-td-deger kalin">{sonuc?.metin ?? "—"}</td>
-          </tr>
-          {muayene?.yer?.trim() && (
-            <tr>
-              <th className="onay-th-etiket">MUAYENE YERİ</th>
-              <td className="onay-td-deger" colSpan={3}>{muayene.yer.trim()}</td>
+          {teklifler.map((t, i) => (
+            <tr key={t.id}>
+              <td className="merkez">{i + 1}</td>
+              <td>{firmaAdi(t.id)}</td>
+              <td className="sag">{bosIse(t.toplam, tutarMetni)}</td>
             </tr>
-          )}
+          ))}
         </tbody>
       </table>
-
-      {muayene ? (
-        <table className="belge-tablo ek-tablo">
-          <thead>
-            <tr>
-              <th scope="col">Sıra</th>
-              <th scope="col">Malzeme veya hizmet</th>
-              <th scope="col">Sipariş</th>
-              <th scope="col">Fatura</th>
-              <th scope="col">Kabul</th>
-              <th scope="col">Birim</th>
+      <table className="ornek-tablo">
+        <thead>
+          <tr>
+            <th colSpan={3}>EN UYGUN (DÜŞÜK) TEKLİFİ VEREN VE TEKLİFİ UYGUN GÖRÜLEN GERÇEK/TÜZEL KİŞİ</th>
+          </tr>
+          <tr>
+            <th className="sira-sutunu">S</th>
+            <th>Adı</th>
+            <th>Teklif Fiyatı</th>
+          </tr>
+        </thead>
+        <tbody>
+          {kazananlar.map((k, i) => (
+            <tr key={k.id}>
+              <td className="merkez">{i + 1}</td>
+              <td>{firmaAdi(k.id)}</td>
+              <td className="sag">{belgeTutari(k.tutar)}</td>
             </tr>
-          </thead>
-          <tbody>
-            {muayene.kalemler.map((k, i) => (
-              <tr key={k.kalemId}>
-                <td>{i + 1}</td>
-                <td>{k.ad}</td>
-                <td>{miktarYazisi(k.siparisMiktari)}</td>
-                <td>{miktarYazisi(k.faturaMiktari)}</td>
-                <td>{miktarYazisi(k.kabulMiktari)}</td>
-                <td>{k.birim}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      ) : (
-        <IhtiyacTablosu kalemler={b.kalemler} />
-      )}
-
-      <div style={{ marginTop: "6pt", padding: "6pt", border: "1px solid #000", fontSize: "8pt", lineHeight: 1.35, textAlign: "justify" }}>
-        <strong>MUAYENE RAPORU:</strong>{" "}
-        {sonuc?.sonuc === "kismi"
-          ? "Yukarıda nitelik ve miktarları yazılı malzemeler komisyonumuzca fiziki, teknik ve idari açıdan muayene edilmiş; kabul sütununda gösterilen miktarlar sipariş şartlarına uygun bulunarak kabul edilmiş, kalan miktarlar kabul edilmemiştir."
-          : sonuc?.sonuc === "ret"
-            ? "Yukarıda nitelik ve miktarları yazılı malzemeler komisyonumuzca muayene edilmiş, sipariş şartlarına uygun bulunmadığından kabul edilmemiştir."
-            : "Yukarıda nitelik ve miktarları yazılı malzemeler komisyonumuzca fiziki, teknik ve idari açıdan muayene edilmiş olup, sipariş şartlarına uygun olduğu, ayıpsız ve noksansız olarak teslim alındığı tespit edilmiştir."}{" "}
-        İşbu tutanak tarafımızca tanzim edilerek müştereken imza altına alınmıştır.
-      </div>
-
-      <div style={{ marginTop: "12pt" }}>
-        <div style={{ textAlign: "center", fontWeight: "bold", fontSize: "8.5pt", marginBottom: "6pt" }}>
-          MUAYENE VE KABUL KOMİSYONU
-        </div>
-        <div style={{ display: "flex", justifyContent: "space-around" }}>
-          {komisyon.map((u, i) => (
-            <div key={i} className="onay-imza-kutu" style={{ minWidth: "140px" }}>
-              <span className="kalin">{imzaAdi(u.ad)}</span>
-              <span>{u.unvan || "Görevli"}</span>
-              <span style={{ fontSize: "7pt", color: "#333" }}>{u.baskan ? "Komisyon Başkanı" : "Üye"}</span>
-              <span className="imza-cizgi" />
-            </div>
           ))}
-        </div>
-      </div>
-    </div>,
+        </tbody>
+      </table>
+      <p className="girintili">
+        {kabul === "ret"
+          ? "Yukarıda bilgileri verilen Mal/Hizmet/Yapım İşi, idarenin belirlediği şartlar dahilinde muayene edilmiş olup şartlara uygun bulunmadığından kabul edilmemiştir."
+          : kabul === "kismi"
+            ? "Yukarıda bilgileri verilen Mal/Hizmet/Yapım İşi, idarenin belirlediği şartlar dahilinde muayene edilmiş olup yukarıda yazılı miktarlar kabul edilmiş, kalan miktarlar kabul edilmemiştir."
+            : "Yukarıda bilgileri verilen Mal/Hizmet/Yapım İşi, idarenin belirlediği şartlar dahilinde muayenesi yapılmış olup kabule engel herhangi bir durum tespit edilmemiştir."}{" "}
+        Söz konusu işin yukarıda alım yapılması uygun görülen gerçek/tüzel kişiden Doğrudan Temin yoluyla satın alınması hususunu;
+      </p>
+      <p className="girintili">Olurlarınıza arz ederim/ederiz.</p>
+      <GorevliImzalari kisiler={komisyonImzalari} gorev="Muayene ve Kabul Görevlisi" tarih={tarih} />
+      <OlurImzasi ayarlar={b.ayarlar} tarih={tarih} />
+      <p className="kucuk">Ek: Piyasa Fiyat Araştırma Tutanağı</p>
+    </>,
   ];
 }
 

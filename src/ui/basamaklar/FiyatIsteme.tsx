@@ -86,7 +86,7 @@ export function FiyatIstemeBasamagi({ b }: { b: BasamakBaglami }) {
           </div>
           <div className="alan">
             <label htmlFor="fi-sayi">Sayı</label>
-            <input id="fi-sayi" className="mono" value={f.sayi} onChange={(e) => yaziDegistir({ sayi: e.target.value })} placeholder="E-12345678-934-…" />
+            <input id="fi-sayi" className="mono" value={f.sayi} onChange={(e) => yaziDegistir({ sayi: e.target.value })} placeholder={dosya.ihtiyacOnayi.sayi || "E-12345678-934-…"} />
           </div>
           <div className="alan">
             <label htmlFor="fi-son">Son bildirim tarihi</label>

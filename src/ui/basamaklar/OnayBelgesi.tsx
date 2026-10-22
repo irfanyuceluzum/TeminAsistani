@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { makamBasligi, onayBelgesiKontrolleri } from "../../domain/basamaklar";
+import { harcamaYetkilisiMakami, onayBelgesiKontrolleri } from "../../domain/basamaklar";
 import { butceTertibi } from "../../domain/parametreler";
 import { engelVarMi } from "../../domain/sihirbaz";
 import { bugun, tl } from "../bicim";
@@ -19,10 +19,11 @@ export function OnayBelgesiBasamagi({ b }: { b: BasamakBaglami }) {
   const evrak = evraklar[kod];
   const tamam = !!evrak?.tamam;
 
-  const [tarih, setTarih] = useState(evrak?.tarih || alim.onayTarihi || bugun());
-  const [sayi, setSayi] = useState(evrak?.not ?? "");
+  // Kayıt yoksa doğrudan temin olurunun tarihi ve sayısı gelir.
+  const [tarih, setTarih] = useState(evrak?.tarih || dosya.ihtiyacOnayi.tarih || alim.onayTarihi || bugun());
+  const [sayi, setSayi] = useState(evrak?.not ?? dosya.ihtiyacOnayi.sayi);
   const [ekapNo, setEkapNo] = useState(alim.ekapKayitNo ?? "");
-  const varsayilanMakam = makamBasligi(ayarlar.idare?.birim ?? "");
+  const varsayilanMakam = harcamaYetkilisiMakami(ayarlar.idare?.birim ?? "");
   const [makam, setMakam] = useState(dosya.onayBelgesi?.makam || varsayilanMakam);
   const [onizle, setOnizle] = useState(false);
   const [onaylaniyor, setOnaylaniyor] = useState(false);

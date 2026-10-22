@@ -710,3 +710,29 @@ th:last-child, td:last-child { padding-right: 20px; }
 
 
 
+
+/* Kurum örnek yazılarına göre belge parçaları */
+.belge-metni .normal-yazi { font-weight: 400; }
+.belge-metni .merkez, .belge-metni-yatay .merkez { text-align: center; }
+.yazi-kunye { display: grid; grid-template-columns: auto 1fr auto; column-gap: 8pt; }
+.kunye-satirlari { display: grid; grid-template-columns: max-content 1fr; column-gap: 6pt; margin: 0; }
+.kunye-satirlari dt, .kunye-satirlari dd { margin: 0; }
+.baslik-tarih { display: grid; grid-template-columns: 1fr auto 1fr; align-items: baseline; }
+.ornek-tablo { width: 100%; border-collapse: collapse; }
+.ornek-tablo th, .ornek-tablo td { border: 1px solid #000; padding: 1pt 4pt; color: #000; vertical-align: middle; }
+.ornek-tablo th { font-weight: 700; text-align: center; }
+.belge-metni .ornek-tablo th, .belge-metni .ornek-tablo td { font-size: 11pt; }
+.ornek-tablo .sira-sutunu { width: 6%; }
+.ornek-tablo.cetvel th, .ornek-tablo.cetvel td { font-size: 7.5pt; }
+.gorevli-tablosu td { width: 33.33%; }
+.gorevli-imzalari { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12pt; text-align: center; }
+.gorevli-imzalari > div, .olur-imzasi, .sag-imza { display: flex; flex-direction: column; align-items: center; gap: 0; }
+.sag-imza { align-self: flex-end; text-align: center; min-width: 40%; }
+.cetvel-imzalari { display: grid; grid-template-columns: 2fr 1fr; gap: 12pt; align-items: start; }
+.cetvel-imzalari .gorevli-imzalari { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
+.onay-arz-metni { margin: 0 0 8pt; text-align: justify; }
+.belge-metni p.belge-baslik, .belge-metni-yatay p.belge-baslik { text-align: center; }
+.belge-metni p.sag-imza { text-align: center; }
+.onay-aciklamalar-alani { min-height: 70pt; }
+.belge-metni.belge-metni-yatay .ornek-tablo th, .belge-metni.belge-metni-yatay .ornek-tablo td { font-size: 8.5pt; }
+.belge-metni.belge-metni-yatay .ornek-tablo.cetvel th, .belge-metni.belge-metni-yatay .ornek-tablo.cetvel td { font-size: 8pt; }

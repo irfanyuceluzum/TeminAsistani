@@ -18,7 +18,7 @@ export function PiyasaTutanagiBasamagi({ b }: { b: BasamakBaglami }) {
   const [kaydediliyor, setKaydediliyor] = useState(false);
   const [onizle, setOnizle] = useState(false);
   const [mesaj, setMesaj] = useState("");
-  const [form, setForm] = useState(() => evrakFormu(b.evraklar["piyasa-tutanagi"], bugun()));
+  const [form, setForm] = useState(() => evrakFormu(b.evraklar["piyasa-tutanagi"], b.dosya.ihtiyacOnayi.tarih || bugun(), b.dosya.ihtiyacOnayi.sayi));
 
   const firmaAdi = (id: string) => tedarikciler.find((t) => t.id === id)?.ad || "Bilinmeyen Firma";
 
@@ -84,7 +84,8 @@ export function PiyasaTutanagiBasamagi({ b }: { b: BasamakBaglami }) {
       { alim, ayarlar, dosya, kalemler: b.kalemler },
       piyasa,
       firmaAdi,
-      form.tarih
+      form.tarih,
+      (id) => tedarikciler.find((t) => t.id === id),
     );
   }, [alim, ayarlar, dosya, b.kalemler, piyasa, tedarikciler, form.tarih]);
 
@@ -248,8 +249,9 @@ export function PiyasaTutanagiBasamagi({ b }: { b: BasamakBaglami }) {
 
       {onizle && (
         <BelgeOnizleme
-          baslik="Piyasa Fiyat Araştırması Tutanağı"
+          baslik="Piyasa Fiyat Araştırma Tutanağı"
           sayfalar={tutanakSayfalari}
+          yatay
           kapat={() => setOnizle(false)}
         />
       )}

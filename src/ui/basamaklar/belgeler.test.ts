@@ -3,7 +3,7 @@ import { ornekAlimlar, ornekAyarlar } from "../../data/ornekVeri";
 import { muayeneOlustur } from "../../domain/muayene";
 import type { PiyasaKalemi } from "../../domain/piyasa";
 import type { Ayarlar } from "../../domain/tipler";
-import { firmaFiyatToplami, muayeneKomisyonuImzalari } from "./belgeler";
+import { firmaFiyatToplami, muayeneKomisyonuImzalari, yonelmeBasligi } from "./belgeler";
 
 describe("muayeneKomisyonuImzalari", () => {
   const gorevli = (d: Partial<NonNullable<Ayarlar["gorevler"]>>): Ayarlar => ({ ...ornekAyarlar, gorevler: { ...ornekAyarlar.gorevler!, ...d } });
@@ -64,5 +64,13 @@ describe("firmaFiyatToplami", () => {
 
   it("kalemsiz listede null döner", () => {
     expect(firmaFiyatToplami([], {})).toBeNull();
+  });
+});
+
+describe("yonelmeBasligi", () => {
+  it("birim adını büyük harfle yönelme ekiyle yazar", () => {
+    expect(yonelmeBasligi("Kırmızıdağ İlkokulu Müdürlüğü")).toBe("KIRMIZIDAĞ İLKOKULU MÜDÜRLÜĞÜNE");
+    expect(yonelmeBasligi("Karataş Kaymakamlığı")).toBe("KARATAŞ KAYMAKAMLIĞINA");
+    expect(yonelmeBasligi(" ")).toBe("İDAREYE");
   });
 });

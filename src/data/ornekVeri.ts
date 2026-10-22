@@ -319,7 +319,7 @@ export const ornekBasamaklar: DosyaBasamaklari[] = [
       ],
       onaylandi: true,
     },
-    onayBelgesi: { fiyatFarki: "Verilmeyecektir", avans: "Verilmeyecektir", dokuman: "İhtiyaç Listesi ve Şartlar hazırlanmıştır" },
+    onayBelgesi: { fiyatFarki: "Verilmeyecektir.", avans: "Verilmeyecektir.", dokuman: "Hazırlanmayacaktır." },
   },
 ];
 

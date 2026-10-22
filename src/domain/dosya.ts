@@ -91,7 +91,8 @@ export function evrakListesi(alim: Alim): EvrakTanimi[] {
   liste.push(
     e("piyasa-tutanagi", "Piyasa fiyat araştırması tutanağı ve teklifler", "piyasa", true),
     e("yasaklilik", "Yasaklılık sorgusu çıktıları", "piyasa", true),
-    e("siparis-yazisi", sozlesmeZorunlu(alim) ? "Sözleşme" : "Sipariş yazısı veya sözleşme", "siparis"),
+    // Sipariş yazısı isteğe bağlıdır; süreye yayılan işte sözleşme zorunludur (Tebliğ m.4/5).
+    e("siparis-yazisi", sozlesmeZorunlu(alim) ? "Sözleşme" : "Sipariş yazısı veya sözleşme", "siparis", false, sozlesmeZorunlu(alim)),
     e("fatura", "Fatura", "muayene"),
     e("muayene-tutanagi", "Muayene ve kabul tutanağı", "muayene"),
     // Taşınır işlem fişi TKYS'de, ödeme emri MYS'de düzenlenir; burada yalnız dizin için kaydı tutulur, zorunlu değildir.

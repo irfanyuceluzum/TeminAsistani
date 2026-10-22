@@ -231,7 +231,7 @@ export function TeklifMektuplariBasamagi({ b }: { b: BasamakBaglami }) {
     return teklifIstemeMektubuSayfalari(
       { alim, ayarlar: veri.ayarlar, dosya, kalemler: b.kalemler },
       aktifTedarikci,
-      { sayi: yazi.sayi, tarih: yazi.tarih, sonTarih: yazi.sonTeklifTarihi, teslimYeri: yazi.teslimYeri, teslimSuresi: yazi.teslimSuresi, aciklama: yazi.aciklama }
+      { sayi: yazi.sayi, tarih: yazi.tarih, sonTarih: yazi.sonTeklifTarihi, sonSaat: yazi.sonTeklifSaati, teslimYeri: yazi.teslimYeri, teslimSuresi: yazi.teslimSuresi, aciklama: yazi.aciklama }
     );
   }, [alim, veri.ayarlar, dosya, b.kalemler, aktifTedarikci, yazi]);
 
@@ -305,7 +305,7 @@ export function TeklifMektuplariBasamagi({ b }: { b: BasamakBaglami }) {
           <div className="form-izgara" style={{ marginTop: "12px" }}>
             <div className="alan">
               <label htmlFor="teklif-yazi-sayi">Teklif isteme yazısı sayısı</label>
-              <input id="teklif-yazi-sayi" className="mono" value={yazi.sayi} onChange={(e) => yaziDegistir({ sayi: e.target.value })} placeholder="E-12345678-934.01-…" />
+              <input id="teklif-yazi-sayi" className="mono" value={yazi.sayi} onChange={(e) => yaziDegistir({ sayi: e.target.value })} placeholder={dosya.ihtiyacOnayi.sayi || "E-12345678-934.01-…"} />
             </div>
             <div className="alan">
               <label htmlFor="teklif-yazi-tarih">Yazı tarihi</label>
@@ -321,6 +321,10 @@ export function TeklifMektuplariBasamagi({ b }: { b: BasamakBaglami }) {
                 aria-invalid={!!yazi.tarih && !!yazi.sonTeklifTarihi && yazi.sonTeklifTarihi < yazi.tarih}
                 onChange={(e) => yaziDegistir({ sonTeklifTarihi: e.target.value })}
               />
+            </div>
+            <div className="alan">
+              <label htmlFor="teklif-son-saat">Son teklif saati</label>
+              <input id="teklif-son-saat" type="time" value={yazi.sonTeklifSaati ?? ""} onChange={(e) => yaziDegistir({ sonTeklifSaati: e.target.value })} />
             </div>
           </div>
 

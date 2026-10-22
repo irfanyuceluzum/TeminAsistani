@@ -94,11 +94,11 @@ export function bosBasamaklar(alimId: string, bugun: string): DosyaBasamaklari {
     ihtiyacOnayi: { tarih: bugun, sayi: "", gerekce: "", imzali: false },
     fiyatIsteme: { tarih: "", sayi: "", sonTarih: "" },
     yaklasik: { hesaplanmayacak: false, yontem: "ortalama", kdvOrani: 20, firmalar: [], onaylandi: false },
-    // Makam başlığı boşsa idarenin adından türetilir (makamBasligi)
+    // Makam başlığı boşsa idarenin adından türetilir (harcamaYetkilisiMakami)
     onayBelgesi: {
-      fiyatFarki: "Verilmeyecektir",
-      avans: "Verilmeyecektir",
-      dokuman: "İhtiyaç Listesi ve Şartlar hazırlanmıştır",
+      fiyatFarki: "Verilmeyecektir.",
+      avans: "Verilmeyecektir.",
+      dokuman: "Hazırlanmayacaktır.",
     },
   };
 }
@@ -244,7 +244,8 @@ export function basamaklar(g: BasamakGirdisi): Basamak[] {
   const kalemler = piyasa?.kalemler ?? [];
   const yaklasikYok = dosya.yaklasik.hesaplanmayacak;
 
-  type Ham = { no: number; ad: string; grup: (typeof GRUPLAR)[number]; tamam: boolean; gerekmez?: string; evrakKodu?: string };
+  // İsteğe bağlı basamak yapılmadıysa dosyayı bekletmez; yapıldıysa tamam görünür.
+  type Ham = { no: number; ad: string; grup: (typeof GRUPLAR)[number]; tamam: boolean; gerekmez?: string; istegeBagli?: boolean; evrakKodu?: string };
   const ham: Ham[] = [
     { no: 1, ad: "Veri girişi", grup: "Hazırlık", tamam: kalemlerHazir(kalemler) },
     { no: 2, ad: "İhtiyaç onayı", grup: "Hazırlık", tamam: dosya.ihtiyacOnayi.imzali },
@@ -253,7 +254,7 @@ export function basamaklar(g: BasamakGirdisi): Basamak[] {
       ad: "Fiyat isteme yazısı",
       grup: "Fiyat ve onay",
       tamam:
-        !!dosya.fiyatIsteme.tarih &&
+        !!belgeNumarasi(dosya, dosya.fiyatIsteme.sayi, dosya.fiyatIsteme.tarih).tarih &&
         dosya.yaklasik.firmalar.length > 0 &&
         dosya.yaklasik.firmalar.some((f) => f.belgeAlindi || Object.values(f.fiyatlar).some((v) => v !== null && v > 0)),
       gerekmez: yaklasikYok ? "yaklaşık maliyet hesaplanmıyor" : undefined,
@@ -276,9 +277,18 @@ export function basamaklar(g: BasamakGirdisi): Basamak[] {
       ad: sozlesmeZorunlu(alim) ? "Sözleşme" : "Sipariş yazısı",
       grup: "Sipariş",
       tamam: evrak("siparis-yazisi"),
+      // Sipariş yazısı isteğe bağlıdır; süreye yayılan işte sözleşme zorunludur (Tebliğ m.4/5).
+      istegeBagli: !sozlesmeZorunlu(alim),
       evrakKodu: "siparis-yazisi",
     },
-    { no: 9, ad: "Muayene talep yazısı", grup: "Teslim ve kabul", tamam: evrak(BASAMAK_EVRAKLARI.muayeneTalebi), evrakKodu: BASAMAK_EVRAKLARI.muayeneTalebi },
+    {
+      no: 9,
+      ad: "Muayene talep yazısı",
+      grup: "Teslim ve kabul",
+      tamam: evrak(BASAMAK_EVRAKLARI.muayeneTalebi),
+      istegeBagli: true,
+      evrakKodu: BASAMAK_EVRAKLARI.muayeneTalebi,
+    },
     { no: 10, ad: "Muayene raporu", grup: "Teslim ve kabul", tamam: evrak(BASAMAK_EVRAKLARI.muayeneRaporu), evrakKodu: BASAMAK_EVRAKLARI.muayeneRaporu },
     { no: 11, ad: "Muayene ve kabul belgesi", grup: "Teslim ve kabul", tamam: !!g.muayene?.tamamlandi },
     // Dosya kontrol ekranında "Dosyayı kapat" ile tamamlandı olur.
@@ -290,6 +300,7 @@ export function basamaklar(g: BasamakGirdisi): Basamak[] {
     const ortak = { no: h.no, ad: h.ad, grup: h.grup, evrakKodu: h.evrakKodu };
     if (h.gerekmez) return { ...ortak, durum: "gerekmiyor", not: `Gerekmiyor · ${h.gerekmez}` };
     if (h.tamam) return { ...ortak, durum: "tamam", not: "Tamamlandı" };
+    if (h.istegeBagli) return { ...ortak, durum: "gerekmiyor", not: "İsteğe bağlı" };
     if (!suruyorVar) {
       suruyorVar = true;
       return { ...ortak, durum: "suruyor", not: "Sürüyor" };
@@ -522,6 +533,11 @@ export function evrakFormu(kayit: EvrakKaydi | undefined, bugun: string, varsayi
   };
 }
 
+// Bütün belgeler doğrudan temin olurunun (2. basamak) sayısını ve tarihini taşır; belgeye ayrıca girilen sayı ya da tarih önce gelir.
+export function belgeNumarasi(d: DosyaBasamaklari, sayi?: string, tarih?: string): EvrakFormu {
+  return { sayi: sayi?.trim() || d.ihtiyacOnayi.sayi.trim(), tarih: tarih || d.ihtiyacOnayi.tarih };
+}
+
 // Kullanıcının girdiği belge tarihi olduğu gibi kaydedilir ("YYYY-AA-GG"); boş ya da başka biçimdeki tarih reddedilir.
 export function evrakKaydiYap(form: EvrakFormu, tamam = true): EvrakKaydi {
   if (!GUN.test(form.tarih)) throw new Error("Belge tarihi YYYY-AA-GG biçiminde olmalı.");
@@ -535,6 +551,12 @@ export function makamBasligi(birim: string): string {
   const m = son.match(/^(.*l[ıiuü])ğ[ıiuü]$/i);
   const kok = m ? `${m[1]}k` : birim.trim();
   return kok ? `${kok.toLocaleUpperCase("tr-TR")} MAKAMINA` : "MAKAMA";
+}
+
+// Onay belgesinin makam satırı: "KIRMIZIDAĞ İLKOKULU MÜDÜRLÜĞÜ HARCAMA YETKİLİSİ MAKAMINA"
+export function harcamaYetkilisiMakami(birim: string): string {
+  const b = birim.trim().toLocaleUpperCase("tr-TR");
+  return b ? `${b} HARCAMA YETKİLİSİ MAKAMINA` : "HARCAMA YETKİLİSİ MAKAMINA";
 }
 
 // Tutanak onaylandıktan sonra dosya tutarı sipariş tutarıdır; yaklaşık maliyetin sonradan onaylanması onu değiştirmez.

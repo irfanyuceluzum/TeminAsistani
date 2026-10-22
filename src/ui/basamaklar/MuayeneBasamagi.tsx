@@ -20,7 +20,7 @@ export function MuayeneBasamagi({ b }: { b: BasamakBaglami }) {
 
   const [kaydediliyor, setKaydediliyor] = useState(false);
   const [onizle, setOnizle] = useState(false);
-  const [ilkTalep] = useState(() => evrakFormu(b.evraklar["muayene-talebi"], bugun()));
+  const [ilkTalep] = useState(() => evrakFormu(b.evraklar["muayene-talebi"], b.dosya.ihtiyacOnayi.tarih || bugun(), b.dosya.ihtiyacOnayi.sayi));
   const [talepSayi, setTalepSayi] = useState(ilkTalep.sayi);
   const [talepTarih, setTalepTarih] = useState(ilkTalep.tarih);
   const [mesaj, setMesaj] = useState("");
@@ -90,9 +90,10 @@ export function MuayeneBasamagi({ b }: { b: BasamakBaglami }) {
     return muayeneKabulTutanagiSayfalari(
       { alim, ayarlar, dosya, kalemler: b.kalemler },
       aktifMuayene,
-      firmaAdi
+      firmaAdi,
+      piyasa,
     );
-  }, [isTalep, alim, ayarlar, dosya, b.kalemler, talepSayi, talepTarih, aktifMuayene, tedarikciler]);
+  }, [isTalep, alim, ayarlar, dosya, b.kalemler, talepSayi, talepTarih, aktifMuayene, tedarikciler, piyasa]);
 
   const onaylaVeIlerle = async () => {
     setMesaj("");

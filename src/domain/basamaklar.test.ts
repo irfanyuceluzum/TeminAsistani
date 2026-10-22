@@ -3,6 +3,8 @@ import { ornekAlimlar, ornekAyarlar, ornekLimitDonemleri, ornekPiyasa } from "..
 import {
   acilisBasamagi,
   basamaklar,
+  belgeNumarasi,
+  harcamaYetkilisiMakami,
   basamaklariTamamla,
   bosBasamaklar,
   eskiEkranBasamagi,
@@ -117,7 +119,17 @@ describe("basamak listesi", () => {
     expect(b[4].durum).toBe("tamam");
     expect(b[5]).toMatchObject({ ad: "Teklif mektupları", durum: "tamam" });
     expect(b[6]).toMatchObject({ no: 7, durum: "suruyor" });
-    expect(ilerleme(b)).toEqual({ biten: 4, gerekli: 10 });
+    // Sipariş yazısı (süreye yayılmayan iş) ve muayene talebi isteğe bağlıdır; ilerlemeye sayılmaz.
+    expect(b[7]).toMatchObject({ no: 8, durum: "gerekmiyor", not: "İsteğe bağlı" });
+    expect(b[8]).toMatchObject({ no: 9, durum: "gerekmiyor", not: "İsteğe bağlı" });
+    expect(ilerleme(b)).toEqual({ biten: 4, gerekli: 8 });
+  });
+
+  it("süreye yayılan işte sözleşme basamağı zorunludur; yapılan isteğe bağlı basamak tamam görünür", () => {
+    const b = basamaklar(girdi({ alim: { ...temizlik, sureliIs: true }, evraklar: { "muayene-talebi": { tamam: true, tarih: "2026-10-10", not: "" } } }));
+    expect(b[7]).toMatchObject({ ad: "Sözleşme" });
+    expect(b[7].durum).not.toBe("gerekmiyor");
+    expect(b[8]).toMatchObject({ no: 9, durum: "tamam" });
   });
 
   it("22/b bentli gizli kayıtta da 6. basamak teklif mektupları, 7. basamak gerekli", () => {
@@ -376,5 +388,26 @@ describe("tarih sırası zinciri", () => {
     expect(k[0].baslik).toBe("KİK bildirimi süresinde yapılmadı");
     expect(k[0].detay).toContain("10.11.2026");
     expect(k[0].detay).toContain("11.11.2026");
+  });
+});
+
+describe("belgeNumarasi", () => {
+  const d = bosBasamaklar("DT-2026-001", "2025-11-20");
+  d.ihtiyacOnayi.sayi = "E-87485486-869-1";
+
+  it("belgeye girilmemişse olurun sayısını ve tarihini verir", () => {
+    expect(belgeNumarasi(d)).toEqual({ sayi: "E-87485486-869-1", tarih: "2025-11-20" });
+    expect(belgeNumarasi(d, " ", "")).toEqual({ sayi: "E-87485486-869-1", tarih: "2025-11-20" });
+  });
+
+  it("belgeye ayrıca girilen sayı ve tarih önce gelir", () => {
+    expect(belgeNumarasi(d, "E-2", "2025-11-21")).toEqual({ sayi: "E-2", tarih: "2025-11-21" });
+  });
+});
+
+describe("harcamaYetkilisiMakami", () => {
+  it("birim adının ardından harcama yetkilisi makamını yazar", () => {
+    expect(harcamaYetkilisiMakami("Kırmızıdağ İlkokulu Müdürlüğü")).toBe("KIRMIZIDAĞ İLKOKULU MÜDÜRLÜĞÜ HARCAMA YETKİLİSİ MAKAMINA");
+    expect(harcamaYetkilisiMakami("")).toBe("HARCAMA YETKİLİSİ MAKAMINA");
   });
 });

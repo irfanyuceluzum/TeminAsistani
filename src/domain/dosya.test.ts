@@ -25,7 +25,9 @@ describe("evrak listesi", () => {
     expect(l.find((e) => e.kod === "tasinir-fisi")).toMatchObject({ ad: "Taşınır işlem fişi", disSistem: "TKYS", zorunlu: false, sistemden: false });
     expect(l.find((e) => e.kod === "odeme-emri")).toMatchObject({ ad: "Ödeme emri belgesi", disSistem: "MYS", zorunlu: false });
     expect(l.find((e) => e.kod === "kik-bildirimi")!.zorunlu).toBe(false);
-    expect(l.filter((e) => !e.zorunlu).map((e) => e.kod)).toEqual(["tasinir-fisi", "odeme-emri", "kik-bildirimi"]);
+    expect(l.filter((e) => !e.zorunlu).map((e) => e.kod)).toEqual(["siparis-yazisi", "tasinir-fisi", "odeme-emri", "kik-bildirimi"]);
+    // Süreye yayılan işte sözleşme zorunludur (Tebliğ m.4/5).
+    expect(evrakListesi(alim("DT-2026-040", { sureliIs: true })).find((e) => e.kod === "siparis-yazisi")).toMatchObject({ ad: "Sözleşme", zorunlu: true });
   });
 
   it("hangi bent kayıtlı olursa olsun 22/d evrakını üretir", () => {
@@ -104,10 +106,10 @@ describe("dosyanın kapanışı", () => {
 
 describe("aşama ilerlemesi", () => {
   it("eksik evrak varken ilerletmez", () => {
-    const a = alim("DT-2026-039", { asama: "siparis" });
+    const a = alim("DT-2026-039", { asama: "siparis", sureliIs: true });
     const d = asamaIlerlemesi(a, evrakDurumlari(a, { "ihtiyac-yazisi": tamam(), "onay-belgesi": tamam() }, null));
     expect(d.sonraki).toBe("muayene");
-    expect(d.eksikler).toContain("Sipariş yazısı veya sözleşme");
+    expect(d.eksikler).toContain("Sözleşme");
     expect(d.eksikler).toContain("Piyasa fiyat araştırması tutanağı ve teklifler");
   });
 
