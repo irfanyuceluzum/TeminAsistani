@@ -180,7 +180,7 @@ export function TeklifMektuplariBasamagi({ b }: { b: BasamakBaglami }) {
       k.push({
         durum: "engel",
         baslik: "Hiç firma teklifi yok",
-        detay: "Fiyat teklifi verecek firmaları ekleyin veya 'Yaklaşık Maliyetten Çek' butonunu kullanın.",
+        detay: "Fiyat teklifi verecek firmaları ekleyin veya “Yaklaşık maliyetten çek” düğmesini kullanın.",
       });
       return k;
     }
@@ -267,15 +267,15 @@ export function TeklifMektuplariBasamagi({ b }: { b: BasamakBaglami }) {
                 Firmalardan gelen kaşeli teklif mektuplarının birim fiyatlarını girebilir veya 4. basamaktaki yaklaşık maliyet verilerini tek tıkla çekebilirsiniz.
               </p>
             </div>
-            <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+            <div className="dugme-grubu baslik-araclari">
               <button
                 type="button"
-                className="dugme"
+                className="dugme kucuk-dugme"
                 onClick={yaklasikMaliyettenCek}
                 title="4. Basamakta tespit edilen firma ve birim fiyatları teklif cetveline kopyalar"
                 style={{ fontWeight: 600, background: "var(--zemin)", border: "1px solid var(--vurgu)", color: "var(--vurgu)" }}
               >
-                📥 Yaklaşık Maliyetten Çek
+                Yaklaşık maliyetten çek
               </button>
 
               <select
@@ -284,7 +284,7 @@ export function TeklifMektuplariBasamagi({ b }: { b: BasamakBaglami }) {
                 className="kucuk"
                 style={{ height: "36px", padding: "0 8px" }}
               >
-                <option value="">+ Başka Firma Ekle...</option>
+                <option value="">+ Başka firma ekle…</option>
                 {tedarikciler
                   .filter((t) => !teklifler.some((tk) => tk.tedarikciId === t.id))
                   .map((t) => (

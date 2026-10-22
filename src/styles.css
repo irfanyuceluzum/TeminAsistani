@@ -736,3 +736,7 @@ th:last-child, td:last-child { padding-right: 20px; }
 .onay-aciklamalar-alani { min-height: 70pt; }
 .belge-metni.belge-metni-yatay .ornek-tablo th, .belge-metni.belge-metni-yatay .ornek-tablo td { font-size: 8.5pt; }
 .belge-metni.belge-metni-yatay .ornek-tablo.cetvel th, .belge-metni.belge-metni-yatay .ornek-tablo.cetvel td { font-size: 8pt; }
+/* Panel başlığındaki düğmeler sığmazsa başlığın altına iner; yazıları bölünmez. */
+.panel-baslik-satiri { flex-wrap: wrap; }
+.baslik-araclari { flex-wrap: wrap; align-items: center; }
+.baslik-araclari .dugme, .baslik-araclari select { white-space: nowrap; }

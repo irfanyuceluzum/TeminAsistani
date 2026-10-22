@@ -195,7 +195,7 @@ export function YaklasikMaliyetBasamagi({ b }: { b: BasamakBaglami }) {
               onClick={() => setOnizleme(true)}
               disabled={!sonuc.satirlar.length || !y.firmalar.length}
             >
-              📄 Cetveli Önizle ve Yazdır (A4 Yatay)
+              Cetveli önizle ve yazdır (A4 yatay)
             </button>
             <button
               type="button"
